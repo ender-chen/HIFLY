@@ -1,0 +1,22 @@
+#!nsh
+
+set VEHICLE_TYPE mc
+
+if [ $AUTOCNF == yes ]
+then
+	param set PE_VELNE_NOISE 0.5
+	param set PE_VELD_NOISE 0.35
+	param set PE_POSNE_NOISE 0.5
+	param set PE_POSD_NOISE 1.25
+	param set PE_GBIAS_PNOISE 0.000001
+	param set PE_ABIAS_PNOISE 0.0001
+
+	param set NAV_ACC_RAD 2.0
+	param set RTL_RETURN_ALT 30.0
+	param set RTL_DESCEND_ALT 10.0
+fi
+
+set PWM_RATE 400
+set PWM_DISARMED 900
+set PWM_MIN 1075
+set PWM_MAX 2000
