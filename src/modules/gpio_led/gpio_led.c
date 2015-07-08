@@ -111,7 +111,7 @@ int gpio_led_main(int argc, char *argv[])
 #ifdef CONFIG_ARCH_BOARD_PX4FMU_V1
 			char *pin_name = "PX4FMU GPIO_EXT1";
 #endif
-#ifdef CONFIG_ARCH_BOARD_PX4FMU_V2
+#if defined(CONFIG_ARCH_BOARD_PX4FMU_V2) || defined(CONFIG_ARCH_BOARD_HIFLY)
 			char pin_name[] = "AUX OUT 1";
 #endif
 
@@ -199,6 +199,8 @@ int gpio_led_main(int argc, char *argv[])
 			errx(1, "unrecognized command '%s', only supporting 'start' or 'stop'", argv[1]);
 		}
 	}
+
+    return 0;
 }
 
 void gpio_led_start(FAR void *arg)
