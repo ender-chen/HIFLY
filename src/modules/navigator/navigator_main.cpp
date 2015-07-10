@@ -139,6 +139,7 @@ Navigator::Navigator() :
 	_loiter(this, "LOI"),
 	_rtl(this, "RTL"),
 	_rcLoss(this, "RCL"),
+	_takeoff(this, "TAKEOFF"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
 	_gpsFailure(this, "GPSF"),
@@ -159,6 +160,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[4] = &_engineFailure;
 	_navigation_mode_array[5] = &_gpsFailure;
 	_navigation_mode_array[6] = &_rcLoss;
+	_navigation_mode_array[7] = &_takeoff;
 
 	updateParams();
 }
@@ -495,6 +497,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_gpsFailure;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_takeoff;
 				break;
 			default:
 				_navigation_mode = nullptr;

@@ -378,6 +378,13 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		}
 
 		break;
+	case vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT:
+		if (status->condition_global_position_valid &&
+            status->condition_home_position_valid &&
+            !status->takeoff_finished) {
+			ret = TRANSITION_CHANGED;
+		}
+		break;
 
 	case vehicle_status_s::MAIN_STATE_MAX:
 	default:
@@ -643,6 +650,20 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION;
 		}
 		break;
+	case vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT:
+		if (status->condition_global_position_valid && status->condition_home_position_valid) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT;
+		} else if (status->condition_local_position_valid) {
+			status->failsafe = true;
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+		} else if (status->condition_local_altitude_valid) {
+			status->failsafe = true;
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+		} else {
+			status->failsafe = true;
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+		}
+		break;
 
 	case vehicle_status_s::MAIN_STATE_AUTO_LOITER:
 		/* go into failsafe on a engine failure */
@@ -754,8 +775,10 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
                 }
             }
         }
+        else if (status->main_state == vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT) {
+            status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+        }
         else {
-
         }
 
     }

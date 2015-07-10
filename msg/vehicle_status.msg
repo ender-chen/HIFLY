@@ -8,7 +8,8 @@ uint8 MAIN_STATE_AUTO_RTL = 5
 uint8 MAIN_STATE_ACRO = 6
 uint8 MAIN_STATE_OFFBOARD = 7
 uint8 MAIN_STATE_STAB = 8
-uint8 MAIN_STATE_MAX = 9
+uint8 MAIN_STATE_TAKEOFF_SHORTCUT = 9
+uint8 MAIN_STATE_MAX = 10
 
 # If you change the order, add or remove arming_state_t states make sure to update the arrays
 # in state_machine_helper.cpp as well.
@@ -41,7 +42,8 @@ uint8 NAVIGATION_STATE_DESCEND = 12		# Descend mode (no position control)
 uint8 NAVIGATION_STATE_TERMINATION = 13		# Termination mode
 uint8 NAVIGATION_STATE_OFFBOARD = 14
 uint8 NAVIGATION_STATE_STAB = 15		# Stabilized mode
-uint8 NAVIGATION_STATE_MAX = 16
+uint8 NAVIGATION_STATE_TAKEOFF_SHORTCUT = 16                 # customized Takeoff mode
+uint8 NAVIGATION_STATE_MAX = 17
 
 # VEHICLE_MODE_FLAG, same as MAV_MODE_FLAG of MAVLink 1.0 protocol
 uint8 VEHICLE_MODE_FLAG_SAFETY_ARMED = 128
@@ -122,6 +124,7 @@ bool condition_airspeed_valid			# set to true by the commander app if there is a
 bool condition_landed				# true if vehicle is landed, always true if disarmed
 bool condition_power_input_valid		# set if input power is valid
 bool condition_takeoff_attitude_valid                      # set if takeoff attitude is ok
+bool takeoff_finished                         # set if TAKEOFF_SHORCUT mode had finished
 float32 avionics_power_rail_voltage		# voltage of the avionics power rail
 bool usb_connected				# status of the USB power supply
 

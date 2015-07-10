@@ -916,6 +916,7 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_ACRO]			= "ACRO";
 	main_states_str[vehicle_status_s::MAIN_STATE_STAB]			= "STAB";
 	main_states_str[vehicle_status_s::MAIN_STATE_OFFBOARD]			= "OFFBOARD";
+	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT]                        = "TAKEOFF_SHORTCUT";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -943,6 +944,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_DESCEND]		= "DESCEND";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TERMINATION]		= "TERMINATION";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT] 			= "TAKEOFF_SHORTCUT";
 
 	/* pthread for slow low prio thread */
 	pthread_t commander_low_prio_thread;
@@ -1671,7 +1673,6 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_log_critical(mavlink_fd, "LANDING DETECTED");
-
 				} else {
 					mavlink_log_critical(mavlink_fd, "TAKEOFF DETECTED");
 				}
@@ -1885,6 +1886,7 @@ int commander_thread_main(int argc, char *argv[])
 
 		if (updated) {
 			orb_copy(ORB_ID(mission_result), mission_result_sub, &mission_result);
+			status.takeoff_finished = mission_result.takeoff_finished;
 		}
 
 		/* start geofence result check */
@@ -2710,6 +2712,7 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
+	case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;
