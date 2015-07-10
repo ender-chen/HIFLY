@@ -10,3 +10,4 @@ bool flight_termination	# true if the navigator demands a flight termination fro
 bool item_do_jump_changed	# true if the number of do jumps remaining has changed
 uint32 item_changed_index	# indicate which item has changed
 uint32 item_do_jump_remaining	# set to the number of do jumps remaining for that item
+bool takeoff_finished                   #ture if takeoff mission is finished. and shoud be switch the mode
