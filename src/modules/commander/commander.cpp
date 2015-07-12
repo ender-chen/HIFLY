@@ -881,6 +881,8 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_ACRO]			= "ACRO";
 	main_states_str[vehicle_status_s::MAIN_STATE_STAB]			= "STAB";
 	main_states_str[vehicle_status_s::MAIN_STATE_OFFBOARD]			= "OFFBOARD";
+	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF]                        = "TAKEOFF";
+	main_states_str[vehicle_status_s::MAIN_STATE_LAND]                             = "LAND";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -908,7 +910,8 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_DESCEND]		= "DESCEND";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TERMINATION]		= "TERMINATION";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
-
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF] 			= "TAKEOFF";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM]		= "LAND_CUSTOM";
 	/* pthread for slow low prio thread */
 	pthread_t commander_low_prio_thread;
 
@@ -1643,6 +1646,7 @@ int commander_thread_main(int argc, char *argv[])
 			last_idle_time = system_load.tasks[0].total_runtime;
 		}
 
+
 		/* if battery voltage is getting lower, warn using buzzer, etc. */
 		if (status.condition_battery_voltage_valid && status.battery_remaining < 0.18f && !low_battery_voltage_actions_done) {
 			low_battery_voltage_actions_done = true;
@@ -1752,6 +1756,14 @@ int commander_thread_main(int argc, char *argv[])
 
 		if (updated) {
 			orb_copy(ORB_ID(mission_result), mission_result_sub, &mission_result);
+			if (mission_result.takeoff_finished)
+			{
+				status.takeoff_finished = true;
+			}
+			else
+			{
+				status.takeoff_finished = false;
+			}
 		}
 
 		/* start geofence result check */
@@ -2548,6 +2560,8 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
+	case vehicle_status_s::NAVIGATION_STATE_TAKEOFF:
+	case vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;

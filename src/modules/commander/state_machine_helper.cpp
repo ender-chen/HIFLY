@@ -345,6 +345,11 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		}
 
 		break;
+	case vehicle_status_s::MAIN_STATE_TAKEOFF:
+		if (status->condition_global_position_valid && status->condition_home_position_valid && status->takeoff_finished) {
+			ret = TRANSITION_CHANGED;
+		}
+		break;
 
 	case vehicle_status_s::MAIN_STATE_MAX:
 	default:
@@ -596,6 +601,66 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION;
 		}
 		break;
+	case vehicle_status_s::MAIN_STATE_TAKEOFF:
+
+		/* go into failsafe
+		 * - if commanded to do so
+		 * - if we have an engine failure
+		 * - depending on datalink, RC and if the mission is finished */
+
+		/* first look at the commands */
+		if (status->engine_failure_cmd) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
+		} else if (status->data_link_lost_cmd) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTGS;
+		} else if (status->gps_failure_cmd) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL;
+		} else if (status->rc_signal_lost_cmd) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+
+		/* finished handling commands which have priority, now handle failures */
+		} else if (status->gps_failure) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL;
+		} else if (status->engine_failure) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
+
+		/* datalink loss enabled:
+		 * check for datalink lost: this should always trigger RTGS */
+		} else if (data_link_loss_enabled && status->data_link_lost) {
+			status->failsafe = true;
+
+			if (status->condition_global_position_valid && status->condition_home_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTGS;
+			} else if (status->condition_local_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+			} else if (status->condition_local_altitude_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+			}
+
+		/* datalink loss disabled:
+		 * check if both, RC and datalink are lost during the mission
+		 * or RC is lost after the mission is finished: this should always trigger RCRECOVER */
+		} else if (!data_link_loss_enabled && ((status->rc_signal_lost && status->data_link_lost) ||
+						       (status->rc_signal_lost && mission_finished))) {
+			status->failsafe = true;
+
+			if (status->condition_global_position_valid && status->condition_home_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+			} else if (status->condition_local_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+			} else if (status->condition_local_altitude_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+			}
+
+		/* stay where you are if you should stay in failsafe, otherwise everything is perfect */
+		} else if (!stay_in_failsafe){
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_TAKEOFF;
+		}
+		break;
 
 	case vehicle_status_s::MAIN_STATE_AUTO_LOITER:
 		/* go into failsafe on a engine failure */
@@ -660,7 +725,24 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
 		}
 		break;
+	case vehicle_status_s::MAIN_STATE_LAND:
+		if (status->engine_failure) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
+		} else if ((!status->condition_global_position_valid ||
+					!status->condition_home_position_valid)) {
+			status->failsafe = true;
 
+			if (status->condition_local_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+			} else if (status->condition_local_altitude_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+			}
+		} else {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
+		}
+		break; 
 	case vehicle_status_s::MAIN_STATE_OFFBOARD:
 		/* require offboard control, otherwise stay where you are */
 		if (status->offboard_control_signal_lost && !status->rc_signal_lost) {
