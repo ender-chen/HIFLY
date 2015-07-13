@@ -178,6 +178,10 @@ static int daemon_task;					/**< Handle of daemon task / thread */
 static bool need_param_autosave = false;		/**< Flag set to true if parameters should be autosaved in next iteration (happens on param update and if functionality is enabled) */
 static hrt_abstime commander_boot_timestamp = 0;
 
+static bool control_source_change = false;
+static uint8_t last_control_source = manual_control_setpoint_s::CONTROL_SOURCE_NONE;
+static main_state_t app_main_state = vehicle_status_s::MAIN_STATE_MANUAL;
+
 static unsigned int leds_counter;
 /* To remember when last notification was sent */
 static uint64_t last_print_mode_reject_time = 0;
@@ -264,6 +268,8 @@ void answer_command(struct vehicle_command_s &cmd, unsigned result);
  * check whether autostart ID is in the reserved range for HIL setups
  */
 bool is_hil_setup(int id);
+
+transition_result_t set_main_state_app(struct vehicle_status_s *status);
 
 bool is_hil_setup(int id) {
 	return (id >= HIL_ID_MIN) && (id <= HIL_ID_MAX);
@@ -501,6 +507,7 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 	case vehicle_command_s::VEHICLE_CMD_DO_SET_MODE: {
 			uint8_t base_mode = (uint8_t)cmd->param1;
 			uint8_t custom_main_mode = (uint8_t)cmd->param2;
+			uint8_t custom_sub_mode = (uint8_t)cmd->param3;
 
 			transition_result_t arming_ret = TRANSITION_NOT_CHANGED;
 
@@ -527,19 +534,33 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 				if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_MANUAL) {
 					/* MANUAL */
 					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+					app_main_state = vehicle_status_s::MAIN_STATE_MANUAL;
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_ALTCTL) {
 					/* ALTCTL */
 					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
-
+					app_main_state = vehicle_status_s::MAIN_STATE_ALTCTL;
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_POSCTL) {
 					/* POSCTL */
 					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
-
+					app_main_state = vehicle_status_s::MAIN_STATE_POSCTL;
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_AUTO) {
 					/* AUTO */
 					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
 
+					/* TAKEOFF */
+					if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF) {
+						app_main_state = vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT;
+					}
+					else if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_LAND) {
+						app_main_state = vehicle_status_s::MAIN_STATE_LAND_SHORTCUT;
+					}
+					/* AUTOMISSION */
+					else if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_MISSION) {
+						app_main_state = vehicle_status_s::MAIN_STATE_AUTO_MISSION;
+					}
+					else {
+					}
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_ACRO) {
 					/* ACRO */
 					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ACRO);
@@ -948,6 +969,11 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT] 			= "TAKEOFF_SHORTCUT";
     nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT]		= "LAND_SHORTCUT";
 
+
+	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
+	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
+	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_APP]			= "CONTROL_SOURCE_APP";
+	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_CUSTOM]			= "CONTROL_SOURCE_CUSTOM";
 	/* pthread for slow low prio thread */
 	pthread_t commander_low_prio_thread;
 
@@ -1971,6 +1997,20 @@ int commander_thread_main(int argc, char *argv[])
 
 			status.rc_signal_lost = false;
 
+			if (sp_man.control_source != last_control_source) {
+				control_source_change = true;
+				last_control_source = sp_man.control_source;
+			}
+			else {
+				control_source_change = false;
+			}
+
+			if (control_source_change) {
+				status_changed = true;
+				mavlink_log_info(mavlink_fd,"control_source is: %s", control_source_str[sp_man.control_source]);
+			}
+
+			if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_RC) {
 			/* check if left stick is in lower left position and we are in MANUAL or AUTO_READY mode or (ASSIST mode and landed) -> disarm
 			 * do it only for rotary wings */
 			if (status.is_rotary_wing &&
@@ -2066,7 +2106,19 @@ int commander_thread_main(int argc, char *argv[])
 				/* DENIED here indicates bug in the commander */
 				mavlink_log_critical(mavlink_fd, "main state transition denied");
 			}
-
+            else {
+            }
+            } //end control source rc
+			else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP) {
+				if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
+					app_main_state = vehicle_status_s::MAIN_STATE_MANUAL;
+				}
+				if (set_main_state_app(&status)) {
+					status_changed = true;
+				}
+			}
+			else {
+			}
 		} else {
 			if (!status.rc_signal_lost) {
 				mavlink_log_critical(mavlink_fd, "RC SIGNAL LOST (at t=%llums)", hrt_absolute_time() / 1000);
@@ -2642,6 +2694,123 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 		break;
 	}
 
+	return res;
+}
+
+transition_result_t
+set_main_state_app(struct vehicle_status_s *status_local) {
+	transition_result_t res = TRANSITION_DENIED;
+	switch (app_main_state) {
+	case vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "TAKEOFF");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "POSCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_POSCTL:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "POSCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_LAND_SHORTCUT:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_LAND_SHORTCUT);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "LAND");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_AUTO_MISSION:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "AUTOMISSION");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_AUTO_RTL:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_RTL);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "AUTO_RTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	default:
+		break;
+	}
 	return res;
 }
 

@@ -251,3 +251,5 @@ ORB_DEFINE(mc_att_ctrl_status, struct mc_att_ctrl_status_s);
 #include "topics/roi_position.h"
 ORB_DEFINE(roi_position, struct roi_position_s);
 
+#include "topics/app_control_setpoint.h"
+ORB_DEFINE(app_control_setpoint, struct app_control_setpoint_s);
