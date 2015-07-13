@@ -2032,7 +2032,7 @@ Sensors::rc_poll()
 			manual.loiter_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_LOITER, _parameters.rc_loiter_th, _parameters.rc_loiter_inv);
 			manual.acro_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_ACRO, _parameters.rc_acro_th, _parameters.rc_acro_inv);
 			manual.offboard_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD, _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
-			manual.control_source = CONTROL_SOURCE_RC;
+			manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_RC;
 			/* publish manual_control_setpoint topic */
 			if (_manual_control_pub > 0) {
 				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
@@ -2086,7 +2086,7 @@ Sensors::rc_poll()
 			manual.x = app_control.x;
 			manual.r = app_control.r;
 			manual.z = app_control.z;
-			manual.control_source = CONTROL_SOURCE_APP;
+			manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_APP;
 			if (_manual_control_pub > 0) {
 				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
 			} else {

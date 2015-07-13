@@ -189,6 +189,7 @@ static struct safety_s safety;
 static struct vehicle_control_mode_s control_mode;
 static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
+static main_state_t Hifly_custom_mode = vehicle_status_s::MAIN_STATE_MANUAL;
 
 static unsigned _last_mission_instance = 0;
 
@@ -242,6 +243,7 @@ transition_result_t check_navigation_state_machine(struct vehicle_status_s *stat
 
 transition_result_t arm_disarm(bool arm, const int mavlink_fd, const char *armedBy);
 
+
 /**
 * @brief This function initializes the home position of the vehicle. This happens first time we get a good GPS fix and each
 *		 time the vehicle is armed with a good GPS fix.
@@ -264,7 +266,7 @@ bool is_hil_setup(int id);
 bool is_hil_setup(int id) {
 	return (id >= HIL_ID_MIN) && (id <= HIL_ID_MAX);
 }
-
+transition_result_t set_main_state_app(struct vehicle_status_s *status);
 
 int commander_main(int argc, char *argv[])
 {
@@ -490,6 +492,7 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 	case vehicle_command_s::VEHICLE_CMD_DO_SET_MODE: {
 			uint8_t base_mode = (uint8_t)cmd->param1;
 			uint8_t custom_main_mode = (uint8_t)cmd->param2;
+			uint8_t custom_sub_mode = (uint8_t)cmd->param3;
 
 			transition_result_t arming_ret = TRANSITION_NOT_CHANGED;
 
@@ -515,20 +518,30 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 				/* use autopilot-specific mode */
 				if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_MANUAL) {
 					/* MANUAL */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+					// main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+					Hifly_custom_mode = vehicle_status_s::MAIN_STATE_MANUAL;
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_ALTCTL) {
 					/* ALTCTL */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
-
+					//main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+					Hifly_custom_mode = vehicle_status_s::MAIN_STATE_ALTCTL;
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_POSCTL) {
 					/* POSCTL */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
-
+					// main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
+					Hifly_custom_mode = vehicle_status_s::MAIN_STATE_POSCTL;
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_AUTO) {
 					/* AUTO */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
-
+					// main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
+					/* TAKEOFF */
+					if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF)
+					{
+						Hifly_custom_mode = vehicle_status_s::MAIN_STATE_TAKEOFF;
+					}
+					/* AUTOMISSION */
+					else if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_MISSION)
+					{
+						Hifly_custom_mode = vehicle_status_s::MAIN_STATE_AUTO_MISSION;
+					}
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_ACRO) {
 					/* ACRO */
 					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ACRO);
@@ -1819,6 +1832,10 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		/* RC input check */
+		if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY)
+		{
+			Hifly_custom_mode = vehicle_status_s::MAIN_STATE_MANUAL;
+		}
 		if (!(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_OFF) && !status.rc_input_blocked && sp_man.timestamp != 0 &&
 		    hrt_absolute_time() < sp_man.timestamp + (uint64_t)(rc_loss_timeout * 1e6f)) {
 			/* handle the case where RC signal was regained */
@@ -1836,103 +1853,110 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			status.rc_signal_lost = false;
+			if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_RC)
+			{
+				/* check if left stick is in lower left position and we are in MANUAL or AUTO_READY mode or (ASSIST mode and landed) -> disarm
+				 * do it only for rotary wings */
+				if (status.is_rotary_wing && (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED || status.arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR) &&
+				(status.main_state == vehicle_status_s::MAIN_STATE_MANUAL ||
+				status.main_state == vehicle_status_s::MAIN_STATE_ACRO ||
+				status.main_state == vehicle_status_s::MAIN_STATE_STAB ||
+				status.condition_landed) &&
+				sp_man.r < -STICK_ON_OFF_LIMIT && sp_man.z < 0.1f) {
 
-			/* check if left stick is in lower left position and we are in MANUAL or AUTO_READY mode or (ASSIST mode and landed) -> disarm
-			 * do it only for rotary wings */
-			if (status.is_rotary_wing &&
-			    (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED || status.arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR) &&
-			    (status.main_state == vehicle_status_s::MAIN_STATE_MANUAL ||
-			    	status.main_state == vehicle_status_s::MAIN_STATE_ACRO ||
-			    	status.main_state == vehicle_status_s::MAIN_STATE_STAB ||
-			    	status.condition_landed) &&
-			    sp_man.r < -STICK_ON_OFF_LIMIT && sp_man.z < 0.1f) {
-
-				if (stick_off_counter > STICK_ON_OFF_COUNTER_LIMIT) {
-					/* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
-					arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY :
-									   vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
-					arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,
-									     mavlink_fd);
-
-					if (arming_ret == TRANSITION_CHANGED) {
-						arming_state_changed = true;
-					}
-
-					stick_off_counter = 0;
-
-				} else {
-					stick_off_counter++;
-				}
-
-			} else {
-				stick_off_counter = 0;
-			}
-
-			/* check if left stick is in lower right position and we're in MANUAL mode -> arm */
-			if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY &&
-			    sp_man.r > STICK_ON_OFF_LIMIT && sp_man.z < 0.1f) {
-				if (stick_on_counter > STICK_ON_OFF_COUNTER_LIMIT) {
-
-					/* we check outside of the transition function here because the requirement
-					 * for being in manual mode only applies to manual arming actions.
-					 * the system can be armed in auto if armed via the GCS.
-					 */
-					if ((status.main_state != vehicle_status_s::MAIN_STATE_MANUAL) &&
-						(status.main_state != vehicle_status_s::MAIN_STATE_STAB)) {
-						print_reject_arm("NOT ARMING: Switch to MANUAL mode first.");
-
-					} else {
-						arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_ARMED, &armed, true /* fRunPreArmChecks */,
+					if (stick_off_counter > STICK_ON_OFF_COUNTER_LIMIT) {
+						/* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
+						arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY :
+										   vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
+						arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,
 										     mavlink_fd);
 
 						if (arming_ret == TRANSITION_CHANGED) {
 							arming_state_changed = true;
 						}
+
+						stick_off_counter = 0;
+
+					} else {
+						stick_off_counter++;
 					}
 
+				} else {
+					stick_off_counter = 0;
+				}
+
+				/* check if left stick is in lower right position and we're in MANUAL mode -> arm */
+				if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY &&
+				    sp_man.r > STICK_ON_OFF_LIMIT && sp_man.z < 0.1f) {
+					if (stick_on_counter > STICK_ON_OFF_COUNTER_LIMIT) {
+
+						/* we check outside of the transition function here because the requirement
+						 * for being in manual mode only applies to manual arming actions.
+						 * the system can be armed in auto if armed via the GCS.
+						 */
+						if ((status.main_state != vehicle_status_s::MAIN_STATE_MANUAL) &&
+							(status.main_state != vehicle_status_s::MAIN_STATE_STAB)) {
+							print_reject_arm("NOT ARMING: Switch to MANUAL mode first.");
+
+						} else {
+							arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_ARMED, &armed, true /* fRunPreArmChecks */,
+											     mavlink_fd);
+
+							if (arming_ret == TRANSITION_CHANGED) {
+								arming_state_changed = true;
+							}
+						}
+
+						stick_on_counter = 0;
+
+					} else {
+						stick_on_counter++;
+					}
+
+				} else {
 					stick_on_counter = 0;
-
-				} else {
-					stick_on_counter++;
 				}
 
-			} else {
-				stick_on_counter = 0;
-			}
+				if (arming_ret == TRANSITION_CHANGED) {
+					if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+						mavlink_log_info(mavlink_fd, "ARMED by RC");
 
-			if (arming_ret == TRANSITION_CHANGED) {
-				if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
-					mavlink_log_info(mavlink_fd, "ARMED by RC");
+					} else {
+						mavlink_log_info(mavlink_fd, "DISARMED by RC");
+					}
 
-				} else {
-					mavlink_log_info(mavlink_fd, "DISARMED by RC");
+					arming_state_changed = true;
+
+				} else if (arming_ret == TRANSITION_DENIED) {
+					/*
+					 * the arming transition can be denied to a number of reasons:
+					 *  - pre-flight check failed (sensors not ok or not calibrated)
+					 *  - safety not disabled
+					 *  - system not in manual mode
+					 */
+					tune_negative(true);
 				}
 
-				arming_state_changed = true;
+				/* evaluate the main state machine according to mode switches */
+				transition_result_t main_res = set_main_state_rc(&status, &sp_man);
 
-			} else if (arming_ret == TRANSITION_DENIED) {
-				/*
-				 * the arming transition can be denied to a number of reasons:
-				 *  - pre-flight check failed (sensors not ok or not calibrated)
-				 *  - safety not disabled
-				 *  - system not in manual mode
-				 */
-				tune_negative(true);
+				/* play tune on mode change only if armed, blink LED always */
+				if (main_res == TRANSITION_CHANGED) {
+					tune_positive(armed.armed);
+					main_state_changed = true;
+
+				} else if (main_res == TRANSITION_DENIED) {
+					/* DENIED here indicates bug in the commander */
+					mavlink_log_critical(mavlink_fd, "main state transition denied");
+				}
 			}
-
-			/* evaluate the main state machine according to mode switches */
-			transition_result_t main_res = set_main_state_rc(&status, &sp_man);
-
-			/* play tune on mode change only if armed, blink LED always */
-			if (main_res == TRANSITION_CHANGED) {
-				tune_positive(armed.armed);
-				main_state_changed = true;
-
-			} else if (main_res == TRANSITION_DENIED) {
-				/* DENIED here indicates bug in the commander */
-				mavlink_log_critical(mavlink_fd, "main state transition denied");
+			else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP)
+			{
+				if (set_main_state_app(&status))
+				{
+					status_changed = true;
+				}
 			}
-
 		} else {
 			if (!status.rc_signal_lost) {
 				mavlink_log_critical(mavlink_fd, "RC SIGNAL LOST (at t=%llums)", hrt_absolute_time() / 1000);
@@ -2488,6 +2512,124 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 		break;
 	}
 
+	return res;
+}
+
+transition_result_t
+set_main_state_app(struct vehicle_status_s *status_local)
+{
+	transition_result_t res = TRANSITION_DENIED;
+	switch (Hifly_custom_mode) {
+	case vehicle_status_s::MAIN_STATE_TAKEOFF:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_TAKEOFF);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "TAKEOFF");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "POSCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_POSCTL:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "POSCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_LAND:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_LAND);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "LAND");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_AUTO_MISSION:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "AUTOMISSION");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	case vehicle_status_s::MAIN_STATE_AUTO_RTL:
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_RTL);
+
+		if(res != TRANSITION_DENIED)
+		{
+			break;
+		}
+
+		print_reject_mode(status_local, "AUTO_RTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+		if (res != TRANSITION_DENIED) {
+			break;	// changed successfully or already in this mode
+		}
+
+		print_reject_mode(status_local, "ALTCTL");
+
+		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+		break;
+	default:
+		break;
+	}
 	return res;
 }
 
