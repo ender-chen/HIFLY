@@ -89,6 +89,7 @@
 #include <uORB/topics/telemetry_status.h>
 #include <uORB/topics/vtol_vehicle_status.h>
 #include <uORB/topics/vehicle_land_detected.h>
+#include <uORB/topics/vehicle_attitude.h>
 
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
@@ -976,6 +977,8 @@ int commander_thread_main(int argc, char *argv[])
 	status.circuit_breaker_engaged_airspd_check = false;
 	status.circuit_breaker_engaged_enginefailure_check = false;
 	status.circuit_breaker_engaged_gpsfailure_check = false;
+	status.circuit_breaker_engaged_attitudefailure_check = false;
+
 	get_circuit_breaker_params();
 
 	/* publish initial state */
@@ -1035,6 +1038,7 @@ int commander_thread_main(int argc, char *argv[])
 	unsigned counter = 0;
 	unsigned stick_off_counter = 0;
 	unsigned stick_on_counter = 0;
+	unsigned attitude_failure_counter = 0;
 
 	bool low_battery_voltage_actions_done = false;
 	bool critical_battery_voltage_actions_done = false;
@@ -1121,6 +1125,11 @@ int commander_thread_main(int argc, char *argv[])
 	int sensor_sub = orb_subscribe(ORB_ID(sensor_combined));
 	struct sensor_combined_s sensors;
 	memset(&sensors, 0, sizeof(sensors));
+
+	/* Subscribe to attitude topic */
+	int attitude_sub = orb_subscribe(ORB_ID(vehicle_attitude));
+	struct vehicle_attitude_s attitude;
+	memset(&attitude, 0, sizeof(attitude));
 
 	/* Subscribe to differential pressure topic */
 	int diff_pres_sub = orb_subscribe(ORB_ID(differential_pressure));
@@ -1417,6 +1426,27 @@ int commander_thread_main(int argc, char *argv[])
 			}
 		}
 
+		/* update attitude status */
+		orb_check(attitude_sub, &updated);
+		if(updated)
+		{
+			orb_copy(ORB_ID(vehicle_attitude), attitude_sub, &attitude);
+			if(!status.condition_landed
+                && PX4_R(attitude.R, 2, 2) < 0.5f
+                && !status.circuit_breaker_engaged_attitudefailure_check)
+			{
+                if (attitude_failure_counter++ > 3)
+				{
+                    status.beyond_control = true;
+                }
+			}
+			else
+			{
+                attitude_failure_counter = 0;
+				status.beyond_control = false;
+			}
+		}
+
 		orb_check(diff_pres_sub, &updated);
 
 		if (updated) {
@@ -1698,6 +1728,19 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		/* End battery voltage check */
+
+		/* if tilt large angle, it will switch to armed_error*/
+		if (status.beyond_control && armed.armed)
+		{
+			mavlink_log_emergency(mavlink_fd, "Large angle, Armed_error");
+			arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_ARMED_ERROR, &armed, true /* fRunPreArmChecks */,
+								     mavlink_fd);
+
+				if (arming_ret == TRANSITION_CHANGED) {
+					arming_state_changed = true;
+				}
+		}
+        /* End attitiude failure */
 
 		/* If in INIT state, try to proceed to STANDBY state */
 		if (!status.calibration_enabled && status.arming_state == vehicle_status_s::ARMING_STATE_INIT) {
@@ -2272,6 +2315,8 @@ get_circuit_breaker_params()
 		circuit_breaker_enabled("CBRK_ENGINEFAIL", CBRK_ENGINEFAIL_KEY);
 	status.circuit_breaker_engaged_gpsfailure_check =
 		circuit_breaker_enabled("CBRK_GPSFAIL", CBRK_GPSFAIL_KEY);
+	status.circuit_breaker_engaged_attitudefailure_check =
+		circuit_breaker_enabled("CBRK_ATTFAIL", CBRK_ATTFAIL_KEY);
 }
 
 void
