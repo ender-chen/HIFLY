@@ -978,6 +978,7 @@ int commander_thread_main(int argc, char *argv[])
 	status.circuit_breaker_engaged_enginefailure_check = false;
 	status.circuit_breaker_engaged_gpsfailure_check = false;
 	status.circuit_breaker_engaged_attitudefailure_check = false;
+	status.circuit_breaker_engaged_takeoff_att_check = false;
 
 	get_circuit_breaker_params();
 
@@ -1444,6 +1445,17 @@ int commander_thread_main(int argc, char *argv[])
 			{
                 attitude_failure_counter = 0;
 				status.beyond_control = false;
+			}
+
+			if (status.condition_landed
+                && PX4_R(attitude.R, 2, 2) < 0.85f
+                && !status.circuit_breaker_engaged_takeoff_att_check)
+			{
+				status.condition_takeoff_attitude_valid = false;
+			}
+			else
+			{
+				status.condition_takeoff_attitude_valid = true;
 			}
 		}
 
@@ -2317,6 +2329,8 @@ get_circuit_breaker_params()
 		circuit_breaker_enabled("CBRK_GPSFAIL", CBRK_GPSFAIL_KEY);
 	status.circuit_breaker_engaged_attitudefailure_check =
 		circuit_breaker_enabled("CBRK_ATTFAIL", CBRK_ATTFAIL_KEY);
+	status.circuit_breaker_engaged_takeoff_att_check =
+		circuit_breaker_enabled("CBRK_TAKATT_CHK", CBRK_TAKEOFF_ATT_KEY);
 }
 
 void

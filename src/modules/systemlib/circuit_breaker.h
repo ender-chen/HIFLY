@@ -57,6 +57,7 @@
 #define CBRK_ENGINEFAIL_KEY	284953
 #define CBRK_GPSFAIL_KEY	240024
 #define CBRK_ATTFAIL_KEY          1
+#define CBRK_TAKEOFF_ATT_KEY      1
 
 #include <stdbool.h>
 

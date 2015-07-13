@@ -176,6 +176,7 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 						valid_transition = false;
 					}
 
+
 					// Perform power checks only if circuit breaker is not
 					// engaged for these checks
 					if (!status->circuit_breaker_engaged_power_check) {
@@ -205,7 +206,13 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 						}
 					}
 
-				}
+                    if (!status->condition_takeoff_attitude_valid)
+					{
+                        mavlink_and_console_log_critical(mavlink_fd, "HFMG1, ATTITUDE FAIL, REFUSE TAKEING OFF");
+                        feedback_provided = true;
+                        valid_transition = false;
+                    }
+                }
 
 			} else if (new_arming_state == vehicle_status_s::ARMING_STATE_STANDBY && status->arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR) {
 				new_arming_state = vehicle_status_s::ARMING_STATE_STANDBY_ERROR;
