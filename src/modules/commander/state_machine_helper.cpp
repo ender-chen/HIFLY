@@ -176,6 +176,7 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 						valid_transition = false;
 					}
 
+
 					// Perform power checks only if circuit breaker is not
 					// engaged for these checks
 					if (!status->circuit_breaker_engaged_power_check) {
@@ -202,6 +203,15 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 								mavlink_log_critical(mavlink_fd, "CAUTION: Avionics power high: %6.2f Volt", (double)status->avionics_power_rail_voltage);
 								feedback_provided = true;
 							}
+						}
+					}
+					if (!status->circuit_breaker_engaged_attitude_check)
+					{
+						if (!status->condition_takeoff_attitude_valid)
+						{
+							mavlink_and_console_log_critical(mavlink_fd, "HFMG1, ATTITUDE FAIL, REFUSE TAKEING OFF");
+							feedback_provided = true;
+							valid_transition = false;
 						}
 					}
 

@@ -148,3 +148,15 @@ PARAM_DEFINE_INT32(CBRK_GPSFAIL, 240024);
  * @group Circuit Breaker
  */
  PARAM_DEFINE_INT32(CBRK_ATTFAIL, 1);
+/**
+*Circuit breaker for taking off greater than 30 degree.
+*
+*Setting this parameter to 1 will diable the attitude detection before the launch.
+*If the aircraft tilt a large angle, it still can takeoff.
+*WARNING:ENABLING THIS CIRCUIT BREAKER IS AT OWN RISK
+*
+*@min 0
+*@max 1
+*@group Circuit Breaker
+*/
+PARAM_DEFINE_INT32(CBRK_ATT_CHK, 1);
