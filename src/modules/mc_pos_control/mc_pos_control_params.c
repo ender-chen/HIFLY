@@ -212,6 +212,15 @@ PARAM_DEFINE_FLOAT(MPC_TILTMAX_LND, 15.0f);
 PARAM_DEFINE_FLOAT(MPC_LAND_SPEED, 1.0f);
 
 /**
+ * takeoff rate
+ *
+ * @unit m/s
+ * @min 0.0
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_TAKEOFF_SP, 1.0f);
+
+/**
  * Max manual roll
  *
  * @unit degree
