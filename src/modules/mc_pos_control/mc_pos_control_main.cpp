@@ -172,6 +172,7 @@ private:
 		param_t xy_ff;
 		param_t tilt_max_air;
 		param_t land_speed;
+		param_t takeoff_speed;
 		param_t tilt_max_land;
 		param_t man_roll_max;
 		param_t man_pitch_max;
@@ -184,6 +185,7 @@ private:
 		float thr_max;
 		float tilt_max_air;
 		float land_speed;
+		float takeoff_speed;
 		float tilt_max_land;
 		float man_roll_max;
 		float man_pitch_max;
@@ -422,6 +424,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.xy_ff		= param_find("MPC_XY_FF");
 	_params_handles.tilt_max_air	= param_find("MPC_TILTMAX_AIR");
 	_params_handles.land_speed	= param_find("MPC_LAND_SPEED");
+	_params_handles.takeoff_speed = param_find("MPC_TAKEOFF_SP");
 	_params_handles.tilt_max_land	= param_find("MPC_TILTMAX_LND");
 	_params_handles.man_roll_max = param_find("MPC_MAN_R_MAX");
 	_params_handles.man_pitch_max = param_find("MPC_MAN_P_MAX");
@@ -478,6 +481,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.tilt_max_air, &_params.tilt_max_air);
 		_params.tilt_max_air = math::radians(_params.tilt_max_air);
 		param_get(_params_handles.land_speed, &_params.land_speed);
+		param_get(_params_handles.takeoff_speed, &_params.takeoff_speed);
 		param_get(_params_handles.tilt_max_land, &_params.tilt_max_land);
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
 
@@ -1055,6 +1059,19 @@ void MulticopterPositionControl::control_auto(float dt)
 
 		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
 		math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+
+
+        if (!_control_mode.flag_control_manual_enabled &&
+            _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+            _params.vel_max(2) = _params.takeoff_speed;
+            scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+        } else {
+            float v;
+            param_get(_params_handles.z_vel_max, &v);
+            _params.vel_max(2) = v;
+            /* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+            scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+        }
 
 		/* convert current setpoint to scaled space */
 		math::Vector<3> curr_sp_s = curr_sp.emult(scale);
