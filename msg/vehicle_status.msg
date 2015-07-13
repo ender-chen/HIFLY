@@ -142,6 +142,7 @@ bool engine_failure				# Set to true if an engine failure is detected
 bool engine_failure_cmd				# Set to true if an engine failure mode is commanded
 bool gps_failure				# Set to true if a gps failure is detected
 bool gps_failure_cmd				# Set to true if a gps failure mode is commanded
+bool beyond_control                                             # Set ot true if the drone is out of control
 
 bool barometer_failure				# Set to true if a barometer failure is detected
 
@@ -175,3 +176,4 @@ bool circuit_breaker_engaged_power_check
 bool circuit_breaker_engaged_airspd_check
 bool circuit_breaker_engaged_enginefailure_check
 bool circuit_breaker_engaged_gpsfailure_check
+bool circuit_breaker_engaged_attitudefailure_check

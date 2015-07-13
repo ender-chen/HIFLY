@@ -136,3 +136,15 @@ PARAM_DEFINE_INT32(CBRK_ENGINEFAIL, 284953);
  * @group Circuit Breaker
  */
 PARAM_DEFINE_INT32(CBRK_GPSFAIL, 240024);
+/**
+*Circuit breaker for attitude control fail
+*
+*Setting this parameter to 1 will disable attitude control detection.
+*If the aircraft is in attitude fail mode. the beyond control flag will be set to health
+ * WARNING: ENABLING THIS CIRCUIT BREAKER IS AT OWN RISK
+ *
+ * @min 0
+ * @max 240024
+ * @group Circuit Breaker
+ */
+ PARAM_DEFINE_INT32(CBRK_ATTFAIL, 1);
