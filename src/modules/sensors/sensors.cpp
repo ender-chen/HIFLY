@@ -83,6 +83,7 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/app_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/parameter_update.h>
@@ -227,7 +228,8 @@ private:
 	int		_gyro2_sub;			/**< raw gyro2 data subscription */
 	int		_accel2_sub;			/**< raw accel2 data subscription */
 	int		_mag2_sub;			/**< raw mag2 data subscription */
-	int 		_rc_sub;			/**< raw rc channels data subscription */
+	int 		_rc_sub;				/**< raw rc channels data subscription */
+	int		_app_sub;			/**< raw app channels data subscription */
 	int		_baro_sub;			/**< raw baro data subscription */
 	int		_baro1_sub;			/**< raw baro data subscription */
 	int		_airspeed_sub;			/**< airspeed subscription */
@@ -1897,7 +1899,8 @@ Sensors::rc_poll()
 {
 	bool rc_updated;
 	orb_check(_rc_sub, &rc_updated);
-
+	bool app_updated;
+	orb_check(_app_sub, &app_updated);
 	if (rc_updated) {
 		/* read low-level values from FMU or IO RC inputs (PPM, Spektrum, S.Bus) */
 		struct rc_input_values rc_input;
@@ -2029,7 +2032,7 @@ Sensors::rc_poll()
 			manual.loiter_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_LOITER, _parameters.rc_loiter_th, _parameters.rc_loiter_inv);
 			manual.acro_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_ACRO, _parameters.rc_acro_th, _parameters.rc_acro_inv);
 			manual.offboard_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD, _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
-
+			manual.control_source = CONTROL_SOURCE_RC;
 			/* publish manual_control_setpoint topic */
 			if (_manual_control_pub > 0) {
 				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
@@ -2067,6 +2070,27 @@ Sensors::rc_poll()
 			if (hrt_elapsed_time(&last_rc_to_param_map_time) > 1e6) {
 				set_params_from_rc();
 				last_rc_to_param_map_time = hrt_absolute_time();
+			}
+		}
+	}
+	else
+	{
+		if(app_updated)
+		{
+			struct app_control_setpoint_s app_control;
+			orb_copy(ORB_ID(app_control_setpoint), _app_sub, &app_control);
+			struct manual_control_setpoint_s manual;
+			memset(&manual, 0 , sizeof(manual));
+			manual.timestamp = hrt_absolute_time();
+			manual.y = app_control.y;
+			manual.x = app_control.x;
+			manual.r = app_control.r;
+			manual.z = app_control.z;
+			manual.control_source = CONTROL_SOURCE_APP;
+			if (_manual_control_pub > 0) {
+				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
+			} else {
+				_manual_control_pub = orb_advertise(ORB_ID(manual_control_setpoint), &manual);
 			}
 		}
 	}
