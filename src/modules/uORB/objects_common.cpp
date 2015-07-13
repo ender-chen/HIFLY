@@ -247,3 +247,6 @@ ORB_DEFINE(time_offset, struct time_offset_s);
 
 #include "topics/mc_att_ctrl_status.h"
 ORB_DEFINE(mc_att_ctrl_status, struct mc_att_ctrl_status_s);
+
+#include "topics/app_control_setpoint.h"
+ORB_DEFINE(app_control_setpoint, struct app_control_setpoint_s);

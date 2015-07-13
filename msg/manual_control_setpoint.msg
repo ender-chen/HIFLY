@@ -3,6 +3,10 @@ uint8 SWITCH_POS_NONE = 0		# switch is not mapped
 uint8 SWITCH_POS_ON = 1			# switch activated (value = 1)
 uint8 SWITCH_POS_MIDDLE = 2		# middle position (value = 0)
 uint8 SWITCH_POS_OFF = 3		# switch not activated (value = -1)
+uint8 CONTROL_SOURCE_NONE = 0
+uint8 CONTROL_SOURCE_RC = 1
+uint8 CONTROL_SOURCE_APP = 2
+uint8 CONTROL_SOURCE_CUSTOM = 3
 uint64 timestamp
 
 # Any of the channels may not be available and be set to NaN
@@ -42,3 +46,4 @@ uint8 posctl_switch		 # position control 2 position switch (optional): _ALTCTL_,
 uint8 loiter_switch		 # loiter 2 position switch (optional): _MISSION_, LOITER
 uint8 acro_switch		 # acro 2 position switch (optional): _MANUAL_, ACRO
 uint8 offboard_switch		 # offboard 2 position switch (optional): _NORMAL_, OFFBOARD
+uint8 control_source		 # control from different source _NONE,_RC,_APP,_CUSTOM

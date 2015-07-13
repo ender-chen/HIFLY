@@ -123,6 +123,7 @@ MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 	_manual_pub(-1),
 	_land_detector_pub(-1),
 	_time_offset_pub(-1),
+	_app_pub(-1),
 	_control_mode_sub(orb_subscribe(ORB_ID(vehicle_control_mode))),
 	_hil_frames(0),
 	_old_timestamp(0),
@@ -904,10 +905,6 @@ MavlinkReceiver::handle_message_radio_status(mavlink_message_t *msg)
 	}
 }
 
-static switch_pos_t decode_switch_pos(uint16_t buttons, int sw) {
-	return (buttons >> (sw * 2)) & 3;
-}
-
 static int decode_switch_pos_n(uint16_t buttons, int sw) {
 	if (buttons & (1 << sw)) {
 		return 1;
@@ -1024,26 +1021,19 @@ MavlinkReceiver::handle_message_manual_control(mavlink_message_t *msg)
 		}
 
 	} else {
-		struct manual_control_setpoint_s manual = {};
+		struct app_control_setpoint_s app = {};
 
-		manual.timestamp = hrt_absolute_time();
-		manual.x = man.x / 1000.0f;
-		manual.y = man.y / 1000.0f;
-		manual.r = man.r / 1000.0f;
-		manual.z = man.z / 1000.0f;
+		app.timestamp = hrt_absolute_time();
+		app.x = man.x / 1000.0f;
+		app.y = man.y / 1000.0f;
+		app.r = man.r / 1000.0f;
+		app.z = man.z / 1000.0f;
 
-		manual.mode_switch = decode_switch_pos(man.buttons, 0);
-		manual.return_switch = decode_switch_pos(man.buttons, 1);
-		manual.posctl_switch = decode_switch_pos(man.buttons, 2);
-		manual.loiter_switch = decode_switch_pos(man.buttons, 3);
-		manual.acro_switch = decode_switch_pos(man.buttons, 4);
-		manual.offboard_switch = decode_switch_pos(man.buttons, 5);
-
-		if (_manual_pub < 0) {
-			_manual_pub = orb_advertise(ORB_ID(manual_control_setpoint), &manual);
+		if (_app_pub < 0) {
+			_app_pub = orb_advertise(ORB_ID(app_control_setpoint), &app);
 
 		} else {
-			orb_publish(ORB_ID(manual_control_setpoint), _manual_pub, &manual);
+			orb_publish(ORB_ID(app_control_setpoint), _app_pub, &app);
 		}
 	}
 }
