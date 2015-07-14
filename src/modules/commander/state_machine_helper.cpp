@@ -222,6 +222,18 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
                             valid_transition = false;
                         }
                     }
+
+					if(!status->circuit_breaker_engaged_power_check)
+					{
+						if(status->battery_warning  == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY ||
+							status->battery_warning  == vehicle_status_s::VEHICLE_BATTERY_WARNING_LOW ||
+							status->battery_warning  == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL)
+						{
+							mavlink_log_critical(mavlink_fd, "HFMG3,low battery refuse to take off");
+							feedback_provided = true;
+							valid_transition = false;
+						}
+					}
                 }
 
 			} else if (new_arming_state == vehicle_status_s::ARMING_STATE_STANDBY && status->arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR) {
