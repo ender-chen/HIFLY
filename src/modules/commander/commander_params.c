@@ -274,3 +274,29 @@ PARAM_DEFINE_INT32(COM_AUTOS_PAR, 1);
  * @max 2
  */
 PARAM_DEFINE_INT32(COM_RC_IN_MODE, 0);
+/**
+ *Battery warning capacity
+ *
+ *Defines the low warning capacity of the attached battery.
+ *
+ *@dong.chen
+ */
+
+PARAM_DEFINE_FLOAT(BAT_WARN_LOW, 11.0f);
+/**
+ *Battery warning capacity
+ *
+ *Defines the critical warning capacity of the attached battery.
+ *
+ *@dong.chen
+ */
+
+ PARAM_DEFINE_FLOAT(BAT_WARN_CRIT, 10.9f);
+/**
+ *Battery warning capacity
+ *
+ *Defines the emergency warning capacity of the attached battery.
+ *
+ *@dong.chen
+ */
+PARAM_DEFINE_FLOAT(BAT_WARN_EMER, 10.8f);

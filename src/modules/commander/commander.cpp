@@ -880,6 +880,9 @@ int commander_thread_main(int argc, char *argv[])
 	param_t _param_rc_in_off = param_find("COM_RC_IN_MODE");
 	param_t _param_eph = param_find("COM_HOME_H_T");
 	param_t _param_epv = param_find("COM_HOME_V_T");
+	param_t _param_bat_warning_low = param_find("BAT_WARN_LOW");
+	param_t _param_bat_warning_critical = param_find("BAT_WARN_CRIT");
+	param_t _param_bat_warning_emergency = param_find("BAT_WARN_EMER");
 
 	const char *main_states_str[vehicle_status_s::MAIN_STATE_MAX];
 	main_states_str[vehicle_status_s::MAIN_STATE_MANUAL]			= "MANUAL";
@@ -1043,6 +1046,7 @@ int commander_thread_main(int argc, char *argv[])
 
 	bool low_battery_voltage_actions_done = false;
 	bool critical_battery_voltage_actions_done = false;
+	bool emergency_battery_voltage_action_done = false;
 
 	hrt_abstime last_idle_time = 0;
 
@@ -1219,6 +1223,9 @@ int commander_thread_main(int argc, char *argv[])
 	float rc_loss_timeout = 0.5;
 	int32_t rc_in_off = 0;
 	int32_t datalink_regain_timeout = 0;
+	float bat_warning_low = 0.2f;
+	float bat_warning_critical = 0.1f;
+	float bat_warning_emergency = 0.05f;
 
 	/* Thresholds for engine failure detection */
 	int32_t ef_throttle_thres = 1.0f;
@@ -1306,6 +1313,9 @@ int commander_thread_main(int argc, char *argv[])
 			param_get(_param_ef_throttle_thres, &ef_throttle_thres);
 			param_get(_param_ef_current2throttle_thres, &ef_current2throttle_thres);
 			param_get(_param_ef_time_thres, &ef_time_thres);
+			param_get(_param_bat_warning_low, &bat_warning_low);
+			param_get(_param_bat_warning_critical, &bat_warning_critical);
+			param_get(_param_bat_warning_emergency, &bat_warning_emergency);
 
 			/* Autostart id */
 			param_get(_param_autostart_id, &autostart_id);
@@ -1646,9 +1656,12 @@ int commander_thread_main(int argc, char *argv[])
 				status.battery_cell_count = battery_get_n_cells();
 
 				/* get throttle (if armed), as we only care about energy negative throttle also counts */
+				/*
 				float throttle = (armed.armed) ? fabsf(actuator_controls.control[3]) : 0.0f;
 				status.battery_remaining = battery_remaining_estimate_voltage(battery.voltage_filtered_v, battery.discharged_mah,
 							   throttle);
+				*/
+				status.battery_remaining = status.battery_voltage;
 			}
 		}
 
@@ -1706,7 +1719,7 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		/* if battery voltage is getting lower, warn using buzzer, etc. */
-		if (status.condition_battery_voltage_valid && status.battery_remaining < 0.18f && !low_battery_voltage_actions_done) {
+		if (status.condition_battery_voltage_valid && status.battery_remaining < bat_warning_low && !low_battery_voltage_actions_done) {
 			low_battery_voltage_actions_done = true;
 			if (armed.armed) {
 				mavlink_log_critical(mavlink_fd, "LOW BATTERY, RETURN TO LAND ADVISED");
@@ -1716,8 +1729,8 @@ int commander_thread_main(int argc, char *argv[])
 			status.battery_warning = vehicle_status_s::VEHICLE_BATTERY_WARNING_LOW;
 			status_changed = true;
 
-		} else if (!status.usb_connected && status.condition_battery_voltage_valid && status.battery_remaining < 0.09f
-			   && !critical_battery_voltage_actions_done && low_battery_voltage_actions_done) {
+		} else if (status.condition_battery_voltage_valid && status.battery_remaining < bat_warning_critical &&
+            !critical_battery_voltage_actions_done && low_battery_voltage_actions_done) {
 			/* critical battery voltage, this is rather an emergency, change state machine */
 			critical_battery_voltage_actions_done = true;
 			status.battery_warning = vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL;
@@ -1736,6 +1749,13 @@ int commander_thread_main(int argc, char *argv[])
 				mavlink_and_console_log_emergency(mavlink_fd, "CRITICAL BATTERY, LAND IMMEDIATELY");
 			}
 
+			status_changed = true;
+		} else if(status.condition_battery_voltage_valid && status.battery_remaining < bat_warning_emergency &&
+			  !emergency_battery_voltage_action_done && critical_battery_voltage_actions_done && low_battery_voltage_actions_done)
+		{
+			emergency_battery_voltage_action_done = true;
+			mavlink_log_emergency(mavlink_fd,"EMERGENCY BATTERY");
+			status.battery_warning = vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY;
 			status_changed = true;
 		}
 
