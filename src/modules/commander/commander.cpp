@@ -154,6 +154,8 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define PERIOD_CLOSE_MOTOR_TAKEOFF (10 *1000 * 1000)
 #define PERIOD_CLOSE_MOTOR_LAND 	     (2 * 1000 * 1000)
 
+#define PERIOD_FS_LOITER      		   (10 * 1000 * 1000)
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -181,7 +183,9 @@ static bool need_param_autosave = false;		/**< Flag set to true if parameters sh
 static hrt_abstime commander_boot_timestamp = 0;
 static bool control_source_change = false;
 static uint8_t last_control_source = manual_control_setpoint_s::CONTROL_SOURCE_NONE;
-
+static bool first_enter_fs_loiter = true;
+static uint64_t first_enter_fs_loiter_time = 0;
+static bool should_into_rtl_done = false;
 
 static unsigned int leds_counter;
 /* To remember when last notification was sent */
@@ -943,6 +947,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF] 			= "TAKEOFF";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM]		= "LAND_CUSTOM";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_IDLE]			= "IDLE";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FS_LOITER]			= "FS_LOITER";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -1729,6 +1734,28 @@ int commander_thread_main(int argc, char *argv[])
 			first_enter_IDLE_takeoff = true;
 			close_motor_IDLE_takeoff_done = false;
 		}
+		if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_FS_LOITER)
+		{
+			if(first_enter_fs_loiter)
+			{
+				first_enter_fs_loiter_time = hrt_absolute_time();
+				first_enter_fs_loiter = false;
+			}
+			else
+			{
+				if(hrt_absolute_time() - first_enter_fs_loiter_time > PERIOD_FS_LOITER && !should_into_rtl_done)
+				{
+					status.should_into_rtl = true;
+					should_into_rtl_done = true;
+				}
+			}
+		}
+		else
+		{
+			first_enter_fs_loiter_time = 0;
+			first_enter_fs_loiter = true;
+			should_into_rtl_done = false;
+		}
 		/* update subsystem */
 		orb_check(subsys_sub, &updated);
 
@@ -1997,6 +2024,10 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			status.rc_signal_lost = false;
+			if (sp_man.z > 0.7f)
+			{
+				status.should_into_rtl = false;
+			}
 			if (sp_man.control_source != last_control_source)
 			{
 				control_source_change = true;
@@ -2287,6 +2318,11 @@ int commander_thread_main(int argc, char *argv[])
 			status_changed = true;
 			mavlink_log_info(mavlink_fd, "[cmd] arming state: %s", arming_states_str[status.arming_state]);
 			arming_state_changed = false;
+
+		}
+		if (arming_state_changed && !armed.armed)
+		{
+			status.should_into_rtl = false;
 		}
 
 		was_armed = armed.armed;
@@ -2867,6 +2903,7 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 	case vehicle_status_s::NAVIGATION_STATE_TAKEOFF:
 	case vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM:
+	case vehicle_status_s::NAVIGATION_STATE_FS_LOITER:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;

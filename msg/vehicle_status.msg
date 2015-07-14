@@ -47,7 +47,8 @@ uint8 NAVIGATION_STATE_STAB = 15		      # Stabilized mode
 uint8 NAVIGATION_STATE_TAKEOFF = 16                 # Takeoff mode
 uint8 NAVIGATION_STATE_LAND_CUSTOM = 17      # Land custom mode
 uint8 NAVIGATION_STATE_IDLE = 18                        #IDLE MODE
-uint8 NAVIGATION_STATE_MAX = 19
+uint8 NAVIGATION_STATE_FS_LOITER = 19               #FS_LOITER
+uint8 NAVIGATION_STATE_MAX = 20
 
 # VEHICLE_MODE_FLAG, same as MAV_MODE_FLAG of MAVLink 1.0 protocol
 uint8 VEHICLE_MODE_FLAG_SAFETY_ARMED = 128
@@ -128,6 +129,7 @@ bool condition_local_altitude_valid
 bool condition_airspeed_valid			# set to true by the commander app if there is a valid airspeed measurement available
 bool condition_landed				# true if vehicle is landed, always true if disarmed
 bool had_inair                                                        # set if the vehicle had in air.
+bool should_into_rtl                                               #set if time had passed and the signal haven't regined then it will go into rtl.
 bool condition_power_input_valid		# set if input power is valid
 bool condition_takeoff_attitude_valid                      # set if takeoff attitude is ok
 bool takeoff_finished                         # set if takeoff had finished
