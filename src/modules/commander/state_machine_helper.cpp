@@ -383,6 +383,9 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 			ret = TRANSITION_CHANGED;
 		}
 		break;
+	case vehicle_status_s::MAIN_STATE_IDLE:
+		ret = TRANSITION_CHANGED;
+		break;
 
 	case vehicle_status_s::MAIN_STATE_MAX:
 	default:
@@ -536,6 +539,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		/* require RC for all manual modes */
 		// if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && armed && !status->condition_landed) {
 		// 	status->failsafe = true;
+		if (status->condition_landed && status -> had_inair && armed)
+		{
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
+			break;
+		}
 		if ((status->rc_signal_lost || status->rc_signal_lost_cmd || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL
 		 || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY) && armed) {
 			// if (status->condition_global_position_valid && status->condition_home_position_valid) {
@@ -577,10 +585,15 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 				break;
 			}
 		}
+
 		break;
 
 	case vehicle_status_s::MAIN_STATE_AUTO_MISSION:
-
+		if (status->condition_landed && status -> had_inair && armed)
+		{
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
+			break;
+		}
 		/* go into failsafe
 		 * - if commanded to do so
 		 * - if we have an engine failure
@@ -747,6 +760,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		break;
 
 	case vehicle_status_s::MAIN_STATE_AUTO_RTL:
+		if (status->condition_landed && status -> had_inair && armed)
+		{
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
+			break;
+		}
 		/* require global position and home, also go into failsafe on an engine failure */
 
 		if (status->engine_failure) {
@@ -767,6 +785,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		}
 		break;
 	case vehicle_status_s::MAIN_STATE_LAND:
+		if (status->condition_landed && status -> had_inair && armed)
+		{
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
+			break;
+		}
 		if (status->engine_failure) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
 		} else if ((!status->condition_global_position_valid ||

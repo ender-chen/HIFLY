@@ -68,11 +68,12 @@
 #include "geofence.h"
 #include "takeoff.h"
 #include "land.h"
+#include "idle.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 9
+#define NAVIGATOR_MODE_ARRAY_SIZE 10
 
 class Navigator : public control::SuperBlock
 {
@@ -226,6 +227,7 @@ private:
 							  OBC rules (rc loss mode) */
 	TAKEOFF	_takeoff;
 	LAND  		_land;
+	IDLE                   _idle;
 	DataLinkLoss	_dataLinkLoss;			/**< class that handles the OBC datalink loss mode */
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode
 							  (FW only!) */

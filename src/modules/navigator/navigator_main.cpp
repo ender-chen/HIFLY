@@ -137,6 +137,7 @@ Navigator::Navigator() :
 	_rcLoss(this, "RCL"),
 	_takeoff(this, "TAKEOFF"),
 	_land(this, "LAND"),
+	_idle(this, "IDLE"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
 	_gpsFailure(this, "GPSF"),
@@ -160,6 +161,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[6] = &_rcLoss;
 	_navigation_mode_array[7] = &_takeoff;
 	_navigation_mode_array[8] = &_land;
+	_navigation_mode_array[9] = &_idle;
 
 	updateParams();
 }
@@ -486,6 +488,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_land;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_IDLE:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_idle;
 				break;
 			default:
 				_navigation_mode = nullptr;

@@ -214,6 +214,10 @@ void get_mavlink_mode_state(struct vehicle_status_s *status, struct position_set
 			custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_AUTO;
 			custom_mode.sub_mode = PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF;
 			break;
+		case vehicle_status_s::NAVIGATION_STATE_IDLE:
+			*mavlink_base_mode |= MAV_MODE_FLAG_MANUAL_INPUT_ENABLED
+			                      | (status->is_rotary_wing ? MAV_MODE_FLAG_STABILIZE_ENABLED : 0);
+			custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_IDLE;
 
 		case vehicle_status_s::NAVIGATION_STATE_MAX:
 			/* this is an unused case, ignore */

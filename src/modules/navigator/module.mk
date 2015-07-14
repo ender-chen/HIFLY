@@ -58,7 +58,8 @@ SRCS		= navigator_main.cpp \
 		  gpsfailure_params.c \
 		  takeoff.cpp \
 		  land.cpp \
-		  takeoff_params.c
+		  takeoff_params.c \
+		  idle.cpp
 
 INCLUDE_DIRS	 += $(MAVLINK_SRC)/include/mavlink
 

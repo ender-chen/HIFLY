@@ -10,7 +10,8 @@ uint8 MAIN_STATE_OFFBOARD = 7
 uint8 MAIN_STATE_STAB = 8
 uint8 MAIN_STATE_TAKEOFF = 9
 uint8 MAIN_STATE_LAND = 10
-uint8 MAIN_STATE_MAX = 11
+uint8 MAIN_STATE_IDLE = 11
+uint8 MAIN_STATE_MAX = 12
 
 # If you change the order, add or remove arming_state_t states make sure to update the arrays
 # in state_machine_helper.cpp as well.
@@ -45,7 +46,8 @@ uint8 NAVIGATION_STATE_OFFBOARD = 14
 uint8 NAVIGATION_STATE_STAB = 15		      # Stabilized mode
 uint8 NAVIGATION_STATE_TAKEOFF = 16                 # Takeoff mode
 uint8 NAVIGATION_STATE_LAND_CUSTOM = 17      # Land custom mode
-uint8 NAVIGATION_STATE_MAX = 18
+uint8 NAVIGATION_STATE_IDLE = 18                        #IDLE MODE
+uint8 NAVIGATION_STATE_MAX = 19
 
 # VEHICLE_MODE_FLAG, same as MAV_MODE_FLAG of MAVLink 1.0 protocol
 uint8 VEHICLE_MODE_FLAG_SAFETY_ARMED = 128
@@ -92,6 +94,7 @@ uint8 RC_IN_MODE_DEFAULT = 0
 uint8 RC_IN_MODE_OFF = 1
 uint8 RC_IN_MODE_GENERATED = 2
 
+
 # state machine / state of vehicle.
 # Encodes the complete system state and is set by the commander app.
 uint16 counter   # incremented by the writing thread everytime new data is stored
@@ -124,6 +127,7 @@ bool condition_local_position_valid
 bool condition_local_altitude_valid
 bool condition_airspeed_valid			# set to true by the commander app if there is a valid airspeed measurement available
 bool condition_landed				# true if vehicle is landed, always true if disarmed
+bool had_inair                                                        # set if the vehicle had in air.
 bool condition_power_input_valid		# set if input power is valid
 bool condition_takeoff_attitude_valid                      # set if takeoff attitude is ok
 bool takeoff_finished                         # set if takeoff had finished

@@ -151,6 +151,9 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define HIL_ID_MIN 1000
 #define HIL_ID_MAX 1999
 
+#define PERIOD_CLOSE_MOTOR_TAKEOFF (10 *1000 * 1000)
+#define PERIOD_CLOSE_MOTOR_LAND 	     (2 * 1000 * 1000)
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -197,6 +200,12 @@ static main_state_t Hifly_custom_mode = vehicle_status_s::MAIN_STATE_MANUAL;
 
 static unsigned _last_mission_instance = 0;
 
+static uint64_t first_enter_IDLE_time_takeoff = 0;
+static uint64_t first_enter_IDLE_land_time = 0;
+static bool first_enter_IDLE_takeoff = true;
+static bool first_enter_IDLE_land = true;
+static bool close_motor_IDLE_takeoff_done = false;
+static bool close_moter_IDLE_land_done = false;
 /**
  * The daemon app only briefly exists to start
  * the background job. The stack size assigned in the
@@ -903,6 +912,7 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_OFFBOARD]			= "OFFBOARD";
 	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF]                        = "TAKEOFF";
 	main_states_str[vehicle_status_s::MAIN_STATE_LAND]                             = "LAND";
+	main_states_str[vehicle_status_s::MAIN_STATE_IDLE]	                          = "IDLE";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -932,6 +942,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF] 			= "TAKEOFF";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM]		= "LAND_CUSTOM";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_IDLE]			= "IDLE";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -997,6 +1008,9 @@ int commander_thread_main(int argc, char *argv[])
 	status.circuit_breaker_engaged_gpsfailure_check = false;
 	status.circuit_breaker_engaged_attitudefailure_check = false;
 	status.circuit_breaker_engaged_attitude_check = false;
+
+	//IDLE
+	status.had_inair = false;
 
 	get_circuit_breaker_params();
 
@@ -1633,6 +1647,7 @@ int commander_thread_main(int argc, char *argv[])
 
 				} else {
 					mavlink_log_critical(mavlink_fd, "TAKEOFF DETECTED");
+					status.had_inair = true;
 				}
 			}
 		}
@@ -1661,6 +1676,59 @@ int commander_thread_main(int argc, char *argv[])
 			}
 		}
 
+		if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_IDLE)
+		{
+			if(status.had_inair)
+			{
+				if(first_enter_IDLE_land)
+				{
+					first_enter_IDLE_land_time = hrt_absolute_time();
+					first_enter_IDLE_land = false;
+				}
+				else
+				{
+					if(hrt_absolute_time() - first_enter_IDLE_land_time > PERIOD_CLOSE_MOTOR_LAND && !close_moter_IDLE_land_done)
+					{
+						close_moter_IDLE_land_done = true;
+						arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_STANDBY, &armed, true /* fRunPreArmChecks */,
+							     mavlink_fd);
+						if (arming_ret == TRANSITION_CHANGED) {
+							arming_state_changed = true;
+						}
+
+					}
+				}
+			}
+			else
+			{
+				if(first_enter_IDLE_takeoff)
+				{
+					first_enter_IDLE_time_takeoff = hrt_absolute_time();
+					first_enter_IDLE_takeoff = false;
+				}
+				else
+				{
+					if(hrt_absolute_time() - first_enter_IDLE_time_takeoff > PERIOD_CLOSE_MOTOR_TAKEOFF && !close_motor_IDLE_takeoff_done)
+					{
+						close_motor_IDLE_takeoff_done = true;
+						arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_STANDBY, &armed, true /* fRunPreArmChecks */,
+							     mavlink_fd);
+						if (arming_ret == TRANSITION_CHANGED) {
+							arming_state_changed = true;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			first_enter_IDLE_land_time = 0;
+			first_enter_IDLE_land = true;
+			close_moter_IDLE_land_done = false;
+			first_enter_IDLE_time_takeoff = 0;
+			first_enter_IDLE_takeoff = true;
+			close_motor_IDLE_takeoff_done = false;
+		}
 		/* update subsystem */
 		orb_check(subsys_sub, &updated);
 
