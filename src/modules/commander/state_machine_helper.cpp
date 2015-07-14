@@ -519,16 +519,21 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	case vehicle_status_s::MAIN_STATE_ACRO:
 	case vehicle_status_s::MAIN_STATE_MANUAL:
 	case vehicle_status_s::MAIN_STATE_STAB:
+		status->nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
+		break;
 	case vehicle_status_s::MAIN_STATE_ALTCTL:
 	case vehicle_status_s::MAIN_STATE_POSCTL:
 		/* require RC for all manual modes */
-		if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && armed && !status->condition_landed) {
-			status->failsafe = true;
-
-			if (status->condition_global_position_valid && status->condition_home_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+		// if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && armed && !status->condition_landed) {
+		// 	status->failsafe = true;
+		if ((status->rc_signal_lost || status->rc_signal_lost_cmd || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL
+		 || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY) && armed) {
+			// if (status->condition_global_position_valid && status->condition_home_position_valid) {
+			if (status->condition_global_position_valid && status->condition_home_position_valid && status->battery_warning != vehicle_status_s::
+				VEHICLE_BATTERY_WARNING_EMERGENCY) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
 			} else if (status->condition_local_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
 			} else if (status->condition_local_altitude_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
 			} else {
@@ -605,12 +610,15 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		/* datalink loss disabled:
 		 * check if both, RC and datalink are lost during the mission
 		 * or RC is lost after the mission is finished: this should always trigger RCRECOVER */
-		} else if (!data_link_loss_enabled && ((status->rc_signal_lost && status->data_link_lost) ||
-						       (status->rc_signal_lost && mission_finished))) {
+		// } else if (!data_link_loss_enabled && ((status->rc_signal_lost && status->data_link_lost) ||
+		// 				       (status->rc_signal_lost && mission_finished))) {
+		 } else if (data_link_loss_enabled && (status->rc_signal_lost || status->rc_signal_lost_cmd ||status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL
+		 || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY) && armed) {
 			status->failsafe = true;
 
-			if (status->condition_global_position_valid && status->condition_home_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+			// if (status->condition_global_position_valid && status->condition_home_position_valid) {
+			if (status->condition_global_position_valid && status->condition_home_position_valid && status->battery_warning != vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
 			} else if (status->condition_local_altitude_valid) {
@@ -733,9 +741,9 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 
 		if (status->engine_failure) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
-		} else if ((!status->condition_global_position_valid ||
-					!status->condition_home_position_valid)) {
-			status->failsafe = true;
+		// } else if ((!status->condition_global_position_valid ||
+		// 			!status->condition_home_position_valid)) {
+		} else if ((!status->condition_global_position_valid || !status->condition_home_position_valid || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY)) {
 
 			if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
