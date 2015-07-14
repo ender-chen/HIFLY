@@ -512,7 +512,7 @@ transition_result_t hil_state_transition(hil_state_t new_state, int status_pub, 
  * Check failsafe and main status and set navigation status for navigator accordingly
  */
 bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_enabled, const bool mission_finished,
-		   const bool stay_in_failsafe)
+		   const bool stay_in_failsafe, const bool flight_termination)
 {
 	navigation_state_t nav_state_old = status->nav_state;
 
@@ -531,7 +531,12 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->failsafe = true;
 
 			if (status->condition_global_position_valid && status->condition_home_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+                if (!flight_termination) {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+                }
+                else {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+                }
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
 			} else if (status->condition_local_altitude_valid) {
@@ -584,7 +589,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		} else if (status->gps_failure_cmd) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL;
 		} else if (status->rc_signal_lost_cmd) {
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+            if (!flight_termination) {
+                status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+            } else {
+                status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+            }
 
 		/* finished handling commands which have priority, now handle failures */
 		} else if (status->gps_failure) {
@@ -615,7 +624,12 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->failsafe = true;
 
 			if (status->condition_global_position_valid && status->condition_home_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+                if (!flight_termination) {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+                }
+                else {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+                }
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
 			} else if (status->condition_local_altitude_valid) {
