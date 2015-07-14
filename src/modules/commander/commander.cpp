@@ -152,6 +152,9 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define HIL_ID_MIN 1000
 #define HIL_ID_MAX 1999
 
+#define PERIOD_CLOSE_MOTOR_TAKEOFF (10 *1000 * 1000)
+#define PERIOD_CLOSE_MOTOR_LAND    (2 * 1000 * 1000)
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -199,6 +202,9 @@ struct roi_position_s _roi;
 static orb_advert_t _roi_pub = -1;
 
 static unsigned _last_mission_instance = 0;
+
+static hrt_abstime _time_on_off_before_takeoff = 0;
+static hrt_abstime _time_on_off_after_land = 0;
 
 /**
  * The daemon app only briefly exists to start
@@ -939,6 +945,7 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_OFFBOARD]			= "OFFBOARD";
 	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT]                        = "TAKEOFF_SHORTCUT";
 	main_states_str[vehicle_status_s::MAIN_STATE_LAND_SHORTCUT]                             = "LAND_SHORTCUT";
+	main_states_str[vehicle_status_s::MAIN_STATE_IDLE]	             = "IDLE";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -968,7 +975,6 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT] 			= "TAKEOFF_SHORTCUT";
     nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT]		= "LAND_SHORTCUT";
-
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -1034,6 +1040,9 @@ int commander_thread_main(int argc, char *argv[])
 	status.circuit_breaker_engaged_gpsfailure_check = false;
 	status.circuit_breaker_engaged_attitudefailure_check = false;
 	status.circuit_breaker_engaged_takeoff_att_check = false;
+
+	//IDLE
+	status.had_in_air = false;
 
 	get_circuit_breaker_params();
 
@@ -1703,6 +1712,7 @@ int commander_thread_main(int argc, char *argv[])
 					mavlink_log_critical(mavlink_fd, "LANDING DETECTED");
 				} else {
 					mavlink_log_critical(mavlink_fd, "TAKEOFF DETECTED");
+					status.had_in_air = true;
 				}
 			}
 		}
@@ -2111,8 +2121,53 @@ int commander_thread_main(int argc, char *argv[])
             } //end control source rc
 			else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP) {
 				if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
-					app_main_state = vehicle_status_s::MAIN_STATE_MANUAL;
+					app_main_state = vehicle_status_s::MAIN_STATE_IDLE;
 				}
+
+                // if landed after seconds, disarmd
+                if (status.is_rotary_wing &&
+                        (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED || status.arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR)) {
+
+                    //before takeoff
+                    if (status.main_state == vehicle_status_s::MAIN_STATE_IDLE &&
+                            status.condition_landed) {
+                        if (_time_on_off_before_takeoff == 0) {
+                            _time_on_off_before_takeoff = hrt_absolute_time();
+                        } else {
+                            if (hrt_elapsed_time(&_time_on_off_before_takeoff) > PERIOD_CLOSE_MOTOR_TAKEOFF) {
+                                /* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
+                                arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY : vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
+                                arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,mavlink_fd);
+                                if (arming_ret == TRANSITION_CHANGED) {
+                                    arming_state_changed = true;
+                                }
+                            }
+                        }
+                    } else {
+                        _time_on_off_before_takeoff = 0;
+                    }
+
+                    //after landed
+                    if (status.had_in_air &&
+                            status.condition_landed) {
+                        if (_time_on_off_after_land == 0) {
+                            _time_on_off_after_land = hrt_absolute_time();
+                        } else {
+                            if (hrt_elapsed_time(&_time_on_off_after_land) > PERIOD_CLOSE_MOTOR_LAND) {
+                                /* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
+                                arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY : vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
+                                arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,mavlink_fd);
+                                if (arming_ret == TRANSITION_CHANGED) {
+                                    arming_state_changed = true;
+
+                                }
+                            }
+                        }
+                    } else {
+                        _time_on_off_after_land = 0;
+                    }
+                }
+
 				if (set_main_state_app(&status)) {
 					status_changed = true;
 				}
@@ -2298,6 +2353,10 @@ int commander_thread_main(int argc, char *argv[])
 			status_changed = true;
 			mavlink_log_info(mavlink_fd, "[cmd] arming state: %s", arming_states_str[status.arming_state]);
 			arming_state_changed = false;
+
+			if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
+				status.had_in_air = false;
+			}
 		}
 
 		was_armed = armed.armed;

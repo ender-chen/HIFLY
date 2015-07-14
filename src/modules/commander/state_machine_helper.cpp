@@ -379,7 +379,8 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 
 		break;
 	case vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT:
-		if (status->condition_global_position_valid &&
+		if (status->main_state == vehicle_status_s::MAIN_STATE_IDLE &&
+            status->condition_global_position_valid &&
             status->condition_home_position_valid &&
             !status->takeoff_finished) {
 			ret = TRANSITION_CHANGED;
@@ -389,6 +390,9 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		if (status->condition_global_position_valid) {
 			ret = TRANSITION_CHANGED;
 		}
+		break;
+	case vehicle_status_s::MAIN_STATE_IDLE:
+		ret = TRANSITION_CHANGED;
 		break;
 	case vehicle_status_s::MAIN_STATE_MAX:
 	default:
@@ -768,6 +772,10 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		} else {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
 		}
+        break;
+    case vehicle_status_s::MAIN_STATE_IDLE:
+        status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+        break;
 	default:
 		break;
 	}

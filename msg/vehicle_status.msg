@@ -10,7 +10,8 @@ uint8 MAIN_STATE_OFFBOARD = 7
 uint8 MAIN_STATE_STAB = 8
 uint8 MAIN_STATE_TAKEOFF_SHORTCUT = 9
 uint8 MAIN_STATE_LAND_SHORTCUT = 10
-uint8 MAIN_STATE_MAX = 11
+uint8 MAIN_STATE_IDLE = 11
+uint8 MAIN_STATE_MAX = 12
 
 # If you change the order, add or remove arming_state_t states make sure to update the arrays
 # in state_machine_helper.cpp as well.
@@ -124,6 +125,7 @@ bool condition_local_position_valid
 bool condition_local_altitude_valid
 bool condition_airspeed_valid			# set to true by the commander app if there is a valid airspeed measurement available
 bool condition_landed				# true if vehicle is landed, always true if disarmed
+bool had_in_air                          # set if the vehicle had in air.
 bool condition_power_input_valid		# set if input power is valid
 bool condition_takeoff_attitude_valid                      # set if takeoff attitude is ok
 bool takeoff_finished                         # set if TAKEOFF_SHORCUT mode had finished
