@@ -7,6 +7,7 @@ uint8 CONTROL_SOURCE_NONE = 0
 uint8 CONTROL_SOURCE_RC = 1
 uint8 CONTROL_SOURCE_APP = 2
 uint8 CONTROL_SOURCE_CUSTOM = 3
+uint8 CONTROL_SOURCE_MAX = 4
 uint64 timestamp
 
 # Any of the channels may not be available and be set to NaN

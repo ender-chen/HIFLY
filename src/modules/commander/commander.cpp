@@ -176,6 +176,9 @@ static volatile bool thread_running = false;		/**< daemon status flag */
 static int daemon_task;					/**< Handle of daemon task / thread */
 static bool need_param_autosave = false;		/**< Flag set to true if parameters should be autosaved in next iteration (happens on param update and if functionality is enabled) */
 static hrt_abstime commander_boot_timestamp = 0;
+static bool control_source_change = false;
+static uint8_t last_control_source = manual_control_setpoint_s::CONTROL_SOURCE_NONE;
+
 
 static unsigned int leds_counter;
 /* To remember when last notification was sent */
@@ -929,6 +932,11 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF] 			= "TAKEOFF";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM]		= "LAND_CUSTOM";
+
+	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
+	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
+	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_APP]			= "CONTROL_SOURCE_APP";
+	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_CUSTOM]			= "CONTROL_SOURCE_CUSTOM";
 	/* pthread for slow low prio thread */
 	pthread_t commander_low_prio_thread;
 
@@ -1921,6 +1929,15 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			status.rc_signal_lost = false;
+			if (sp_man.control_source != last_control_source)
+			{
+				control_source_change = true;
+				last_control_source = sp_man.control_source;
+			}
+			else
+			{
+				control_source_change = false;
+			}
 			if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_RC)
 			{
 				/* check if left stick is in lower left position and we are in MANUAL or AUTO_READY mode or (ASSIST mode and landed) -> disarm
@@ -2230,6 +2247,12 @@ int commander_thread_main(int argc, char *argv[])
 			warnx("main state: %s nav state: %s", main_states_str[status.main_state], nav_states_str[status.nav_state]);
 			mavlink_log_info(mavlink_fd, "Flight mode: %s", nav_states_str[status.nav_state]);
 			main_state_changed = false;
+		}
+
+		if (control_source_change)
+		{
+			status_changed = true;
+			mavlink_log_info(mavlink_fd,"control_source is: %s", control_source_str[sp_man.control_source]);
 		}
 
 		/* publish states (armed, control mode, vehicle status) at least with 5 Hz */
