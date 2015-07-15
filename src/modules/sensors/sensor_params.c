@@ -653,7 +653,7 @@ PARAM_DEFINE_FLOAT(SENS_BARO_QNH, 1013.25f);
  *
  * @group Sensor Calibration
  */
-PARAM_DEFINE_INT32(SENS_BOARD_ROT, 0);
+PARAM_DEFINE_INT32(SENS_BOARD_ROT, 14);
 
 /**
  * PX4Flow board rotation
