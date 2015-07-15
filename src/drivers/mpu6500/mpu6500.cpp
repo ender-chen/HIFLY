@@ -745,7 +745,7 @@ MPU6500::probe()
 {
 
 	/* look for a product ID we recognise */
-	_product = read_reg(MPUREG_PRODUCT_ID);
+	_product = read_reg(MPUREG_WHOAMI);
 
 	// verify product revision
 	switch (_product) {
@@ -1428,13 +1428,13 @@ int
 MPU6500::set_accel_range(unsigned max_g_in)
 {
 	// workaround for bugged versions of MPU6k (rev C)
-	switch (_product) {
-		case MPU6500_PRODUCT_ID:
-			write_checked_reg(MPUREG_ACCEL_CONFIG, 1 << 3);
-			_accel_range_scale = (MPU6500_ONE_G / 4096.0f);
-			_accel_range_m_s2 = 8.0f * MPU6500_ONE_G;
-			return OK;
-	}
+//	switch (_product) {
+//		case MPU6500_PRODUCT_ID:
+//			write_checked_reg(MPUREG_ACCEL_CONFIG, 1 << 3);
+//			_accel_range_scale = (MPU6500_ONE_G / 4096.0f);
+//			_accel_range_m_s2 = 8.0f * MPU6500_ONE_G;
+//			return OK;
+//	}
 
 	uint8_t afs_sel;
 	float lsb_per_g;
@@ -1587,7 +1587,7 @@ MPU6500::measure()
 	if (OK != transfer((uint8_t *)&mpu_report, ((uint8_t *)&mpu_report), sizeof(mpu_report)))
 		return;
 
-        check_registers();
+//        check_registers();
 
 	/*
 	   see if this is duplicate accelerometer data. Note that we
@@ -1640,13 +1640,13 @@ MPU6500::measure()
 
 	perf_count(_good_transfers);
 
-	if (_register_wait != 0) {
-		// we are waiting for some good transfers before using
-		// the sensor again. We still increment
-		// _good_transfers, but don't return any data yet
-		_register_wait--;
-		return;
-	}
+//	if (_register_wait != 0) {
+//		// we are waiting for some good transfers before using
+//		// the sensor again. We still increment
+//		// _good_transfers, but don't return any data yet
+//		_register_wait--;
+//		return;
+//	}
 
 
 	/*
@@ -1723,7 +1723,7 @@ MPU6500::measure()
 	arb.scaling = _accel_range_scale;
 	arb.range_m_s2 = _accel_range_m_s2;
 
-	_last_temperature = (report.temp) / 361.0f + 35.0f;
+	_last_temperature = (report.temp) / 495.28f + 21.0f;
 
 	arb.temperature_raw = report.temp;
 	arb.temperature = _last_temperature;
