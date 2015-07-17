@@ -917,6 +917,7 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF]                        = "TAKEOFF";
 	main_states_str[vehicle_status_s::MAIN_STATE_LAND]                             = "LAND";
 	main_states_str[vehicle_status_s::MAIN_STATE_IDLE]	                          = "IDLE";
+	main_states_str[vehicle_status_s::MAIN_STATE_AUTO_CIRCLE]		= "AUTO_CIRCLE";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -948,6 +949,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM]		= "LAND_CUSTOM";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_IDLE]			= "IDLE";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FS_LOITER]			= "FS_LOITER";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_AUTO_CIRCLE]		= "AUTO_CIRCLE";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -2680,6 +2682,15 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 
 			print_reject_mode(status_local, "AUTO_LOITER");
 
+		} else if (sp_man->loiter_switch == manual_control_setpoint_s::SWITCH_POS_MIDDLE) {
+			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_CIRCLE);
+
+			if (res != TRANSITION_DENIED) {
+				break;  // changed successfully or already in this state
+			}
+
+			print_reject_mode(status_local, "AUTO_CIRCLE");
+
 		} else {
 			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_MISSION);
 
@@ -2849,6 +2860,7 @@ set_control_mode()
 	control_mode.flag_external_manual_override_ok = (!status.is_rotary_wing && !status.is_vtol);
 	control_mode.flag_system_hil_enabled = status.hil_state == vehicle_status_s::HIL_STATE_ON;
 	control_mode.flag_control_offboard_enabled = false;
+	control_mode.flag_control_auto_circle_enable = false;
 
 	switch (status.nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
@@ -2922,6 +2934,19 @@ set_control_mode()
 		control_mode.flag_control_position_enabled = true;
 		control_mode.flag_control_velocity_enabled = true;
 		control_mode.flag_control_termination_enabled = false;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_CIRCLE:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_auto_circle_enable = true;
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
