@@ -731,6 +731,35 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		break;
 	}
 
+    //restricted area check
+    if (status->fly_in_restricted_area) {
+        if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||
+                status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
+                status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
+                status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER) {
+
+            status->failsafe = true;
+            if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
+                status->nav_state == vehicle_status_s::NAVIGATION_STATE_DESCEND ||
+                status->nav_state == vehicle_status_s::NAVIGATION_STATE_TERMINATION)) {
+
+                if (status->condition_global_position_valid && status->condition_home_position_valid) {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+                } else if (status->condition_local_position_valid) {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+                } else if (status->condition_local_altitude_valid) {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+                } else {
+                    status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+                }
+            }
+        }
+        else {
+
+        }
+
+    }
+
     //Low battery check
     if (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL) {
         if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||

@@ -402,12 +402,11 @@ Navigator::task_main()
 		/* Check geofence violation */
 		static hrt_abstime last_geofence_check = 0;
 		if (have_geofence_position_data && hrt_elapsed_time(&last_geofence_check) > GEOFENCE_CHECK_INTERVAL) {
-			bool inside = _geofence.inside(_global_pos, _gps_pos, _sensor_combined.baro_alt_meter, _home_pos, _home_position_set);
+			bool inside = _geofence.inside(_global_pos, _gps_pos, _sensor_combined.baro_alt_meter, _home_pos, _home_position_set, _geofence_result);
 			last_geofence_check = hrt_absolute_time();
 			have_geofence_position_data = false;
 			if (!inside) {
-				/* inform other apps via the mission result */
-				_geofence_result.geofence_violated = true;
+				/* inform other apps via the geofence result */
 				publish_geofence_result();
 
 				/* Issue a warning about the geofence violation once */
@@ -416,8 +415,7 @@ Navigator::task_main()
 					_geofence_violation_warning_sent = true;
 				}
 			} else {
-				/* inform other apps via the mission result */
-				_geofence_result.geofence_violated = false;
+				/* inform other apps via the geofence result */
 				publish_geofence_result();
 				/* Reset the _geofence_violation_warning_sent field */
 				_geofence_violation_warning_sent = false;

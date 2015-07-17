@@ -136,8 +136,8 @@ bool MissionFeasibilityChecker::checkGeofence(dm_item_t dm_current, size_t nMiss
 				return false;
 			}
 
-			if (!geofence.inside_polygon(missionitem.lat, missionitem.lon, missionitem.altitude)) {
-				mavlink_log_critical(_mavlink_fd, "Geofence violation for waypoint %d", i);
+			if (geofence.inside_restricted_area(missionitem.lat, missionitem.lon, missionitem.altitude)) {
+				mavlink_log_critical(_mavlink_fd, "Geofence violation for restricted area %d", i);
 				return false;
 			}
 		}
