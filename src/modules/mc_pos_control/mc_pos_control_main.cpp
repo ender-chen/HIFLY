@@ -207,6 +207,16 @@ private:
 	bool _reset_alt_sp;
 	bool _mode_auto;
 
+	bool _circle_fixed_init;
+
+        /* circle parameters */
+	float _circle_radius;        // maximum horizontal speed in cm/s during missions
+	float _circle_rot_rate;          // rotation speed in deg/sec
+	float _circle_angle;         // current angular position around circle in radians (0=directly north of the center of the circle)
+	float _circle_angle_total;   // total angle travelled in radians
+	float _circle_angular_vel;   // angular velocity in radians/sec
+	float _circle_angular_vel_max;   // maximum velocity in radians/sec
+
 	math::Vector<3> _pos;
 	math::Vector<3> _pos_sp;
 	math::Vector<3> _vel;
@@ -214,6 +224,8 @@ private:
 	math::Vector<3> _vel_prev;			/**< velocity on previous step */
 	math::Vector<3> _vel_ff;
 	math::Vector<3> _sp_move_rate;
+
+	math::Vector<3> _circle_center;
 
 	/**
 	 * Update our local parameter cache.
@@ -268,6 +280,32 @@ private:
 	 * Set position setpoint for AUTO
 	 */
 	void		control_auto(float dt);
+
+	/**
+	 * circle calculate velocities
+	*/
+	void            circle_calc_velocities();
+
+	/**
+	 * circle init start angle
+	 */
+	void		circle_init_start_angle(bool use_heading);
+
+	/**
+	 * circle init
+	 */
+	void		circle_fixed_init();
+
+	/**
+	 * circle update
+	 */
+	void		circle_update(float dt);
+
+	/**
+	 * control simple circle
+	 */
+	void		control_circle_fixed(float dt);
+
 
 	/**
 	 * Select between barometric and global (AMSL) altitudes
@@ -326,7 +364,15 @@ MulticopterPositionControl::MulticopterPositionControl() :
 
 	_reset_pos_sp(true),
 	_reset_alt_sp(true),
-	_mode_auto(false)
+	_mode_auto(false),
+
+	_circle_fixed_init(false),
+	_circle_radius(0.0f),
+	_circle_rot_rate(20.0f),
+	_circle_angle(0.0f),
+	_circle_angle_total(0.0f),
+	_circle_angular_vel(0.0f),
+	_circle_angular_vel_max(0.0f)
 {
 	memset(&_vehicle_status, 0, sizeof(_vehicle_status));
 	memset(&_att, 0, sizeof(_att));
@@ -357,6 +403,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_vel_prev.zero();
 	_vel_ff.zero();
 	_sp_move_rate.zero();
+
+	_circle_center.zero();
 
 	_params_handles.thr_min		= param_find("MPC_THR_MIN");
 	_params_handles.thr_max		= param_find("MPC_THR_MAX");
@@ -859,6 +907,117 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3>& sphere_c, f
 	}
 }
 
+void MulticopterPositionControl::circle_calc_velocities()
+{
+        // if we are doing a panorama set the circle_angle to the current heading
+        if (_circle_radius <= 0) {
+                _circle_angular_vel_max =math::radians(_circle_rot_rate);
+                _circle_angular_vel = _circle_angular_vel_max;
+        } else {
+                // set starting angle to current heading - 180 degrees
+                _circle_angle = _wrap_pi(_att.yaw - M_PI_F);
+
+                /* speed */
+                float velocity_max = _params.vel_max(0) / 3.0f;
+
+                // angular_velocity in radians per second
+                _circle_angular_vel_max = velocity_max/_circle_radius;
+                _circle_angular_vel_max = math::constrain(math::radians(_circle_rot_rate),-_circle_angular_vel_max,_circle_angular_vel_max);
+
+                if (_circle_rot_rate < 0.0f) {
+                        _circle_angular_vel = -_circle_angular_vel_max;
+
+                } else {
+                        _circle_angular_vel = _circle_angular_vel_max;
+                }
+        }
+}
+
+void MulticopterPositionControl::circle_init_start_angle(bool use_heading)
+{
+        // initialise angle total
+        _circle_angle_total = 0;
+
+        // if the radius is zero we are doing panorama so init angle to the current heading
+        if (_circle_radius <= 0.0f) {
+                _circle_angle = _att.yaw;
+                return;
+        }
+
+        // if use_heading is true
+        if (use_heading) {
+                _circle_angle = _wrap_pi(_att.yaw-M_PI_F);
+
+        } else {
+                // if we are exactly at the center of the circle, init angle to directly behind vehicle (so vehicle will backup but not change heading)
+                if ((fabsf(_circle_center(0) - _pos_sp(0)) < FLT_EPSILON) && (fabsf(_circle_center(1) - _pos_sp(1)) < FLT_EPSILON)) {
+                        _circle_angle = _wrap_pi(_att.yaw-M_PI_F);
+                } else {
+                        // get bearing from circle center to vehicle in radians
+                        float bearing_rad = atan2f(_pos_sp(1)-_circle_center(1), _pos_sp(0) - _circle_center(0));
+                        _circle_angle = _wrap_pi(bearing_rad);
+                }
+        }
+}
+
+void MulticopterPositionControl::circle_fixed_init()
+{
+	if (_circle_fixed_init) {
+		return;
+	}
+
+	/* set circle center to circle_radius ahead of pos_sp point */
+	_circle_center(0) = _pos_sp(0) + _circle_radius * cosf(_att.yaw);
+	_circle_center(1) = _pos_sp(1) + _circle_radius * sinf(_att.yaw);
+	_circle_center(2) = _pos_sp(2);
+
+	// calculate velocities
+	circle_calc_velocities();
+
+	// set starting angle from vehicle heading
+	circle_init_start_angle(true);
+
+	_circle_fixed_init = true;
+}
+
+void MulticopterPositionControl::circle_update(float dt)
+{
+        // update the target angle and total angle traveled
+        float angle_change = _circle_angular_vel * dt;
+        _circle_angle += angle_change;
+        _circle_angle = _wrap_pi(_circle_angle);
+        _circle_angle_total += angle_change;
+
+        // if the circle_radius is zero we are doing panorama so no need to update loiter target
+        if (fabsf(_circle_radius) > FLT_EPSILON) {
+                // calculate target position
+                _pos_sp(0) = _circle_center(0) + _circle_radius * cosf(-_circle_angle);
+                _pos_sp(1) = _circle_center(1) - _circle_radius * sinf(-_circle_angle);
+                _pos_sp(2) = _circle_center(2);
+                // heading is 180 deg from vehicles target position around circle
+                _att_sp.yaw_body = _wrap_pi(_circle_angle-M_PI_F);
+
+        } else {
+                /*do nothing*/
+                _att_sp.yaw_body = _circle_angle;
+        }
+}
+
+void MulticopterPositionControl::control_circle_fixed(float dt)
+{
+
+        if (!_mode_auto) {
+                _mode_auto = true;
+                /* reset position setpoint on AUTO mode activation */
+                reset_pos_sp();
+                reset_alt_sp();
+        }
+
+	circle_fixed_init();
+
+	circle_update(dt);
+}
+
 void MulticopterPositionControl::control_auto(float dt)
 {
 	if (!_mode_auto) {
@@ -1105,6 +1264,10 @@ MulticopterPositionControl::task_main()
 			_vel_ff.zero();
 			_sp_move_rate.zero();
 
+			if (_control_mode.flag_control_custom_mode != vehicle_control_mode_s::CUSTOM_MODE_CIRCLE) {
+				_circle_fixed_init = false;
+			}
+
 			/* select control source */
 			if (_control_mode.flag_control_manual_enabled) {
 				/* manual control */
@@ -1115,6 +1278,8 @@ MulticopterPositionControl::task_main()
 				/* offboard control */
 				control_offboard(dt);
 				_mode_auto = false;
+			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_CIRCLE) {
+				control_circle_fixed(dt);
 
 			} else {
 				/* AUTO */
