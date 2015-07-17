@@ -59,7 +59,9 @@
 #define GEOFENCE_FILE_AND_MAX_DISTANCES 3
 
 #define GEOFENCE_RANGE_WARNING_LIMIT 3000000
+#define RESTRICTED_AREA_WARNING_LIMIT 3000000
 
+#define safe_dis 30.0f
 
 /* Oddly, ERROR is not defined for C++ */
 #ifdef ERROR
@@ -70,10 +72,13 @@ static const int ERROR = -1;
 Geofence::Geofence() :
 	SuperBlock(NULL, "GF"),
 	_fence_pub(-1),
+	_geofence_result_pub(-1),
+	_geofence_result{},
 	_home_pos{},
 	_home_pos_set(false),
 	_last_horizontal_range_warning(0),
 	_last_vertical_range_warning(0),
+	_last_restricted_area_warning(0),
 	_altitude_min(0),
 	_altitude_max(0),
 	_verticesCount(0),
@@ -173,24 +178,94 @@ bool Geofence::inside(double lat, double lon, float altitude)
 		}
 	}
 
-	bool inside_fence = inside_polygon(lat, lon, altitude);
+	bool is_inside = inside_restricted_area(lat, lon, altitude);
 
-	if (inside_fence) {
-		_outside_counter = 0;
-		return inside_fence;
+	if (is_inside) {
+		_geofence_result.fly_in_restricted_area = true;
 
 	} else {
-		_outside_counter++;
+		_geofence_result.fly_in_restricted_area = false;
+	}
 
-		if (_outside_counter > _param_counter_threshold.get()) {
-			return inside_fence;
+	/* publish geofence result */
+	publish_geofence_result();
 
-		} else {
-			return true;
-		}
+	if (_geofence_result.fly_in_restricted_area) {
+		return false;
+
+	} else {
+		return true;
 	}
 }
 
+bool Geofence:: inside_restricted_area(double lat, double lon, float altitude)
+{
+        struct fence_vertex_s vertex;
+
+        float dist_xy = -1.0f;
+        float dist_z = -1.0f;
+
+        int low = 0;
+        int high = 0;
+        int mid = 0;
+        int sel = 0;
+
+        dm_item_t _dm_item_t;
+
+        if(dm_read(DM_KEY_RESTRICTED_AREA_NUM, 0, &high, sizeof(int)) != sizeof(int)) {
+                return false;
+        }
+
+        //Binary-Search
+        while (low <= high)
+        {
+                mid = low + (high - low) / 2;
+                warnx("low %d, mid %d, high %d", low, mid, high);
+                if ((mid / 256) == 0) {
+                        _dm_item_t = DM_KEY_RESTRICTED_AREA_0;
+                            sel = mid;
+
+                } else if ((mid / 256) == 1) {
+
+                        _dm_item_t = DM_KEY_RESTRICTED_AREA_1;
+                            sel = mid - 256;
+
+                } else {
+                        _dm_item_t = DM_KEY_RESTRICTED_AREA_2;
+                            sel = mid - 512;
+
+                }
+
+                if (dm_read(_dm_item_t, sel, &vertex, sizeof(struct fence_vertex_s)) != sizeof(struct fence_vertex_s)) {
+                        break;
+                }
+
+                get_distance_to_point_global_wgs84(lat, lon, altitude,
+                                   vertex.lat, vertex.lon, 0.0f,
+                                   &dist_xy, &dist_z);
+
+                if (dist_xy < safe_dis )
+                {
+                        if (hrt_elapsed_time(&_last_restricted_area_warning) > RESTRICTED_AREA_WARNING_LIMIT) {
+                                mavlink_log_critical(_mavlinkFd, "fly in restricted area");
+                                _last_restricted_area_warning = hrt_absolute_time();
+                        }
+
+                        return true;
+                }
+
+                if (lon > (double)vertex.lon) {
+                        low = mid + 1;
+
+                } else {
+                        high = mid - 1;
+
+                }
+        }
+
+        /* fly safe */
+        return false;
+}
 
 bool Geofence::inside_polygon(double lat, double lon, float altitude)
 {
@@ -325,113 +400,204 @@ Geofence::publishFence(unsigned vertices)
 	}
 }
 
+void
+Geofence::publish_geofence_result()
+{
+        if (_geofence_result_pub == -1) {
+                _geofence_result_pub = orb_advertise(ORB_ID(geofence_result), &_geofence_result);
+
+        } else {
+                orb_publish(ORB_ID(geofence_result), _geofence_result_pub, &_geofence_result);
+        }
+}
+
 int
 Geofence::loadFromFile(const char *filename)
 {
 	FILE		*fp;
 	char		line[120];
 	int			pointCounter = 0;
-	bool		gotVertical = false;
 	const char commentChar = '#';
 	int rc = ERROR;
+	int sel = 0;
+	int newVersion = -1;
+	bool reloadData = false;
 
-	/* Make sure no data is left in the datamanager */
-	clearDm();
+	dm_item_t _dm_item_t;
 
-	/* open the mixer definition file */
-	fp = fopen(GEOFENCE_FILENAME, "r");
+	 /* open the mixer definition file */
+        fp = fopen(GEOFENCE_FILENAME, "r");
 
-	if (fp == NULL) {
-		return ERROR;
-	}
+        if (fp == NULL) {
+                return ERROR;
+        }
 
-	/* create geofence points from valid lines and store in DM */
-	for (;;) {
-		/* get a line, bail on error/EOF */
-		if (fgets(line, sizeof(line), fp) == NULL) {
-			break;
-		}
+        /* create geofence points from valid lines and store in DM */
+        for (;;) {
 
-		/* Trim leading whitespace */
-		size_t textStart = 0;
+                /* get a line, bail on error/EOF */
+                if (fgets(line, sizeof(line), fp) == NULL) {
+                        break;
+                }
 
-		while ((textStart < sizeof(line) / sizeof(char)) && isspace(line[textStart])) { textStart++; }
+                /* Trim leading whitespace */
+                size_t textStart = 0;
 
-		/* if the line starts with #, skip */
-		if (line[textStart] == commentChar) {
-			continue;
-		}
+                while ((textStart < sizeof(line) / sizeof(char)) && isspace(line[textStart])) { textStart++; }
 
-		/* if there is only a linefeed, skip it */
-		if (line[0] == '\n') {
-			continue;
-		}
+                /* if the line starts with #, skip */
+                if (line[textStart] == commentChar) {
+                        continue;
+                }
 
-		if (gotVertical) {
-			/* Parse the line as a geofence point */
-			struct fence_vertex_s vertex;
+                /* if there is only a linefeed, skip it */
+                if (line[0] == '\n') {
+                        continue;
+                }
 
-			/* if the line starts with DMS, this means that the coordinate is given as degree minute second instead of decimal degrees */
-			if (line[textStart] == 'D' && line[textStart + 1] == 'M' && line[textStart + 2] == 'S') {
-				/* Handle degree minute second format */
-				float lat_d, lat_m, lat_s, lon_d, lon_m, lon_s;
+                if (reloadData) {
+                        /* Parse the line as a geofence point */
+                        struct fence_vertex_s vertex;
 
-				if (sscanf(line, "DMS %f %f %f %f %f %f", &lat_d, &lat_m, &lat_s, &lon_d, &lon_m, &lon_s) != 6) {
-					warnx("Scanf to parse DMS geofence vertex failed.");
-					goto error;
-				}
+                        /* Handle decimal degree format */
+                        if (sscanf(line, "%f %f", &(vertex.lon), &(vertex.lat)) != 2) {
+                                warnx("Scanf to parse geofence vertex failed.");
+                                goto error;
+                        }
 
-//				warnx("Geofence DMS: %.5f %.5f %.5f ; %.5f %.5f %.5f", (double)lat_d, (double)lat_m, (double)lat_s, (double)lon_d, (double)lon_m, (double)lon_s);
+                        if ((pointCounter / 256) == 0) {
+                                _dm_item_t = DM_KEY_RESTRICTED_AREA_0;
+                                sel = pointCounter;
 
-				vertex.lat = lat_d + lat_m / 60.0f + lat_s / 3600.0f;
-				vertex.lon = lon_d + lon_m / 60.0f + lon_s / 3600.0f;
+                        } else if ((pointCounter / 256) == 1) {
+                                _dm_item_t = DM_KEY_RESTRICTED_AREA_1;
+                                sel = pointCounter - 256;
 
-			} else {
-				/* Handle decimal degree format */
-				if (sscanf(line, "%f %f", &(vertex.lat), &(vertex.lon)) != 2) {
-					warnx("Scanf to parse geofence vertex failed.");
-					goto error;
-				}
-			}
+                        } else {
+                                _dm_item_t = DM_KEY_RESTRICTED_AREA_2;
+                                sel = pointCounter - 512;
+                        }
 
-			if (dm_write(DM_KEY_FENCE_POINTS, pointCounter, DM_PERSIST_POWER_ON_RESET, &vertex, sizeof(vertex)) != sizeof(vertex)) {
-				goto error;
-			}
+                        if (dm_write(_dm_item_t, sel, DM_PERSIST_POWER_ON_RESET, &vertex, sizeof(vertex)) != sizeof(vertex)) {
+                                goto error;
+                        }
 
-			warnx("Geofence: point: %d, lat %.5f: lon: %.5f", pointCounter, (double)vertex.lat, (double)vertex.lon);
+                        pointCounter++;
 
-			pointCounter++;
+                } else {
+                        /* Parse the line as the database version */
+                        if (sscanf(line, "%d", &newVersion) != 1) {
+                                warnx("Scanf to parse database version failed.");
+                                goto error;
+                        }
 
-		} else {
-			/* Parse the line as the vertical limits */
-			if (sscanf(line, "%f %f", &_altitude_min, &_altitude_max) != 2) {
-				goto error;
-			}
+                        if (checkDm(newVersion)) {
+                                mavlink_log_info(_mavlinkFd, "geofence.txt had been loaded, stop loading");
+                                warnx("geofence.txt had been loaded, stop loading");
+                                return true;
 
-			warnx("Geofence: alt min: %.4f, alt_max: %.4f", (double)_altitude_min, (double)_altitude_max);
-			gotVertical = true;
-		}
-	}
+                        }else {
+                                mavlink_log_info(_mavlinkFd, "geofence.txt has not been loaded, continue loading");
+                                warnx("geofence.txt has not been loaded, continue loading");
+                        }
 
-	/* Check if import was successful */
-	if (gotVertical && pointCounter > 0) {
-		_verticesCount = pointCounter;
-		warnx("Geofence: imported successfully");
-		mavlink_log_info(_mavlinkFd, "Geofence imported");
-		rc = OK;
+                        /* Make sure no data is left in the datamanager */
+                        clearDm();
 
-	} else {
-		warnx("Geofence: import error");
-		mavlink_log_critical(_mavlinkFd, "Geofence import error");
-	}
+                        if (dm_write(DM_KEY_RESTRICTED_AREA_VERSION, 0, DM_PERSIST_POWER_ON_RESET, &newVersion, sizeof(int)) != sizeof(int)) {
+                                goto error;
+                        }
+
+                        warnx("geofence database version %d", newVersion);
+                        reloadData = true;
+                }
+        }
+
+        if (dm_write(DM_KEY_RESTRICTED_AREA_NUM, 0, DM_PERSIST_POWER_ON_RESET, &pointCounter, sizeof(int)) != sizeof(int)) {
+                goto error;
+        }
+
+        /* Check if Noflyzones import was successful */
+        if ( pointCounter > 0) {
+                warnx("geofence imported %d area", pointCounter);
+                mavlink_log_info(_mavlinkFd, "geofence imported %d area", pointCounter);
+                rc = OK;
+
+        } else {
+                warnx("geofence import error");
+                mavlink_log_critical(_mavlinkFd, "geofence import error");
+        }
 
 error:
-	fclose(fp);
-	return rc;
+        fclose(fp);
+        return rc;
+}
+
+bool Geofence::checkDm(int newVersion)
+{
+        struct fence_vertex_s vertex;
+
+        int sel = 0;
+        int area_cnt = 0;
+        int oldVersion = -1;
+
+        float lon_tmp = 180.0f;
+
+        dm_item_t _dm_item_t;
+
+        if (dm_read(DM_KEY_RESTRICTED_AREA_VERSION, 0, &oldVersion, sizeof(int)) != sizeof(int)) {
+                return false;
+        }
+
+        if (newVersion != oldVersion) {
+                return false;
+        }
+
+
+        if (dm_read(DM_KEY_RESTRICTED_AREA_NUM, 0, &area_cnt, sizeof(int)) != sizeof(int)) {
+                return false;
+        }
+
+        area_cnt = area_cnt - 1;
+
+        while(area_cnt >= 0) {
+
+                if ((area_cnt / 256) == 0) {
+                        _dm_item_t = DM_KEY_RESTRICTED_AREA_0;
+                        sel = area_cnt;
+
+                } else if ((area_cnt / 256) == 1) {
+                        _dm_item_t = DM_KEY_RESTRICTED_AREA_1;
+                        sel = area_cnt - 256;
+
+                } else {
+                        _dm_item_t = DM_KEY_RESTRICTED_AREA_2;
+                        sel = area_cnt - 512;
+                }
+
+                if (dm_read(_dm_item_t, sel, &vertex, sizeof(struct fence_vertex_s)) != sizeof(struct fence_vertex_s)) {
+                        return false;
+                }
+
+                if (vertex.lon > lon_tmp) {
+                        return false;
+                }
+
+                lon_tmp = vertex.lon;
+
+                area_cnt--;
+        }
+
+        return true;
 }
 
 int Geofence::clearDm()
 {
-	dm_clear(DM_KEY_FENCE_POINTS);
-	return OK;
+        dm_clear(DM_KEY_RESTRICTED_AREA_VERSION);
+        dm_clear(DM_KEY_RESTRICTED_AREA_0);
+        dm_clear(DM_KEY_RESTRICTED_AREA_1);
+        dm_clear(DM_KEY_RESTRICTED_AREA_2);
+        dm_clear(DM_KEY_RESTRICTED_AREA_NUM);
+
+        return OK;
 }

@@ -153,6 +153,7 @@ bool gps_failure_cmd				# Set to true if a gps failure mode is commanded
 bool beyond_control                                             # Set ot true if the drone is out of control
 
 bool barometer_failure				# Set to true if a barometer failure is detected
+bool fly_in_restricted_area			# Set to true if fly in restricted area
 
 bool offboard_control_signal_found_once
 bool offboard_control_signal_lost

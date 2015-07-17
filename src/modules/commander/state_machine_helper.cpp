@@ -547,11 +547,10 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			break;
 		}
 		if ((status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL
-		 || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY) && armed) {
+		 || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY || status->fly_in_restricted_area) && armed && !status->condition_landed) {
 			status->failsafe = true;
 			// if (status->condition_global_position_valid && status->condition_home_position_valid) {
-			if (status->condition_global_position_valid && status->condition_home_position_valid && status->battery_warning != vehicle_status_s::
-				VEHICLE_BATTERY_WARNING_EMERGENCY) {
+			if (status->condition_global_position_valid && status->condition_home_position_valid && (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL || (status->fly_in_restricted_area && (nav_state_old == vehicle_status_s::NAVIGATION_STATE_POSCTL || nav_state_old == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL)))) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
@@ -663,7 +662,9 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	// 	break;
 	case vehicle_status_s::MAIN_STATE_TAKEOFF:
 
-		if (status->condition_global_position_valid && status->condition_home_position_valid) {
+		if (status->fly_in_restricted_area) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
+		} else if (status->condition_global_position_valid && status->condition_home_position_valid) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_TAKEOFF;
 		} else if (status->condition_local_position_valid) {
 			status->failsafe = true;

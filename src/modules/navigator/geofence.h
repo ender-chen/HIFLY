@@ -46,6 +46,7 @@
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/home_position.h>
+#include <uORB/topics/geofence_result.h>
 #include <controllib/blocks.hpp>
 #include <controllib/block/BlockParam.hpp>
 #include <drivers/drv_hrt.h>
@@ -83,6 +84,10 @@ public:
 
 	bool inside_polygon(double lat, double lon, float altitude);
 
+	bool inside_restricted_area(double lat, double lon, float altitude);
+
+	bool checkDm(int newVersion);
+
 	int clearDm();
 
 	bool valid();
@@ -93,6 +98,8 @@ public:
 	void addPoint(int argc, char *argv[]);
 
 	void publishFence(unsigned vertices);
+
+	void publish_geofence_result();
 
 	int loadFromFile(const char *filename);
 
@@ -106,12 +113,16 @@ public:
 
 private:
 	orb_advert_t	_fence_pub;			/**< publish fence topic */
+	orb_advert_t	_geofence_result_pub;
+
+	geofence_result_s _geofence_result;
 
 	home_position_s _home_pos;
 	bool _home_pos_set;
 
 	hrt_abstime _last_horizontal_range_warning;
 	hrt_abstime _last_vertical_range_warning;
+	hrt_abstime _last_restricted_area_warning;
 
 	float			_altitude_min;
 	float			_altitude_max;
@@ -134,6 +145,5 @@ private:
 	bool inside(const struct vehicle_global_position_s &global_position);
 	bool inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl);
 };
-
 
 #endif /* GEOFENCE_H_ */

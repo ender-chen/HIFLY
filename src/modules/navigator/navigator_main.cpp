@@ -110,7 +110,6 @@ Navigator::Navigator() :
 	_param_update_sub(-1),
 	_pos_sp_triplet_pub(-1),
 	_mission_result_pub(-1),
-	_geofence_result_pub(-1),
 	_att_sp_pub(-1),
 	_vstatus{},
 	_control_mode{},
@@ -413,19 +412,12 @@ Navigator::task_main()
 			last_geofence_check = hrt_absolute_time();
 			have_geofence_position_data = false;
 			if (!inside) {
-				/* inform other apps via the mission result */
-				_geofence_result.geofence_violated = true;
-				publish_geofence_result();
-
 				/* Issue a warning about the geofence violation once */
 				if (!_geofence_violation_warning_sent) {
 					mavlink_log_critical(_mavlink_fd, "Geofence violation");
 					_geofence_violation_warning_sent = true;
 				}
 			} else {
-				/* inform other apps via the mission result */
-				_geofence_result.geofence_violated = false;
-				publish_geofence_result();
 				/* Reset the _geofence_violation_warning_sent field */
 				_geofence_violation_warning_sent = false;
 			}
@@ -702,21 +694,6 @@ Navigator::publish_mission_result()
 	_mission_result.item_changed_index = 0;
 	_mission_result.item_do_jump_remaining = 0;
 	_mission_result.valid = true;
-}
-
-void
-Navigator::publish_geofence_result()
-{
-
-	/* lazily publish the geofence result only once available */
-	if (_geofence_result_pub > 0) {
-		/* publish mission result */
-		orb_publish(ORB_ID(geofence_result), _geofence_result_pub, &_geofence_result);
-
-	} else {
-		/* advertise and publish */
-		_geofence_result_pub = orb_advertise(ORB_ID(geofence_result), &_geofence_result);
-	}
 }
 
 void
