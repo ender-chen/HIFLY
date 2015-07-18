@@ -2141,6 +2141,7 @@ Sensors::task_main()
 	_accel2_sub = orb_subscribe_multi(ORB_ID(sensor_accel), 2);
 	_mag2_sub = orb_subscribe_multi(ORB_ID(sensor_mag), 2);
 	_rc_sub = orb_subscribe(ORB_ID(input_rc));
+	_app_sub = orb_subscribe(ORB_ID(app_control_setpoint));
 	_baro_sub = orb_subscribe_multi(ORB_ID(sensor_baro), 0);
 	_baro1_sub = orb_subscribe_multi(ORB_ID(sensor_baro), 1);
 	_diff_pres_sub = orb_subscribe(ORB_ID(differential_pressure));
