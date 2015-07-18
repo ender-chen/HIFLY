@@ -72,8 +72,6 @@ static const int ERROR = -1;
 Geofence::Geofence() :
 	SuperBlock(NULL, "GF"),
 	_fence_pub(-1),
-	_geofence_result_pub(-1),
-	_geofence_result{},
 	_home_pos{},
 	_home_pos_set(false),
 	_last_horizontal_range_warning(0),
@@ -101,20 +99,20 @@ Geofence::~Geofence()
 }
 
 
-bool Geofence::inside(const struct vehicle_global_position_s &global_position)
+bool Geofence::inside(const struct vehicle_global_position_s &global_position, struct geofence_result_s &result)
 {
-	return inside(global_position.lat, global_position.lon, global_position.alt);
+	return inside(global_position.lat, global_position.lon, global_position.alt, result);
 }
 
-bool Geofence::inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl)
+bool Geofence::inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl, struct geofence_result_s &result)
 {
-	return inside(global_position.lat, global_position.lon, baro_altitude_amsl);
+	return inside(global_position.lat, global_position.lon, baro_altitude_amsl, result);
 }
 
 
 bool Geofence::inside(const struct vehicle_global_position_s &global_position,
 		      const struct vehicle_gps_position_s &gps_position, float baro_altitude_amsl,
-		      const struct home_position_s home_pos, bool home_position_set)
+		      const struct home_position_s home_pos, bool home_position_set, struct geofence_result_s &result)
 {
 	updateParams();
 
@@ -123,25 +121,25 @@ bool Geofence::inside(const struct vehicle_global_position_s &global_position,
 
 	if (getAltitudeMode() == Geofence::GF_ALT_MODE_WGS84) {
 		if (getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
-			return inside(global_position);
+			return inside(global_position, result);
 
 		} else {
 			return inside((double)gps_position.lat * 1.0e-7, (double)gps_position.lon * 1.0e-7,
-				      (double)gps_position.alt * 1.0e-3);
+				      (double)gps_position.alt * 1.0e-3, result);
 		}
 
 	} else {
 		if (getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
-			return inside(global_position, baro_altitude_amsl);
+			return inside(global_position, baro_altitude_amsl, result);
 
 		} else {
 			return inside((double)gps_position.lat * 1.0e-7, (double)gps_position.lon * 1.0e-7,
-				      baro_altitude_amsl);
+				      baro_altitude_amsl, result);
 		}
 	}
 }
 
-bool Geofence::inside(double lat, double lon, float altitude)
+bool Geofence::inside(double lat, double lon, float altitude, struct geofence_result_s &result)
 {
 	if (_param_geofence_mode.get() >= GEOFENCE_MAX_DISTANCES_ONLY) {
 		int32_t max_horizontal_distance = _param_max_hor_distance.get();
@@ -156,41 +154,46 @@ bool Geofence::inside(double lat, double lon, float altitude)
 								   &dist_xy, &dist_z);
 
 				if (max_vertical_distance > 0 && (dist_z > max_vertical_distance)) {
+					result.geofence_ver_violated = true;
+
 					if (hrt_elapsed_time(&_last_vertical_range_warning) > GEOFENCE_RANGE_WARNING_LIMIT) {
 						mavlink_log_critical(_mavlinkFd, "Geofence exceeded max vertical distance by %.1f m",
 								     (double)(dist_z - max_vertical_distance));
 						_last_vertical_range_warning = hrt_absolute_time();
 					}
-
-					return false;
+				} else {
+					result.geofence_ver_violated = false;
 				}
 
 				if (max_horizontal_distance > 0 && (dist_xy > max_horizontal_distance)) {
+					result.geofence_hor_violated = true;
+
 					if (hrt_elapsed_time(&_last_horizontal_range_warning) > GEOFENCE_RANGE_WARNING_LIMIT) {
 						mavlink_log_critical(_mavlinkFd, "Geofence exceeded max horizontal distance by %.1f m",
 								     (double)(dist_xy - max_horizontal_distance));
 						_last_horizontal_range_warning = hrt_absolute_time();
 					}
-
-					return false;
+				} else {
+					result.geofence_hor_violated =false;
 				}
 			}
 		}
+
+	} else {
+		result.geofence_ver_violated = false;
+		result.geofence_hor_violated = false;
 	}
 
 	bool is_inside = inside_restricted_area(lat, lon, altitude);
 
 	if (is_inside) {
-		_geofence_result.fly_in_restricted_area = true;
+		result.fly_in_restricted_area = true;
 
 	} else {
-		_geofence_result.fly_in_restricted_area = false;
+		result.fly_in_restricted_area = false;
 	}
 
-	/* publish geofence result */
-	publish_geofence_result();
-
-	if (_geofence_result.fly_in_restricted_area) {
+	if (result.geofence_ver_violated || result.geofence_hor_violated || result.fly_in_restricted_area) {
 		return false;
 
 	} else {
@@ -398,17 +401,6 @@ Geofence::publishFence(unsigned vertices)
 	} else {
 		orb_publish(ORB_ID(fence), _fence_pub, &vertices);
 	}
-}
-
-void
-Geofence::publish_geofence_result()
-{
-        if (_geofence_result_pub == -1) {
-                _geofence_result_pub = orb_advertise(ORB_ID(geofence_result), &_geofence_result);
-
-        } else {
-                orb_publish(ORB_ID(geofence_result), _geofence_result_pub, &_geofence_result);
-        }
 }
 
 int

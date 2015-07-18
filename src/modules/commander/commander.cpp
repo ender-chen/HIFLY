@@ -1969,7 +1969,7 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		/* Check for eofence violation */
-		if (armed.armed && (geofence_result.fly_in_restricted_area || mission_result.flight_termination)) {
+		if (armed.armed && (geofence_result.geofence_hor_violated || geofence_result.geofence_ver_violated || geofence_result.fly_in_restricted_area || mission_result.flight_termination)) {
 			//XXX: make this configurable to select different actions (e.g. navigation modes)
 			/* this will only trigger if geofence is activated via param and a geofence file is present, also there is a circuit breaker to disable the actual flight termination in the px4io driver */
 			armed.force_failsafe = true;

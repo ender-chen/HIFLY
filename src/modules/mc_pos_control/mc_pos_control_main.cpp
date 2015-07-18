@@ -73,6 +73,8 @@
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_global_velocity_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/geofence_result.h>
+#include <uORB/topics/home_position.h>
 
 #include <systemlib/systemlib.h>
 #include <mathlib/mathlib.h>
@@ -130,6 +132,8 @@ private:
 	int		_pos_sp_triplet_sub;	/**< position setpoint triplet */
 	int		_local_pos_sp_sub;		/**< offboard local position setpoint */
 	int		_global_vel_sp_sub;		/**< offboard global velocity setpoint */
+	int		_geofence_result_sub;	/**< geofence result*/
+	int		_home_position_sub;     /**< home position*/
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -145,9 +149,11 @@ private:
 	struct position_setpoint_triplet_s		_pos_sp_triplet;	/**< vehicle global position setpoint triplet */
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
 	struct vehicle_global_velocity_setpoint_s	_global_vel_sp;	/**< vehicle global velocity setpoint */
-
+	struct geofence_result_s			_geofence_result;	/**< geofence result */
+	struct home_position_s             		_home_position;		/**< home result*/
 
 	struct {
+
 		param_t thr_min;
 		param_t thr_max;
 		param_t z_p;
@@ -326,6 +332,8 @@ static const int ERROR = -1;
 MulticopterPositionControl	*g_control;
 }
 
+float simple_yaw = 0.0f;
+float surper_simple_yaw = 0.0f;
 MulticopterPositionControl::MulticopterPositionControl() :
 
 	_task_should_exit(false),
@@ -342,6 +350,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_local_pos_sub(-1),
 	_pos_sp_triplet_sub(-1),
 	_global_vel_sp_sub(-1),
+	_geofence_result_sub(-1),
+	_home_position_sub(-1),
 
 /* publications */
 	_att_sp_pub(-1),
@@ -375,6 +385,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	memset(&_global_vel_sp, 0, sizeof(_global_vel_sp));
 
 	memset(&_ref_pos, 0, sizeof(_ref_pos));
+	memset(&_geofence_result, 0, sizeof(_geofence_result));
+	memset(&_home_position, 0, sizeof(_home_position_sub));
 
 	_params.pos_p.zero();
 	_params.vel_p.zero();
@@ -563,6 +575,18 @@ MulticopterPositionControl::poll_subscriptions()
 	if (updated) {
 		orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
 	}
+
+	orb_check(_geofence_result_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(geofence_result), _geofence_result_sub, &_geofence_result);
+	}
+
+	orb_check(_home_position_sub, &updated);
+
+	if(updated) {
+	    orb_copy(ORB_ID(home_position), _home_position_sub, &_home_position);
+	}
 }
 
 float
@@ -671,8 +695,53 @@ MulticopterPositionControl::control_manual(float dt)
 
 	if (_control_mode.flag_control_position_enabled) {
 		/* move position setpoint with roll/pitch stick */
-		_sp_move_rate(0) = _manual.x;
-		_sp_move_rate(1) = _manual.y;
+
+		float rollx, pitchx, rolly, pitchy;
+
+		float home_bearing;
+
+		home_bearing = PI/2 + atan2f((_local_pos.x - _home_position.x), -(_local_pos.y - _home_position.y));
+
+		if(home_bearing < 0)
+			home_bearing += 2*PI;
+
+		if(home_bearing >= 2*PI)
+			home_bearing -= 2*PI;
+
+		surper_simple_yaw = home_bearing + PI;
+
+		if((_manual.x > 0) && _geofence_result.geofence_hor_violated) {
+			if(fabsf(_manual.x) <= fabsf(_manual.y)) {
+				float _manual_x_temp;
+
+				_manual_x_temp = -fabsf(_manual.y);
+				rollx = cosf(surper_simple_yaw)*_manual_x_temp - sinf(surper_simple_yaw)*_manual.y;
+				pitchx = sinf(surper_simple_yaw)*_manual_x_temp + cosf(surper_simple_yaw)*_manual.y;
+			}
+			else {
+				rollx = -sinf(surper_simple_yaw)*_manual.y;
+				pitchx = cosf(surper_simple_yaw)*_manual.y;
+			}
+		}
+		else
+		{
+			rollx = cosf(surper_simple_yaw)*_manual.x - sinf(surper_simple_yaw)*_manual.y;
+			pitchx = sinf(surper_simple_yaw)*_manual.x + cosf(surper_simple_yaw)*_manual.y;
+		}
+
+		rolly = cosf(_att.yaw)*rollx + sinf(_att.yaw)*pitchx;
+		pitchy = -sinf(_att.yaw)*rollx + cosf(_att.yaw)*pitchx;
+
+		_sp_move_rate(0) = rolly;
+		_sp_move_rate(1) = pitchy;
+
+		//_sp_move_rate(0) = _manual.x;
+		//_sp_move_rate(1) = _manual.y;
+	}
+
+	if (_control_mode.flag_control_altitude_enabled) {
+		if((_manual.x < 0 && _geofence_result.geofence_ver_violated))
+		_sp_move_rate(2) = 0;
 	}
 
 	/* limit setpoint move rate */
@@ -1081,7 +1150,8 @@ MulticopterPositionControl::task_main()
 	_pos_sp_triplet_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
 	_local_pos_sp_sub = orb_subscribe(ORB_ID(vehicle_local_position_setpoint));
 	_global_vel_sp_sub = orb_subscribe(ORB_ID(vehicle_global_velocity_setpoint));
-
+	_geofence_result_sub = orb_subscribe(ORB_ID(geofence_result));
+	_home_position_sub = orb_subscribe(ORB_ID(home_position));
 
 	parameters_update(true);
 
@@ -1139,6 +1209,13 @@ MulticopterPositionControl::task_main()
 			reset_int_z = true;
 			reset_int_xy = true;
 			reset_yaw_sp = true;
+			simple_yaw = _att.yaw;
+			surper_simple_yaw = _att.yaw + PI;
+
+			while(surper_simple_yaw >= 2*PI)
+				surper_simple_yaw -= 2*PI;
+			while(surper_simple_yaw < 0)
+				surper_simple_yaw += 2*PI;
 		}
 
 		//Update previous arming state

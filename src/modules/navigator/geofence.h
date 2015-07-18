@@ -80,7 +80,7 @@ public:
 	 */
 	bool inside(const struct vehicle_global_position_s &global_position,
 		    const struct vehicle_gps_position_s &gps_position, float baro_altitude_amsl,
-		    const struct home_position_s home_pos, bool home_position_set);
+		    const struct home_position_s home_pos, bool home_position_set, struct geofence_result_s &result);
 
 	bool inside_polygon(double lat, double lon, float altitude);
 
@@ -99,8 +99,6 @@ public:
 
 	void publishFence(unsigned vertices);
 
-	void publish_geofence_result();
-
 	int loadFromFile(const char *filename);
 
 	bool isEmpty() {return _verticesCount == 0;}
@@ -113,9 +111,6 @@ public:
 
 private:
 	orb_advert_t	_fence_pub;			/**< publish fence topic */
-	orb_advert_t	_geofence_result_pub;
-
-	geofence_result_s _geofence_result;
 
 	home_position_s _home_pos;
 	bool _home_pos_set;
@@ -141,9 +136,9 @@ private:
 
 	int _mavlinkFd;
 
-	bool inside(double lat, double lon, float altitude);
-	bool inside(const struct vehicle_global_position_s &global_position);
-	bool inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl);
+	bool inside(double lat, double lon, float altitude, struct geofence_result_s &result);
+	bool inside(const struct vehicle_global_position_s &global_position, struct geofence_result_s &result);
+	bool inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl, struct geofence_result_s &result);
 };
 
 #endif /* GEOFENCE_H_ */
