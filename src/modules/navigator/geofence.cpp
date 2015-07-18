@@ -141,6 +141,9 @@ bool Geofence::inside(const struct vehicle_global_position_s &global_position,
 
 bool Geofence::inside(double lat, double lon, float altitude, struct geofence_result_s &result)
 {
+	result.geofence_ver_violated = false;
+	result.geofence_hor_violated = false;
+
 	if (_param_geofence_mode.get() >= GEOFENCE_MAX_DISTANCES_ONLY) {
 		int32_t max_horizontal_distance = _param_max_hor_distance.get();
 		int32_t max_vertical_distance = _param_max_ver_distance.get();
@@ -178,10 +181,6 @@ bool Geofence::inside(double lat, double lon, float altitude, struct geofence_re
 				}
 			}
 		}
-
-	} else {
-		result.geofence_ver_violated = false;
-		result.geofence_hor_violated = false;
 	}
 
 	bool is_inside = inside_restricted_area(lat, lon, altitude);

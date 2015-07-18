@@ -740,7 +740,7 @@ MulticopterPositionControl::control_manual(float dt)
 	}
 
 	if (_control_mode.flag_control_altitude_enabled) {
-		if((_manual.x < 0 && _geofence_result.geofence_ver_violated))
+		if((_sp_move_rate(2) < 0 && _geofence_result.geofence_ver_violated))
 		_sp_move_rate(2) = 0;
 	}
 
