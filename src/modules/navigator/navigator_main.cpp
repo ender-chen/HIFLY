@@ -64,6 +64,7 @@
 
 #include <uORB/uORB.h>
 #include <uORB/topics/home_position.h>
+#include <uORB/topics/roi_position.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/mission.h>
 #include <uORB/topics/fence.h>
@@ -102,6 +103,7 @@ Navigator::Navigator() :
 	_global_pos_sub(-1),
 	_gps_pos_sub(-1),
 	_home_pos_sub(-1),
+	_roi_pos_sub(-1),
 	_vstatus_sub(-1),
 	_capabilities_sub(-1),
 	_control_mode_sub(-1),
@@ -118,12 +120,14 @@ Navigator::Navigator() :
 	_gps_pos{},
 	_sensor_combined{},
 	_home_pos{},
+	_roi_pos{},
 	_mission_item{},
 	_nav_caps{},
 	_pos_sp_triplet{},
 	_mission_result{},
 	_att_sp{},
 	_home_position_set(false),
+	_roi_position_set(false),
 	_mission_item_valid(false),
 	_mission_instance_count(0),
 	_loop_perf(perf_alloc(PC_ELAPSED, "navigator")),
@@ -216,7 +220,20 @@ Navigator::home_position_update()
 		}
 	}
 }
+void
+Navigator::roi_position_update()
+{
+	bool updated = false;
+	orb_check(_roi_pos_sub, &updated);
 
+	if (updated) {
+		orb_copy(ORB_ID(roi_position), _roi_pos_sub, &_roi_pos);
+
+		if (_roi_pos.timestamp > 0) {
+			_roi_position_set = true;
+		}
+	}
+}
 void
 Navigator::navigation_capabilities_update()
 {
@@ -285,6 +302,7 @@ Navigator::task_main()
 	_vstatus_sub = orb_subscribe(ORB_ID(vehicle_status));
 	_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
 	_home_pos_sub = orb_subscribe(ORB_ID(home_position));
+	_roi_pos_sub = orb_subscribe(ORB_ID(roi_position));
 	_onboard_mission_sub = orb_subscribe(ORB_ID(onboard_mission));
 	_offboard_mission_sub = orb_subscribe(ORB_ID(offboard_mission));
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
@@ -296,6 +314,7 @@ Navigator::task_main()
 	gps_position_update();
 	sensor_combined_update();
 	home_position_update();
+	roi_position_update();
 	navigation_capabilities_update();
 	params_update();
 
@@ -307,7 +326,7 @@ Navigator::task_main()
 	const hrt_abstime mavlink_open_interval = 500000;
 
 	/* wakeup source(s) */
-	struct pollfd fds[8];
+	struct pollfd fds[9];
 
 	/* Setup of loop */
 	fds[0].fd = _global_pos_sub;
@@ -326,6 +345,8 @@ Navigator::task_main()
 	fds[6].events = POLLIN;
 	fds[7].fd = _gps_pos_sub;
 	fds[7].events = POLLIN;
+	fds[8].fd = _roi_pos_sub;
+	fds[8].events = POLLIN;
 
 	while (!_task_should_exit) {
 
@@ -351,7 +372,10 @@ Navigator::task_main()
 		}
 
 		static bool have_geofence_position_data = false;
-
+		/* roi position updated */
+		if (fds[8].revents & POLLIN) {
+			roi_position_update();
+		}
 		/* gps updated */
 		if (fds[7].revents & POLLIN) {
 			gps_position_update();

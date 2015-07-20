@@ -56,6 +56,7 @@
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/geofence_result.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
+#include <uORB/topics/roi_position.h>
 
 #include "navigator_mode.h"
 #include "mission.h"
@@ -134,7 +135,9 @@ public:
 	struct vehicle_gps_position_s*	    get_gps_position() { return &_gps_pos; }
 	struct sensor_combined_s*	    get_sensor_combined() { return &_sensor_combined; }
 	struct home_position_s*		    get_home_position() { return &_home_pos; }
+	bool				    roi_position_valid() { return _roi_position_set; }
 	bool				    home_position_valid() { return _home_position_set; }
+	struct roi_position_s*   get_roi_position() { return &_roi_pos; }
 	struct position_setpoint_triplet_s* get_position_setpoint_triplet() { return &_pos_sp_triplet; }
 	struct mission_result_s*	    get_mission_result() { return &_mission_result; }
 	struct geofence_result_s*		    get_geofence_result() { return &_geofence_result; }
@@ -176,6 +179,7 @@ private:
 	int		_gps_pos_sub;		/**< gps position subscription */
 	int		_sensor_combined_sub;		/**< sensor combined subscription */
 	int		_home_pos_sub;			/**< home position subscription */
+	int 	_roi_pos_sub;
 	int		_vstatus_sub;			/**< vehicle status subscription */
 	int		_capabilities_sub;		/**< notification of vehicle capabilities updates */
 	int		_control_mode_sub;		/**< vehicle control mode subscription */
@@ -196,6 +200,7 @@ private:
 	vehicle_gps_position_s				_gps_pos;		/**< gps position */
 	sensor_combined_s				_sensor_combined;	/**< sensor values */
 	home_position_s					_home_pos;		/**< home position for RTL */
+	roi_position_s					_roi_pos;		/**< roi position for MISSION */
 	mission_item_s 					_mission_item;		/**< current mission item */
 	navigation_capabilities_s			_nav_caps;		/**< navigation capabilities */
 	position_setpoint_triplet_s			_pos_sp_triplet;	/**< triplet of position setpoints */
@@ -205,7 +210,7 @@ private:
 	vehicle_attitude_setpoint_s			_att_sp;
 
 	bool 		_home_position_set;
-
+	bool 		_roi_position_set;
 	bool 		_mission_item_valid;		/**< flags if the current mission item is valid */
 	int		_mission_instance_count;	/**< instance count for the current mission */
 
@@ -257,6 +262,11 @@ private:
 	 * Retrieve home position
 	 */
 	void		home_position_update();
+
+	/**
+	 * Retrieve roi position
+	 */
+	void		roi_position_update();
 
 	/**
 	 * Retreive navigation capabilities

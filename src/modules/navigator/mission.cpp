@@ -555,6 +555,24 @@ Mission::heading_sp_update()
 		        _navigator->get_home_position()->lat,
 		        _navigator->get_home_position()->lon) + M_PI_F);
 	}
+	else if (_param_yawmode.get() == MISSION_YAWMODE_ROI) {
+		if (_navigator->roi_position_valid())
+		{
+			_mission_item.yaw = get_bearing_to_next_waypoint(
+			        _navigator->get_global_position()->lat,
+			        _navigator->get_global_position()->lon,
+			        _navigator->get_roi_position()->lat,
+			        _navigator->get_roi_position()->lon);
+		}
+		else
+		{
+			_mission_item.yaw = get_bearing_to_next_waypoint(
+		        _navigator->get_global_position()->lat,
+		        _navigator->get_global_position()->lon,
+		        _navigator->get_home_position()->lat,
+		        _navigator->get_home_position()->lon);
+		}
+	}
 
 	mission_item_to_position_setpoint(&_mission_item, &pos_sp_triplet->current);
 	_navigator->set_position_setpoint_triplet_updated();

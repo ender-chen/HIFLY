@@ -67,6 +67,7 @@
 #include <uORB/topics/manual_control_setpoint.h>
 #include <uORB/topics/offboard_control_mode.h>
 #include <uORB/topics/home_position.h>
+#include <uORB/topics/roi_position.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/position_setpoint_triplet.h>
@@ -190,6 +191,8 @@ static struct safety_s safety;
 static struct vehicle_control_mode_s control_mode;
 static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
+struct roi_position_s _roi;
+static orb_advert_t _roi_pub = -1;
 
 static unsigned _last_mission_instance = 0;
 
@@ -788,6 +791,23 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 		/* ignore commands that handled in low prio loop */
 		break;
 
+	case vehicle_command_s::VEHICLE_CMD_NAV_ROI: {
+			_roi.lat = cmd->param5;
+			_roi.lon = cmd->param6;
+			_roi.timestamp = hrt_absolute_time();
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+			mavlink_log_info(mavlink_fd, "[cmd] roi: %.7f, %.7f", _roi.lat, _roi.lon);
+			if (_roi_pub > 0) {
+				orb_publish(ORB_ID(roi_position), _roi_pub, &_roi);
+			} else {
+				_roi_pub = orb_advertise(ORB_ID(roi_position), &_roi);
+			}
+			param_set_no_notification(param_find("ROI_POS_LAT"), &(_roi.lat));
+			param_set_no_notification(param_find("ROI_POS_LON"), &(_roi.lon));
+
+		}
+		break;
+
 	default:
 		/* Warn about unsupported commands, this makes sense because only commands
 		 * to this component ID (or all) are passed by mavlink. */
@@ -883,6 +903,8 @@ int commander_thread_main(int argc, char *argv[])
 	param_t _param_bat_warning_low = param_find("BAT_WARN_LOW");
 	param_t _param_bat_warning_critical = param_find("BAT_WARN_CRIT");
 	param_t _param_bat_warning_emergency = param_find("BAT_WARN_EMER");
+	param_t _param_roi_position_lat = param_find("ROI_POS_LAT");
+	param_t _param_roi_position_lon = param_find("ROI_POS_LON");
 
 	const char *main_states_str[vehicle_status_s::MAIN_STATE_MAX];
 	main_states_str[vehicle_status_s::MAIN_STATE_MANUAL]			= "MANUAL";
@@ -1008,6 +1030,8 @@ int commander_thread_main(int argc, char *argv[])
 	/* home position */
 	orb_advert_t home_pub = -1;
 	memset(&_home, 0, sizeof(_home));
+
+	memset(&_roi, 0, sizeof(_roi));
 
 	/* init mission state, do it here to allow navigator to use stored mission even if mavlink failed to start */
 	orb_advert_t mission_pub = -1;
@@ -1213,7 +1237,6 @@ int commander_thread_main(int argc, char *argv[])
 			set_tune_override(TONE_STARTUP_TUNE); //normal boot tune
 		}
 	}
-
 	commander_boot_timestamp = hrt_absolute_time();
 
 	transition_result_t arming_ret;
@@ -1326,6 +1349,21 @@ int commander_thread_main(int argc, char *argv[])
 			/* EPH / EPV */
 			param_get(_param_eph, &eph_threshold);
 			param_get(_param_epv, &epv_threshold);
+
+            float roi_lat,roi_lon;
+			param_get(_param_roi_position_lat, &roi_lat);
+			param_get(_param_roi_position_lon, &roi_lon);
+			if (isnormal(roi_lat) && isnormal(roi_lon))
+			{
+				_roi.lat = roi_lat;
+				_roi.lon = roi_lon;
+				_roi.timestamp = hrt_absolute_time();
+				if (_roi_pub > 0) {
+				    orb_publish(ORB_ID(roi_position), _roi_pub, &_roi);
+				} else {
+				    _roi_pub = orb_advertise(ORB_ID(roi_position), &_roi);
+				}
+			}
 		}
 
 		/* Set flag to autosave parameters if necessary */
