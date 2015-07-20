@@ -44,6 +44,7 @@
 
 #include <nuttx/config.h>
 #include <systemlib/param/param.h>
+#include <uORB/topics/roi_position.h>
 
 PARAM_DEFINE_FLOAT(TRIM_ROLL, 0.0f);
 PARAM_DEFINE_FLOAT(TRIM_PITCH, 0.0f);
@@ -236,3 +237,19 @@ PARAM_DEFINE_FLOAT(BAT_WARN_LOW, 11.0f);
  *@dong.chen
  */
 PARAM_DEFINE_FLOAT(BAT_WARN_EMER, 10.8f);
+/**
+ *Region of interesting lat
+ *
+ *Defines the Region of interesting
+ *
+ *@dong.chen
+ */
+ PARAM_DEFINE_FLOAT(ROI_POS_LAT, 0.0f);
+ /**
+ *Region of interesting lon
+ *
+ *Defines the Region of interesting
+ *
+ *@dong.chen
+ */
+ PARAM_DEFINE_FLOAT(ROI_POS_LON, 0.0f);
