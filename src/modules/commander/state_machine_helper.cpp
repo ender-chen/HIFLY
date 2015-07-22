@@ -216,7 +216,7 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 					}
 					if (!status->circuit_breaker_engaged_gpsfailure_check)
 					{
-						if(status->condition_local_position_valid || status->condition_global_position_valid)
+						if(!(status->condition_local_position_valid || status->condition_global_position_valid))
 						{
 							mavlink_and_console_log_critical(mavlink_fd, "HFMG2, NO GPS REFUSE TAKEING OFF");
 							feedback_provided = true;

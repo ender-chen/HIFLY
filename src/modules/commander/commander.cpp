@@ -106,6 +106,8 @@
 #include <systemlib/state_table.h>
 #include <dataman/dataman.h>
 
+#include <platforms/px4_defines.h>
+
 #include "px4_custom_mode.h"
 #include "commander_helper.h"
 #include "state_machine_helper.h"
@@ -1505,8 +1507,7 @@ int commander_thread_main(int argc, char *argv[])
 		if(updated)
 		{
 			orb_copy(ORB_ID(vehicle_attitude), attitude_sub, &attitude);
-
-			if(attitude.R[5] < 0.5f && !status.circuit_breaker_engaged_attitudefailure_check)
+			if(PX4_R(attitude.R, 2, 2) < 0.5f && !status.circuit_breaker_engaged_attitudefailure_check)
 			{
 				status.beyond_control = true;
 			}
@@ -1514,7 +1515,7 @@ int commander_thread_main(int argc, char *argv[])
 			{
 				status.beyond_control = false;
 			}
-			if (attitude.R[5] > 0.85f)
+			if (PX4_R(attitude.R, 2, 2) > 0.85f)
 			{
 				status.condition_takeoff_attitude_valid = true;
 			}
