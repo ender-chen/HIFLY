@@ -110,6 +110,7 @@ Navigator::Navigator() :
 	_onboard_mission_sub(-1),
 	_offboard_mission_sub(-1),
 	_param_update_sub(-1),
+    _waypoint_sub(-1),
 	_pos_sp_triplet_pub(-1),
 	_mission_result_pub(-1),
 	_geofence_result_pub(-1),
@@ -126,6 +127,7 @@ Navigator::Navigator() :
 	_pos_sp_triplet{},
 	_mission_result{},
 	_att_sp{},
+    _waypoint_sp{},
 	_home_position_set(false),
 	_roi_position_set(false),
 	_mission_item_valid(false),
@@ -238,6 +240,18 @@ Navigator::roi_position_update()
 		}
 	}
 }
+
+void
+Navigator::waypoint_update()
+{
+	bool updated = false;
+	orb_check(_waypoint_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(waypoint), _waypoint_sub, &_waypoint_sp);
+	}
+}
+
 void
 Navigator::navigation_capabilities_update()
 {
@@ -310,6 +324,7 @@ Navigator::task_main()
 	_onboard_mission_sub = orb_subscribe(ORB_ID(onboard_mission));
 	_offboard_mission_sub = orb_subscribe(ORB_ID(offboard_mission));
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
+    _waypoint_sub = orb_subscribe(ORB_ID(waypoint));
 
 	/* copy all topics first time */
 	vehicle_status_update();
@@ -321,6 +336,7 @@ Navigator::task_main()
 	roi_position_update();
 	navigation_capabilities_update();
 	params_update();
+    waypoint_update();
 
 	/* rate limit position and sensor updates to 50 Hz */
 	orb_set_interval(_global_pos_sub, 20);
@@ -330,7 +346,7 @@ Navigator::task_main()
 	const hrt_abstime mavlink_open_interval = 500000;
 
 	/* wakeup source(s) */
-	struct pollfd fds[9];
+	struct pollfd fds[10];
 
 	/* Setup of loop */
 	fds[0].fd = _global_pos_sub;
@@ -351,6 +367,8 @@ Navigator::task_main()
 	fds[7].events = POLLIN;
 	fds[8].fd = _roi_pos_sub;
 	fds[8].events = POLLIN;
+    fds[9].fd = _waypoint_sub;
+    fds[9].events = POLLIN;
 
 	while (!_task_should_exit) {
 
@@ -376,6 +394,10 @@ Navigator::task_main()
 		}
 
 		static bool have_geofence_position_data = false;
+		if (fds[9].revents & POLLIN) {
+			waypoint_update();
+		}
+
 		/* roi position updated */
 		if (fds[8].revents & POLLIN) {
 			roi_position_update();

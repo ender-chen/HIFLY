@@ -91,6 +91,7 @@
 #include <uORB/topics/vtol_vehicle_status.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/waypoint.h>
 
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
@@ -200,6 +201,7 @@ static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
 struct roi_position_s _roi;
 static orb_advert_t _roi_pub = -1;
+static orb_advert_t _waypoint_pub = -1;
 
 static unsigned _last_mission_instance = 0;
 
@@ -834,7 +836,25 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 
 		}
 		break;
+    case vehicle_command_s::VEHICLE_CMD_NAV_WAYPOINT: {
+            /* follow me position */
+            struct waypoint_s waypoint;
+            waypoint.timestamp = hrt_absolute_time();
+            waypoint.vel_n_m_s = cmd->param2;
+            waypoint.vel_e_m_s = cmd->param3;
+            waypoint.vel_d_m_s = cmd->param4;
+            waypoint.lat = cmd->param5;
+            waypoint.lon = cmd->param6;
+            waypoint.alt = cmd->param7;
 
+            if (_waypoint_pub > 0) {
+                orb_publish(ORB_ID(waypoint),  _waypoint_pub, &waypoint);
+            } else {
+                _waypoint_pub = orb_advertise(ORB_ID(waypoint), &waypoint);
+            }
+            cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+        }
+        break;
 	default:
 		/* Warn about unsupported commands, this makes sense because only commands
 		 * to this component ID (or all) are passed by mavlink. */
