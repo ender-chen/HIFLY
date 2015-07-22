@@ -387,7 +387,7 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		ret = TRANSITION_CHANGED;
 		break;
 
-	case vehicle_status_s::MAIN_STATE_AUTO_CIRCLE:
+	case vehicle_status_s::MAIN_STATE_AUTO_FOLLOW:
 		/* need global position estimate */
 		if (status->condition_global_position_valid) {
 			ret = TRANSITION_CHANGED;
@@ -777,7 +777,7 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		}
 		break;
 
-	case vehicle_status_s::MAIN_STATE_AUTO_CIRCLE:
+	case vehicle_status_s::MAIN_STATE_AUTO_FOLLOW:
 		if (!status->condition_global_position_valid) {
 			status->failsafe = true;
 
@@ -789,7 +789,7 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
 			}
 		} else {
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_CIRCLE;
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW;
 		}
 		break;
 

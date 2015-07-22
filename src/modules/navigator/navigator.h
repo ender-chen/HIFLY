@@ -57,6 +57,7 @@
 #include <uORB/topics/geofence_result.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/roi_position.h>
+#include <uORB/topics/waypoint.h>
 
 #include "navigator_mode.h"
 #include "mission.h"
@@ -70,11 +71,12 @@
 #include "takeoff.h"
 #include "land.h"
 #include "idle.h"
+#include "follow.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 10
+#define NAVIGATOR_MODE_ARRAY_SIZE 11
 
 class Navigator : public control::SuperBlock
 {
@@ -148,6 +150,7 @@ public:
 
 	int		get_onboard_mission_sub() { return _onboard_mission_sub; }
 	int		get_offboard_mission_sub() { return _offboard_mission_sub; }
+	int		get_waypoint_sub() { return _waypoint_sub; }
 	Geofence&	get_geofence() { return _geofence; }
 	bool		get_can_loiter_at_sp() { return _can_loiter_at_sp; }
 	float		get_loiter_radius() { return _param_loiter_radius.get(); }
@@ -189,6 +192,7 @@ private:
 	int		_onboard_mission_sub;		/**< onboard mission subscription */
 	int		_offboard_mission_sub;		/**< offboard mission subscription */
 	int		_param_update_sub;		/**< param update subscription */
+	int		_waypoint_sub;		/**< waypoint subscription */
 
 	orb_advert_t	_pos_sp_triplet_pub;		/**< publish position setpoint triplet */
 	orb_advert_t	_mission_result_pub;
@@ -233,6 +237,7 @@ private:
 	TAKEOFF	_takeoff;
 	LAND  		_land;
 	IDLE                   _idle;
+	Follow		_follow;
 	DataLinkLoss	_dataLinkLoss;			/**< class that handles the OBC datalink loss mode */
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode
 							  (FW only!) */

@@ -91,6 +91,7 @@
 #include <uORB/topics/vtol_vehicle_status.h>
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/waypoint.h>
 
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
@@ -205,6 +206,7 @@ static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
 static struct roi_position_s _roi;
 static main_state_t Hifly_custom_mode = vehicle_status_s::MAIN_STATE_MANUAL;
+static struct waypoint_s _waypoint;
 
 static unsigned _last_mission_instance = 0;
 
@@ -236,7 +238,8 @@ void usage(const char *reason);
  */
 bool handle_command(struct vehicle_status_s *status, const struct safety_s *safety, struct vehicle_command_s *cmd,
 		    struct actuator_armed_s *armed, struct home_position_s *home, struct roi_position_s *roi, struct vehicle_global_position_s *global_pos,
-		    struct vehicle_local_position_s *local_pos, orb_advert_t *home_pub, orb_advert_t *roi_pub);
+		    struct vehicle_local_position_s *local_pos, orb_advert_t *home_pub, orb_advert_t *roi_pub,
+		    struct waypoint_s *waypoint, orb_advert_t *waypoint_pub);
 
 /**
  * Mainloop of commander.
@@ -497,7 +500,8 @@ transition_result_t arm_disarm(bool arm, const int mavlink_fd_local, const char 
 bool handle_command(struct vehicle_status_s *status_local, const struct safety_s *safety_local,
 		    struct vehicle_command_s *cmd, struct actuator_armed_s *armed_local,
 		    struct home_position_s *home, struct roi_position_s *roi, struct vehicle_global_position_s *global_pos,
-		    struct vehicle_local_position_s *local_pos, orb_advert_t *home_pub, orb_advert_t *roi_pub)
+		    struct vehicle_local_position_s *local_pos, orb_advert_t *home_pub, orb_advert_t *roi_pub,
+		    struct waypoint_s *waypoint, orb_advert_t *waypoint_pub)
 {
 	/* only handle commands that are meant to be handled by this system and component */
 	if (cmd->target_system != status_local->system_id || ((cmd->target_component != status_local->component_id)
@@ -828,7 +832,26 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 			}
 			param_set_no_notification(param_find("ROI_POS_LAT"), &(roi->lat));
 			param_set_no_notification(param_find("ROI_POS_LON"), &(roi->lon));
+		}
+		break;
 
+	case vehicle_command_s::VEHICLE_CMD_NAV_WAYPOINT: {
+
+			/* follow me position */
+			waypoint->lat = cmd->param5;
+			waypoint->lon = cmd->param6;
+			waypoint->alt = cmd->param7;
+
+			/* announce new waypoint */
+			if (*waypoint_pub > 0) {
+				orb_publish(ORB_ID(waypoint), *waypoint_pub, waypoint);
+
+			} else {
+				*waypoint_pub = orb_advertise(ORB_ID(waypoint), waypoint);
+
+			}
+
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}
 		break;
 
@@ -941,7 +964,7 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF]                        = "TAKEOFF";
 	main_states_str[vehicle_status_s::MAIN_STATE_LAND]                             = "LAND";
 	main_states_str[vehicle_status_s::MAIN_STATE_IDLE]	                          = "IDLE";
-	main_states_str[vehicle_status_s::MAIN_STATE_AUTO_CIRCLE]		= "AUTO_CIRCLE";
+	main_states_str[vehicle_status_s::MAIN_STATE_AUTO_FOLLOW]		= "AUTO_FOLLOW";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -973,7 +996,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM]		= "LAND_CUSTOM";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_IDLE]			= "IDLE";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FS_LOITER]			= "FS_LOITER";
-	nav_states_str[vehicle_status_s::NAVIGATION_STATE_AUTO_CIRCLE]		= "AUTO_CIRCLE";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW]		= "AUTO_FOLLOW";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -1070,6 +1093,10 @@ int commander_thread_main(int argc, char *argv[])
 	orb_advert_t roi_pub = -1;
 	memset(&_home, 0, sizeof(_home));
 	memset(&_roi, 0, sizeof(_roi));
+
+	/* waypoint position */
+	orb_advert_t waypoint_pub = -1;
+	memset(&_waypoint, 0, sizeof(_waypoint));
 
 	/* init mission state, do it here to allow navigator to use stored mission even if mavlink failed to start */
 	orb_advert_t mission_pub = -1;
@@ -2292,7 +2319,7 @@ int commander_thread_main(int argc, char *argv[])
 			orb_copy(ORB_ID(vehicle_command), cmd_sub, &cmd);
 
 			/* handle it */
-			if (handle_command(&status, &safety, &cmd, &armed, &_home, &_roi, &global_position, &local_position, &home_pub, &roi_pub)) {
+			if (handle_command(&status, &safety, &cmd, &armed, &_home, &_roi, &global_position, &local_position, &home_pub, &roi_pub, &_waypoint, &waypoint_pub)) {
 				status_changed = true;
 			}
 		}
@@ -2720,13 +2747,13 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 			print_reject_mode(status_local, "AUTO_LOITER");
 
 		} else if (sp_man->loiter_switch == manual_control_setpoint_s::SWITCH_POS_MIDDLE) {
-			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_CIRCLE);
+			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_FOLLOW);
 
 			if (res != TRANSITION_DENIED) {
 				break;  // changed successfully or already in this state
 			}
 
-			print_reject_mode(status_local, "AUTO_CIRCLE");
+			print_reject_mode(status_local, "AUTO_FOLLOW");
 
 		} else {
 			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_MISSION);
@@ -2897,7 +2924,7 @@ set_control_mode()
 	control_mode.flag_external_manual_override_ok = (!status.is_rotary_wing && !status.is_vtol);
 	control_mode.flag_system_hil_enabled = status.hil_state == vehicle_status_s::HIL_STATE_ON;
 	control_mode.flag_control_offboard_enabled = false;
-	control_mode.flag_control_auto_circle_enable = false;
+	control_mode.flag_control_auto_follow_enable = false;
 
 	switch (status.nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
@@ -2973,7 +3000,7 @@ set_control_mode()
 		control_mode.flag_control_termination_enabled = false;
 		break;
 
-	case vehicle_status_s::NAVIGATION_STATE_AUTO_CIRCLE:
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;
@@ -2983,7 +3010,7 @@ set_control_mode()
 		control_mode.flag_control_position_enabled = true;
 		control_mode.flag_control_velocity_enabled = true;
 		control_mode.flag_control_termination_enabled = false;
-		control_mode.flag_control_auto_circle_enable = true;
+		control_mode.flag_control_auto_follow_enable = true;
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:

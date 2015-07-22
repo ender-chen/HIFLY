@@ -110,6 +110,7 @@ Navigator::Navigator() :
 	_onboard_mission_sub(-1),
 	_offboard_mission_sub(-1),
 	_param_update_sub(-1),
+	_waypoint_sub(-1),
 	_pos_sp_triplet_pub(-1),
 	_mission_result_pub(-1),
 	_geofence_result_pub(-1),
@@ -142,10 +143,11 @@ Navigator::Navigator() :
 	_takeoff(this, "TAKEOFF"),
 	_land(this, "LAND"),
 	_idle(this, "IDLE"),
+	_follow(this, "FOLLOW"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
 	_gpsFailure(this, "GPSF"),
-	
+
 	_can_loiter_at_sp(false),
 	_pos_sp_triplet_updated(false),
 	_pos_sp_triplet_published_invalid_once(false),
@@ -156,16 +158,17 @@ Navigator::Navigator() :
 	_param_rcloss_obc(this, "RCL_OBC")
 {
 	/* Create a list of our possible navigation types */
-	_navigation_mode_array[0] = &_mission;
-	_navigation_mode_array[1] = &_loiter;
-	_navigation_mode_array[2] = &_rtl;
-	_navigation_mode_array[3] = &_dataLinkLoss;
-	_navigation_mode_array[4] = &_engineFailure;
-	_navigation_mode_array[5] = &_gpsFailure;
-	_navigation_mode_array[6] = &_rcLoss;
-	_navigation_mode_array[7] = &_takeoff;
-	_navigation_mode_array[8] = &_land;
-	_navigation_mode_array[9] = &_idle;
+	_navigation_mode_array[0] = &_follow;
+	_navigation_mode_array[1] = &_mission;
+	_navigation_mode_array[2] = &_loiter;
+	_navigation_mode_array[3] = &_rtl;
+	_navigation_mode_array[4] = &_dataLinkLoss;
+	_navigation_mode_array[5] = &_engineFailure;
+	_navigation_mode_array[6] = &_gpsFailure;
+	_navigation_mode_array[7] = &_rcLoss;
+	_navigation_mode_array[8] = &_takeoff;
+	_navigation_mode_array[9] = &_land;
+	_navigation_mode_array[10] = &_idle;
 
 	updateParams();
 }
@@ -313,6 +316,7 @@ Navigator::task_main()
 	_onboard_mission_sub = orb_subscribe(ORB_ID(onboard_mission));
 	_offboard_mission_sub = orb_subscribe(ORB_ID(offboard_mission));
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
+	_waypoint_sub = orb_subscribe(ORB_ID(waypoint));
 
 	/* copy all topics first time */
 	vehicle_status_update();
@@ -464,6 +468,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 				_navigation_mode = nullptr;
 				_can_loiter_at_sp = false;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_follow;
 				break;
 			case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 				_pos_sp_triplet_published_invalid_once = false;

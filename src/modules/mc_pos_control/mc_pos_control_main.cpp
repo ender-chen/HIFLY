@@ -176,6 +176,7 @@ private:
 		param_t man_pitch_max;
 		param_t man_yaw_max;
 		param_t mc_att_yaw_p;
+		param_t follow_mode;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -189,6 +190,7 @@ private:
 		float man_pitch_max;
 		float man_yaw_max;
 		float mc_att_yaw_p;
+		int   follow_mode;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -427,6 +429,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.man_pitch_max = param_find("MPC_MAN_P_MAX");
 	_params_handles.man_yaw_max = param_find("MPC_MAN_Y_MAX");
 	_params_handles.mc_att_yaw_p = param_find("MC_YAW_P");
+	_params_handles.follow_mode = param_find("MPC_FOLLOW_MODE");
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -477,6 +480,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.takeoff_speed, &_params.takeoff_speed);
 		param_get(_params_handles.tilt_max_land, &_params.tilt_max_land);
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
+		param_get(_params_handles.follow_mode, &_params.follow_mode);
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -1249,8 +1253,12 @@ MulticopterPositionControl::task_main()
 				/* offboard control */
 				control_offboard(dt);
 				_mode_auto = false;
-			} else if (_control_mode.flag_control_auto_circle_enable) {
-				control_auto_circle(dt);
+			} else if (_control_mode.flag_control_auto_follow_enable) {
+				if (_params.follow_mode != 0) {
+					control_auto_circle(dt);
+				} else {
+					control_auto(dt);
+				}
 			} else {
 				/* AUTO */
 				control_auto(dt);

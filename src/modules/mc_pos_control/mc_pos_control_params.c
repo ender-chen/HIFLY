@@ -249,3 +249,12 @@ PARAM_DEFINE_FLOAT(MPC_MAN_P_MAX, 35.0f);
  */
 PARAM_DEFINE_FLOAT(MPC_MAN_Y_MAX, 120.0f);
 
+/**
+ * follow mode
+ *
+ * 0: normal follow mode
+ * 1: circle follow mode
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_INT32(MPC_FOLLOW_MODE, 0);

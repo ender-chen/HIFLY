@@ -11,7 +11,7 @@ uint8 MAIN_STATE_STAB = 8
 uint8 MAIN_STATE_TAKEOFF = 9
 uint8 MAIN_STATE_LAND = 10
 uint8 MAIN_STATE_IDLE = 11
-uint8 MAIN_STATE_AUTO_CIRCLE = 12
+uint8 MAIN_STATE_AUTO_FOLLOW = 12
 uint8 MAIN_STATE_MAX = 13
 
 # If you change the order, add or remove arming_state_t states make sure to update the arrays
@@ -49,7 +49,7 @@ uint8 NAVIGATION_STATE_TAKEOFF = 16                 # Takeoff mode
 uint8 NAVIGATION_STATE_LAND_CUSTOM = 17      # Land custom mode
 uint8 NAVIGATION_STATE_IDLE = 18                        #IDLE MODE
 uint8 NAVIGATION_STATE_FS_LOITER = 19               #FS_LOITER
-uint8 NAVIGATION_STATE_AUTO_CIRCLE = 20		#Auto circle mode
+uint8 NAVIGATION_STATE_AUTO_FOLLOW = 20		#Auto follow mode
 uint8 NAVIGATION_STATE_MAX = 21
 
 # VEHICLE_MODE_FLAG, same as MAV_MODE_FLAG of MAVLink 1.0 protocol
