@@ -117,6 +117,10 @@ FIRMWARES		 = $(foreach config,$(KNOWN_CONFIGS),$(BUILD_DIR)$(config).build/firm
 
 all:	$(DESIRED_FIRMWARES)
 
+BUILD_GIT_HASH := $(shell git log -1 --pretty=format:%H | cut -c1-6)
+BUILD_DATE_TIME := $(shell date '+%y%m%d_%H%M%S')
+export BUILD_ID := $(BUILD_DATE_TIME)_$(BUILD_GIT_HASH)
+
 #
 # Copy FIRMWARES into the image directory.
 #
@@ -128,6 +132,8 @@ $(STAGED_FIRMWARES): $(IMAGE_DIR)%.px4: $(BUILD_DIR)%.build/firmware.px4
 	@$(ECHO) %% Copying $@
 	$(Q) $(COPY) $< $@
 	$(Q) $(COPY) $(patsubst %.px4,%.bin,$<) $(patsubst %.px4,%.bin,$@)
+	$(Q) (rm -rf $(patsubst %.px4,%_*,$@))
+	$(Q) (mv -f $@ $(patsubst %.px4,%_$(BUILD_ID).px4,$@))
 
 #
 # Generate FIRMWARES.
