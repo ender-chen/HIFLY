@@ -42,3 +42,5 @@ SRCS		 		= ver.c
 MODULE_STACKSIZE 	= 1024
 
 MAXOPTIMIZATION	 	= -Os
+
+EXTRADEFINES        = -D__BUILD_ID__="\"$(BUILD_ID)"\"

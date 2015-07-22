@@ -52,6 +52,7 @@ static const char sz_ver_hw_str[] 	= "hw";
 static const char sz_ver_hwcmp_str[] = "hwcmp";
 static const char sz_ver_git_str[] 	= "git";
 static const char sz_ver_bdate_str[] = "bdate";
+static const char sz_ver_bid_str[]		= "bid";
 static const char sz_ver_gcc_str[] 	= "gcc";
 static const char sz_ver_all_str[] 	= "all";
 static const char mcu_ver_str[]		= "mcu";
@@ -66,7 +67,7 @@ static void usage(const char *reason)
 		printf("%s\n", reason);
 	}
 
-	printf("usage: ver {hw|hwcmp|git|bdate|gcc|all|mcu|uid}\n\n");
+	printf("usage: ver {hw|hwcmp|git|bdate|bid|gcc|all|mcu|uid}\n\n");
 }
 
 __EXPORT int ver_main(int argc, char *argv[]);
@@ -114,6 +115,11 @@ int ver_main(int argc, char *argv[])
 				printf("Build datetime: %s %s\n", __DATE__, __TIME__);
 				ret = 0;
 
+			}
+
+            if (show_all || !strncmp(argv[1], sz_ver_bid_str, sizeof(sz_ver_bid_str))) {
+				printf("Build id: %s\n", __BUILD_ID__);
+				ret = 0;
 			}
 
 			if (show_all || !strncmp(argv[1], sz_ver_gcc_str, sizeof(sz_ver_gcc_str))) {
