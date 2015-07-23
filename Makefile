@@ -107,9 +107,10 @@ FIRMWARES		 = $(foreach config,$(KNOWN_CONFIGS),$(BUILD_DIR)$(config).build/firm
 
 all:	$(DESIRED_FIRMWARES)
 
-$(info $(BUILD_GIT_HASH))
-$(info $(BUILD_DATE_TIME))
-$(info $(BUILD_ID))
+BUILD_GIT_HASH := $(shell git log -1 --pretty=format:%H | cut -c1-6)
+BUILD_DATE_TIME := $(shell date '+%y%m%d_%H%M%S')
+export BUILD_ID := $(BUILD_DATE_TIME)_$(BUILD_GIT_HASH)
+$(info BUILDID=$(BUILD_ID))
 
 #
 # Copy FIRMWARES into the image directory.
