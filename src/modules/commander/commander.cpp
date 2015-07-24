@@ -2361,17 +2361,16 @@ int commander_thread_main(int argc, char *argv[])
 		else if (arming_state_changed && armed.armed && !was_armed && now > commander_boot_timestamp + INAIR_RESTART_HOLDOFF_INTERVAL) {
 			commander_set_home_position(home_pub, _home, local_position, global_position);
 		}
-
+		if (arming_state_changed && !armed.armed)
+		{
+			status.should_into_rtl = false;
+		}
 		/* print new state */
 		if (arming_state_changed) {
 			status_changed = true;
 			mavlink_log_info(mavlink_fd, "[cmd] arming state: %s", arming_states_str[status.arming_state]);
 			arming_state_changed = false;
 
-		}
-		if (arming_state_changed && !armed.armed)
-		{
-			status.should_into_rtl = false;
 		}
 
 		was_armed = armed.armed;
