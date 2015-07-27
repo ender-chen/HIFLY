@@ -274,3 +274,20 @@ PARAM_DEFINE_FLOAT(MPC_MAN_P_MAX, 35.0f);
  */
 PARAM_DEFINE_FLOAT(MPC_MAN_Y_MAX, 120.0f);
 
+/**
+ * follow safe distance
+ *
+ * keep safe distance with people
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOLLOW_DIST, 5.0f);
+
+/**
+ * yaw update distance when loiter follow
+ *
+ * @min 0m
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOLLOW_YAW, 2.0f);

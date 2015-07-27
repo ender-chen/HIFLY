@@ -178,6 +178,8 @@ private:
 		param_t man_pitch_max;
 		param_t man_yaw_max;
 		param_t mc_att_yaw_p;
+		param_t follow_dist;
+		param_t follow_yaw;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -191,6 +193,8 @@ private:
 		float man_pitch_max;
 		float man_yaw_max;
 		float mc_att_yaw_p;
+		float follow_dist;
+		float follow_yaw;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -277,6 +281,10 @@ private:
 
 	bool		cross_sphere_line(const math::Vector<3>& sphere_c, float sphere_r,
 					const math::Vector<3> line_a, const math::Vector<3> line_b, math::Vector<3>& res);
+	/**
+	 * Move to sp position setpotion
+	**/
+	void		move_to_sp(const math::Vector<3>& sp, float dt);
 
 	/**
 	 * Set position setpoint for AUTO
@@ -308,6 +316,10 @@ private:
 	 */
 	void		control_circle_fixed(float dt);
 
+	/**
+	 * Set position setpoint for follow
+	 */
+	void		control_follow_loiter(float dt);
 
 	/**
 	 * Select between barometric and global (AMSL) altitudes
@@ -431,6 +443,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.man_yaw_max = param_find("MPC_MAN_Y_MAX");
 	_params_handles.mc_att_yaw_p = param_find("MC_YAW_P");
 
+	_params_handles.follow_dist = param_find("MPC_FOLLOW_DIST");
+	_params_handles.follow_yaw = param_find("MPC_FOLLOW_YAW");
+
 	/* fetch initial parameter values */
 	parameters_update(true);
 }
@@ -484,6 +499,9 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.takeoff_speed, &_params.takeoff_speed);
 		param_get(_params_handles.tilt_max_land, &_params.tilt_max_land);
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
+
+		param_get(_params_handles.follow_dist, &_params.follow_dist);
+		param_get(_params_handles.follow_yaw, &_params.follow_yaw);
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -911,6 +929,30 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3>& sphere_c, f
 	}
 }
 
+void
+MulticopterPositionControl::move_to_sp(const math::Vector<3>& sp, float dt)
+{
+	/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+	math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+
+	/* move setpoint not faster than max allowed speed */
+	math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+
+	/* convert current setpoint to scaled space */
+	math::Vector<3> pos_sp_s = sp.emult(scale);
+
+	/* difference between current and desired position setpoints, 1 = max speed */
+	math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+	float d_pos_m_len = d_pos_m.length();
+
+	if (d_pos_m_len > dt) {
+		pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+	}
+
+	/* scale result back to normal space */
+	_pos_sp = pos_sp_s.edivide(scale);
+}
+
 void MulticopterPositionControl::circle_calc_velocities()
 {
         // if we are doing a panorama set the circle_angle to the current heading
@@ -1020,6 +1062,92 @@ void MulticopterPositionControl::control_circle_fixed(float dt)
 	circle_fixed_init();
 
 	circle_update(dt);
+}
+
+void MulticopterPositionControl::control_follow_loiter(float dt)
+{
+	if (!_mode_auto) {
+		_mode_auto = true;
+		/* reset position setpoint on AUTO mode activation */
+		reset_pos_sp();
+		reset_alt_sp();
+	}
+
+	//Poll position setpoint
+	bool updated;
+	orb_check(_pos_sp_triplet_sub, &updated);
+	if (updated) {
+		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+
+		//Make sure that the position setpoint is valid
+		if (!isfinite(_pos_sp_triplet.current.lat) ||
+			!isfinite(_pos_sp_triplet.current.lon) ||
+			!isfinite(_pos_sp_triplet.current.alt)) {
+			_pos_sp_triplet.current.valid = false;
+		}
+	}
+
+	if (_pos_sp_triplet.current.valid) {
+		/* in case of interrupted mission don't go to waypoint but stay at current position */
+		_reset_pos_sp = true;
+		_reset_alt_sp = true;
+
+		/* project setpoint to local frame */
+		math::Vector<3> curr_sp;
+		map_projection_project(&_ref_pos,
+				       _pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,
+				       &curr_sp.data[0], &curr_sp.data[1]);
+		curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
+
+		float vel_xy = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
+				_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
+
+		math::Vector<3> follow_vel;
+
+		follow_vel(0) = math::constrain(vel_xy, 1.0f, _params.vel_max(0));
+		follow_vel(1) = math::constrain(vel_xy, 1.0f, _params.vel_max(1));
+		follow_vel(2) = math::constrain(_pos_sp_triplet.current.vz, 1.0f, _params.vel_max(2));
+
+		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+		//math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+		math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
+
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+
+			float dx = curr_sp(0) - _pos(0);
+			float dy = curr_sp(1) - _pos(1);
+			float dist = sqrtf(dx * dx + dy * dy);
+
+			if (dist > _params.follow_dist) {
+				/* move setpoint not faster than max allowed speed */
+				math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+
+				/* convert current setpoint to scaled space */
+				math::Vector<3> pos_sp_s = curr_sp.emult(scale);
+
+				/* difference between current and desired position setpoints, 1 = max speed */
+				math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+				float d_pos_m_len = d_pos_m.length();
+
+				if (d_pos_m_len > dt) {
+					pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+				}
+
+				/* scale result back to normal space */
+				_pos_sp = pos_sp_s.edivide(scale);
+			}
+
+			if (dist > _params.follow_yaw) {
+				/* update yaw setpoint if needed */
+				if (isfinite(_pos_sp_triplet.current.yaw)) {
+					_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+				}
+			}
+
+		} else {
+			move_to_sp(curr_sp, dt);
+		}
+	}
 }
 
 void MulticopterPositionControl::control_auto(float dt)
@@ -1297,7 +1425,8 @@ MulticopterPositionControl::task_main()
 				_mode_auto = false;
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_CIRCLE) {
 				control_circle_fixed(dt);
-
+			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
+				control_follow_loiter(dt);
 			} else {
 				/* AUTO */
 				control_auto(dt);
