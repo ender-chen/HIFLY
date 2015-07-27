@@ -103,8 +103,6 @@ Follow::on_active()
                         return;
                 }
 
-		/* make sure param is up to date */
-		updateParams();
 		set_follow_item();
 	}
 }
@@ -128,6 +126,12 @@ Follow::set_follow_item()
 
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
+	/* make sure param is up to date */
+	updateParams();
+
+	/* set current position setpoint to previous */
+	set_previous_pos_setpoint();
+
 	float altitude_amsl = _waypoint.alt + _param_rel_alt.get();
 
 	if (pos_sp_triplet->current.valid) {
@@ -148,14 +152,6 @@ Follow::set_follow_item()
 		update_z = true;
 	}
 
-	if ((!update_xy) && (!update_z)) {
-		return;
-	}
-
-	mavlink_log_critical(_navigator->get_mavlink_fd(),"update follow item");
-
-	/* set current position setpoint to previous */
-	set_previous_pos_setpoint();
 
 	/* set current position setpoint from waypoint */
 	set_waypoint_to_position_setpoint(&_waypoint, pos_sp_triplet, update_xy, update_z);
@@ -169,29 +165,39 @@ Follow::set_follow_item()
 void
 Follow::set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, struct position_setpoint_triplet_s *pos_sp_triplet, bool update_xy, bool update_z)
 {
-	if (update_xy) {
-		pos_sp_triplet->current.lat = waypoint->lat;
-		pos_sp_triplet->current.lon = waypoint->lon;
+	if (_navigator->get_vstatus()->condition_landed) {
+		/* landed, don't follow, but switch to IDLE mode */
+		pos_sp_triplet->current.type= position_setpoint_s::SETPOINT_TYPE_IDLE;
 
 	} else {
-		pos_sp_triplet->current.lat = pos_sp_triplet->previous.lat;
-		pos_sp_triplet->current.lon = pos_sp_triplet->previous.lon;
-	}
+		pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 
-	if (update_z) {
-		pos_sp_triplet->current.alt = waypoint->alt + _param_rel_alt.get();
+		if (update_xy) {
+			pos_sp_triplet->current.lat = waypoint->lat;
+			pos_sp_triplet->current.lon = waypoint->lon;
+			mavlink_log_critical(_navigator->get_mavlink_fd(),"[follow] update xy");
 
-	}else {
-		pos_sp_triplet->current.alt = pos_sp_triplet->previous.alt;
-	}
+		} else {
+			pos_sp_triplet->current.lat = pos_sp_triplet->previous.lat;
+			pos_sp_triplet->current.lon = pos_sp_triplet->previous.lon;
+		}
 
-	if (_param_yaw_mode.get() == FOLLOW_YAWMODE_FRONT_TO_WAYPOINT) {
-		pos_sp_triplet->current.yaw = get_bearing_to_next_waypoint(
-			_navigator->get_global_position()->lat,
-			_navigator->get_global_position()->lon,
-			_waypoint.lat, _waypoint.lon);
-	} else {
-		pos_sp_triplet->current.yaw = NAN;
+		if (update_z) {
+			pos_sp_triplet->current.alt = waypoint->alt + _param_rel_alt.get();
+			mavlink_log_critical(_navigator->get_mavlink_fd(),"[follow] update z");
+
+		}else {
+			pos_sp_triplet->current.alt = pos_sp_triplet->previous.alt;
+		}
+
+		if (_param_yaw_mode.get() == FOLLOW_YAWMODE_FRONT_TO_WAYPOINT) {
+			pos_sp_triplet->current.yaw = get_bearing_to_next_waypoint(
+				_navigator->get_global_position()->lat,
+				_navigator->get_global_position()->lon,
+				_waypoint.lat, _waypoint.lon);
+		} else {
+			pos_sp_triplet->current.yaw = NAN;
+		}
 	}
 
 	pos_sp_triplet->current.valid = true;
