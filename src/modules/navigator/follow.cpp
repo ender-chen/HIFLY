@@ -63,6 +63,7 @@ Follow::Follow(Navigator *navigator, const char *name) :
 	_param_wp_hordist(this, "FOL_WP_HORDIST",false),
 	_param_wp_verdist(this, "FOL_WP_VERDIST",false),
 	_param_rel_alt(this, "FOL_RELATIVE_ALT",false),
+	_param_enable_alt_update(this, "FOL_ENABLE_ALT_UPDATE",false),
 	_waypoint({0}),
 	_inited(false)
 	{}
@@ -129,9 +130,6 @@ Follow::set_follow_item()
 	/* make sure param is up to date */
 	updateParams();
 
-	/* set current position setpoint to previous */
-	set_previous_pos_setpoint();
-
 	float altitude_amsl = _waypoint.alt + _param_rel_alt.get();
 
 	if (pos_sp_triplet->current.valid) {
@@ -152,6 +150,12 @@ Follow::set_follow_item()
 		update_z = true;
 	}
 
+	if (!update_xy && !update_z) {
+		return;
+	}
+
+	/* set current position setpoint to previous */
+	set_previous_pos_setpoint();
 
 	/* set current position setpoint from waypoint */
 	set_waypoint_to_position_setpoint(&_waypoint, pos_sp_triplet, update_xy, update_z);
@@ -182,12 +186,17 @@ Follow::set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, str
 			pos_sp_triplet->current.lon = pos_sp_triplet->previous.lon;
 		}
 
-		if (update_z) {
-			pos_sp_triplet->current.alt = waypoint->alt + _param_rel_alt.get();
-			mavlink_log_critical(_navigator->get_mavlink_fd(),"[follow] update z");
+		if (_param_enable_alt_update.get()) {
+			if (update_z) {
+				pos_sp_triplet->current.alt = waypoint->alt + _param_rel_alt.get();
+				mavlink_log_critical(_navigator->get_mavlink_fd(),"[follow] update z");
 
-		}else {
-			pos_sp_triplet->current.alt = pos_sp_triplet->previous.alt;
+			}else {
+				pos_sp_triplet->current.alt = pos_sp_triplet->previous.alt;
+			}
+
+		} else {
+			pos_sp_triplet->current.alt = _navigator->get_home_position()->alt + _param_rel_alt.get();
 		}
 
 		if (_param_yaw_mode.get() == FOLLOW_YAWMODE_FRONT_TO_WAYPOINT) {

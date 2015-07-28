@@ -91,3 +91,15 @@ PARAM_DEFINE_FLOAT(FOL_WP_VERDIST, 0.0f);
  * @group Follow
  */
 PARAM_DEFINE_FLOAT(FOL_RELATIVE_ALT, 7.0f);
+
+/**
+ * Follow enable alt update.
+ * enable flag
+ *
+ * 0: keep alt:home alt + relative alt
+ * 1: update to current waypoint's alt + relative alt
+ * @min 0
+ * @max 1
+ * @group Follow
+ */
+PARAM_DEFINE_INT32(FOL_ENABLE_ALT_UPDATE, 0);

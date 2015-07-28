@@ -90,6 +90,7 @@ private:
 	control::BlockParamFloat _param_wp_hordist;
 	control::BlockParamFloat _param_wp_verdist;
 	control::BlockParamFloat _param_rel_alt;
+	control::BlockParamInt _param_enable_alt_update;
 
 	struct waypoint_s _waypoint;
 
