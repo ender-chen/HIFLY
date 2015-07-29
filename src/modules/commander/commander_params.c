@@ -228,7 +228,7 @@ PARAM_DEFINE_FLOAT(BAT_WARN_LOW, 11.0f);
  *@dong.chen
  */
 
- PARAM_DEFINE_FLOAT(BAT_WARN_CRITI, 10.9f);
+ PARAM_DEFINE_FLOAT(BAT_WARN_CRIT, 10.9f);
 /**
  *Battery warning capacity
  *
