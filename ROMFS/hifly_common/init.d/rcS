@@ -708,6 +708,14 @@ then
 		#tone_alarm error
 	fi
 
+    set FLOCAL /etc/init.d/rc.local
+	if [ -f $FLOCAL ]
+	then
+		echo "[i] Addons script: $FLOCAL"
+		sh $FLOCAL
+	fi
+	unset FLOCAL
+
 # End of autostart
 fi
 
