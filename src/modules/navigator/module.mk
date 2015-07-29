@@ -63,6 +63,10 @@ SRCS		= navigator_main.cpp \
 		  follow.cpp \
 		  follow_params.c
 
+ifeq ($(CONFIG_BOARD), PX4FMU_V2)
+EXTRADEFINES = -D__WAYPOINT_DEBUG__
+endif
+
 INCLUDE_DIRS	 += $(MAVLINK_SRC)/include/mavlink
 
 MODULE_STACKSIZE = 1200

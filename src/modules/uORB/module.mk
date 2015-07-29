@@ -45,3 +45,7 @@ SRCS			= uORB.cpp \
 			  Subscription.cpp
 
 MAXOPTIMIZATION	 = -Os
+
+ifeq ($(CONFIG_BOARD), PX4FMU_V2)
+EXTRADEFINES = -D__WAYPOINT_DEBUG__
+endif

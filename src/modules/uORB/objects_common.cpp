@@ -256,3 +256,11 @@ ORB_DEFINE(roi_position, struct roi_position_s);
 
 #include "topics/waypoint.h"
 ORB_DEFINE(waypoint, struct waypoint_s);
+
+#ifdef __WAYPOINT_DEBUG__
+#include "topics/waypoint_received_report.h"
+ORB_DEFINE(waypoint_received_report, struct waypoint_received_report_s);
+
+#include "topics/waypoint_excuted_report.h"
+ORB_DEFINE(waypoint_excuted_report, struct waypoint_excuted_report_s);
+#endif

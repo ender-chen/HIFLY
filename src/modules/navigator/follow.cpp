@@ -56,6 +56,45 @@
 
 #include "navigator.h"
 #include "follow.h"
+#ifdef __WAYPOINT_DEBUG__
+#include <uORB/topics/waypoint_excuted_report.h>
+#include <uORB/topics/waypoint_received_report.h>
+void Follow::publish_waypoint_received(const struct waypoint_s& waypoint)
+{
+	struct waypoint_received_report_s waypoint_received;
+	waypoint_received.lon = waypoint.lon;
+	waypoint_received.lat = waypoint.lat;
+	waypoint_received.altitude = waypoint.alt;
+	waypoint_received.receive_time = _navigator->get_global_position()->time_utc_usec;
+
+	if (_waypoint_received_report_pub < 0)
+	{
+		_waypoint_received_report_pub = orb_advertise(ORB_ID(waypoint_received_report), &waypoint_received);
+	}
+	else
+	{
+		orb_publish(ORB_ID(waypoint_received_report), _waypoint_received_report_pub, &waypoint_received);
+	}
+}
+
+void Follow::publish_waypoint_excuted(const struct waypoint_s& waypoint)
+{
+	struct waypoint_excuted_report_s waypoint_excuted;
+	waypoint_excuted.lon = waypoint.lon;
+	waypoint_excuted.lat = waypoint.lat;
+	waypoint_excuted.altitude = waypoint.alt;
+	waypoint_excuted.start_time = _navigator->get_global_position()->time_utc_usec;
+
+	if (_waypoint_excuted_report_pub < 0)
+	{
+		_waypoint_excuted_report_pub = orb_advertise(ORB_ID(waypoint_excuted_report), &waypoint_excuted);
+	}
+	else
+	{
+		orb_publish(ORB_ID(waypoint_excuted_report), _waypoint_excuted_report_pub, &waypoint_excuted);
+	}
+}
+#endif
 
 Follow::Follow(Navigator *navigator, const char *name) :
 	MissionBlock(navigator, name),
@@ -66,10 +105,19 @@ Follow::Follow(Navigator *navigator, const char *name) :
 	_param_enable_alt_update(this, "FOL_ENABLE_ALT_UPDATE",false),
 	_waypoint({0}),
 	_inited(false)
-	{}
+{
+#ifdef __WAYPOINT_DEBUG__
+	_waypoint_received_report_pub = -1;
+	_waypoint_excuted_report_pub = -1;
+#endif
+}
 
 Follow::~Follow()
 {
+#ifdef __WAYPOINT_DEBUG__
+	close(_waypoint_received_report_pub);
+	close(_waypoint_excuted_report_pub);
+#endif
 }
 
 void
@@ -99,6 +147,10 @@ Follow::on_active()
 	if (waypoint_updated) {
 		orb_copy(ORB_ID(waypoint), _navigator->get_waypoint_sub(), &_waypoint);
 
+
+#ifdef __WAYPOINT_DEBUG__
+	publish_waypoint_received(_waypoint);
+#endif
                 //Make sure that the position setpoint is valid
                 if (!isfinite(_waypoint.lat) || !isfinite(_waypoint.lon) || !isfinite(_waypoint.alt)) {
                         return;
@@ -164,6 +216,10 @@ Follow::set_follow_item()
 	pos_sp_triplet->next.valid = false;
 
 	_navigator->set_position_setpoint_triplet_updated();
+
+#ifdef __WAYPOINT_DEBUG__
+	publish_waypoint_excuted(_waypoint);
+#endif
 }
 
 void

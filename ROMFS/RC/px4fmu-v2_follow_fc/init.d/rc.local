@@ -1,0 +1,11 @@
+#!nsh
+#
+# local startup script
+#
+
+mavlink start -d /dev/ttyS1 -b 19200
+
+if waypoint_fc start
+then
+fi
+

@@ -95,6 +95,13 @@ private:
 	struct waypoint_s _waypoint;
 
 	bool _inited;
+
+#ifdef __WAYPOINT_DEBUG__
+	void publish_waypoint_received(const struct waypoint_s& waypoint);
+	void publish_waypoint_excuted(const struct waypoint_s& waypoint);
+	orb_advert_t   _waypoint_received_report_pub;
+	orb_advert_t   _waypoint_excuted_report_pub;
+#endif
 };
 
 #endif

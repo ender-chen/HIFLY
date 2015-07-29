@@ -1,0 +1,9 @@
+#!nsh
+#
+# local startup script
+#
+
+if waypoint_wb start
+then
+fi
+
