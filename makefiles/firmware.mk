@@ -366,6 +366,9 @@ $(ROMFS_IMG): $(ROMFS_SCRATCH) $(ROMFS_DEPS) $(GLOBAL_DEPS)
 $(ROMFS_SCRATCH): $(ROMFS_DEPS) $(GLOBAL_DEPS)
 	$(Q) $(MKDIR) -p $(ROMFS_SCRATCH)
 	$(Q) $(COPYDIR) $(ROMFS_ROOT)/* $(ROMFS_SCRATCH)
+ifneq ($(ROMFS_OPTIONAL_RC),)
+	$(Q) $(COPYDIR) $(ROMFS_OPTIONAL_RC)/* $(ROMFS_SCRATCH)
+endif
 # delete all files in ROMFS_SCRATCH which start with a . or end with a ~
 	$(Q) $(RM) $(ROMFS_SCRATCH)/*/.[!.]* $(ROMFS_SCRATCH)/*/*~
 ifneq ($(ROMFS_EXTRA_FILES),)
