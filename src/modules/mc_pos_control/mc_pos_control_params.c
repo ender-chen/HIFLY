@@ -109,7 +109,7 @@ PARAM_DEFINE_FLOAT(MPC_Z_VEL_D, 0.0f);
  * @max 8.0
  * @group Multicopter Position Control
  */
-PARAM_DEFINE_FLOAT(MPC_Z_VEL_MAX, 3.0f);
+PARAM_DEFINE_FLOAT(MPC_Z_VEL_MAX, 1.0f);
 
 /**
  * Vertical velocity feed forward
@@ -209,7 +209,7 @@ PARAM_DEFINE_FLOAT(MPC_TILTMAX_LND, 15.0f);
  * @min 0.0
  * @group Multicopter Position Control
  */
-PARAM_DEFINE_FLOAT(MPC_LAND_SPEED, 1.0f);
+PARAM_DEFINE_FLOAT(MPC_LAND_SPEED, 0.5f);
 
 /**
  * takeoff rate

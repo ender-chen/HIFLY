@@ -69,7 +69,7 @@ PARAM_DEFINE_INT32(FOL_YAW_MODE, 0);
  * @unit meters
  * @group Follow
  */
-PARAM_DEFINE_FLOAT(FOL_WP_HORDIST, 0.0f);
+PARAM_DEFINE_FLOAT(FOL_WP_HORDIST, 3.0f);
 
 /**
  * Waypoint vertical distance.
@@ -80,7 +80,7 @@ PARAM_DEFINE_FLOAT(FOL_WP_HORDIST, 0.0f);
  * @unit meters
  * @group Follow
  */
-PARAM_DEFINE_FLOAT(FOL_WP_VERDIST, 0.0f);
+PARAM_DEFINE_FLOAT(FOL_WP_VERDIST, 3.0f);
 
 /**
  * Follow alt.
