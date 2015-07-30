@@ -69,7 +69,6 @@ extern "C" __EXPORT int waypoint_fc_main(int argc, char *argv[]);
 
 static int _task = -1;
 static bool _task_should_exit = true;    /**< daemon exit flag */
-static uint32_t _excuted_index = 0;
 
 static void usage()
 {
@@ -229,9 +228,8 @@ waypoint_fc_task_main()
                     waypoint_excuted.start_time, waypoint_excuted.end_time,
                     (double)waypoint_excuted.lat, (double)waypoint_excuted.lon, 
                     (double)waypoint_excuted.altitude);
-            _excuted_index++;
-            write(fd_waypoint_received, buf, strlen(buf) + 1);
-            fsync(fd_waypoint_received);
+            write(fd_waypoint_excuted, buf, strlen(buf) + 1);
+            fsync(fd_waypoint_excuted);
         }
         usleep(100000);
 
