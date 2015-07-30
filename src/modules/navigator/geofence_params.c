@@ -111,3 +111,13 @@ PARAM_DEFINE_INT32(GF_MAX_HOR_DIST, -1);
  * @group Geofence
  */
 PARAM_DEFINE_INT32(GF_MAX_VER_DIST, -1);
+
+/**
+ * safe horizontal distance of Restricted area in meters.
+ *
+ * Set to > 0 to start restricted erea function.
+ *
+ * @default value 4000
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_SAFE_DIST, 4000);

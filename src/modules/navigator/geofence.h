@@ -51,7 +51,7 @@
 #include <controllib/block/BlockParam.hpp>
 #include <drivers/drv_hrt.h>
 
-#define GEOFENCE_FILENAME "/fs/microsd/etc/geofence.txt"
+#define GEOFENCE_FILENAME "/etc/geofence/geofence.txt"
 
 class Geofence : public control::SuperBlock
 {
@@ -131,6 +131,7 @@ private:
 	control::BlockParamInt _param_counter_threshold;
 	control::BlockParamInt _param_max_hor_distance;
 	control::BlockParamInt _param_max_ver_distance;
+	control::BlockParamInt _param_safe_distance;
 
 	uint8_t			_outside_counter;
 

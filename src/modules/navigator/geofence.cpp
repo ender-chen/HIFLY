@@ -61,8 +61,6 @@
 #define GEOFENCE_RANGE_WARNING_LIMIT 3000000
 #define RESTRICTED_AREA_WARNING_LIMIT 3000000
 
-#define safe_dis 30.0f
-
 /* Oddly, ERROR is not defined for C++ */
 #ifdef ERROR
 # undef ERROR
@@ -86,6 +84,7 @@ Geofence::Geofence() :
 	_param_counter_threshold(this, "COUNT"),
 	_param_max_hor_distance(this, "MAX_HOR_DIST"),
 	_param_max_ver_distance(this, "MAX_VER_DIST"),
+	_param_safe_distance(this, "SAFE_DIST"),
 	_outside_counter(0),
 	_mavlinkFd(-1)
 {
@@ -222,7 +221,7 @@ bool Geofence:: inside_restricted_area(double lat, double lon, float altitude)
         while (low <= high)
         {
                 mid = low + (high - low) / 2;
-                warnx("low %d, mid %d, high %d", low, mid, high);
+
                 if ((mid / 256) == 0) {
                         _dm_item_t = DM_KEY_RESTRICTED_AREA_0;
                             sel = mid;
@@ -246,7 +245,7 @@ bool Geofence:: inside_restricted_area(double lat, double lon, float altitude)
                                    vertex.lat, vertex.lon, 0.0f,
                                    &dist_xy, &dist_z);
 
-                if (dist_xy < safe_dis )
+                if (dist_xy < _param_safe_distance.get())
                 {
                         if (hrt_elapsed_time(&_last_restricted_area_warning) > RESTRICTED_AREA_WARNING_LIMIT) {
                                 mavlink_log_critical(_mavlinkFd, "fly in restricted area");
