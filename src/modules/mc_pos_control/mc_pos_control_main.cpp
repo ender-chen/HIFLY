@@ -208,6 +208,7 @@ private:
 	bool _reset_pos_sp;
 	bool _reset_alt_sp;
 	bool _mode_auto;
+	bool _circle_init;
 
         /* cricle parameters */
 	float _radius;        // maximum horizontal speed in cm/s during missions
@@ -366,6 +367,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_reset_pos_sp(true),
 	_reset_alt_sp(true),
 	_mode_auto(false),
+	_circle_init(false),
 
 	_radius(5.0f),
 	_rate(20.0f),
@@ -878,6 +880,9 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3>& sphere_c, f
 
 void MulticopterPositionControl::circle_init()
 {
+	if (_circle_init) {
+		return;
+	}
         /* set circle center to circle_radius ahead of pos_sp point */
         _center(0) = _pos_sp(0) + _radius * cosf(_att.yaw);
         _center(1) = _pos_sp(1) + _radius * sinf(_att.yaw);
@@ -888,6 +893,8 @@ void MulticopterPositionControl::circle_init()
 
         // set starting angle from vehicle heading
         circle_init_start_angle(true);
+
+	_circle_init = true;
 }
 
 void MulticopterPositionControl::circle_update(float dt)
@@ -973,8 +980,8 @@ void MulticopterPositionControl::control_auto_circle(float dt)
                 /* reset position setpoint on AUTO mode activation */
                 reset_pos_sp();
                 reset_alt_sp();
-		circle_init();
         }
+	circle_init();
 
 	circle_update(dt);
 }
@@ -1243,6 +1250,12 @@ MulticopterPositionControl::task_main()
 			_vel_ff.zero();
 			_sp_move_rate.zero();
 
+			if (!_control_mode.flag_control_auto_follow_enable
+				|| (_control_mode.flag_control_auto_follow_enable
+				&& _params.follow_mode > 0)) {
+				_circle_init = false;
+			}
+
 			/* select control source */
 			if (_control_mode.flag_control_manual_enabled) {
 				/* manual control */
@@ -1256,9 +1269,8 @@ MulticopterPositionControl::task_main()
 			} else if (_control_mode.flag_control_auto_follow_enable) {
 				if (_params.follow_mode != 0) {
 					control_auto_circle(dt);
-				} else {
-					control_auto(dt);
 				}
+
 			} else {
 				/* AUTO */
 				control_auto(dt);
