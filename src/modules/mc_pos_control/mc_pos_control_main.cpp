@@ -87,6 +87,9 @@
 #define MIN_DIST		0.01f
 #define MANUAL_THROTTLE_MAX_MULTICOPTER	0.9f
 
+#define FOLLOW_MODE_VERTICAL 0
+#define FOLLOW_MODE_CIRCLE 1
+
 /**
  * Multicopter position control app start / stop handling function
  *
@@ -1251,8 +1254,7 @@ MulticopterPositionControl::task_main()
 			_sp_move_rate.zero();
 
 			if (!_control_mode.flag_control_auto_follow_enable
-				|| (_control_mode.flag_control_auto_follow_enable
-				&& _params.follow_mode > 0)) {
+				|| _params.follow_mode != FOLLOW_MODE_CIRCLE) {
 				_circle_init = false;
 			}
 
@@ -1267,7 +1269,7 @@ MulticopterPositionControl::task_main()
 				control_offboard(dt);
 				_mode_auto = false;
 			} else if (_control_mode.flag_control_auto_follow_enable) {
-				if (_params.follow_mode != 0) {
+				if (_params.follow_mode == FOLLOW_MODE_CIRCLE) {
 					control_auto_circle(dt);
 				}
 
