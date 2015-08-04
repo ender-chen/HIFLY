@@ -145,6 +145,7 @@ Navigator::Navigator() :
 	_land(this, "LAND"),
     _follow_loiter(this, "FOLLOI"),
     _follow_camera(this, "FOLCAM"),
+    _follow_circle(this, "FOLCLE"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
 	_gpsFailure(this, "GPSF"),
@@ -169,6 +170,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[8] = &_land;
 	_navigation_mode_array[9] = &_follow_loiter;
 	_navigation_mode_array[10] = &_follow_camera;
+	_navigation_mode_array[11] = &_follow_circle;
 
 	updateParams();
 }
@@ -541,6 +543,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_follow_camera;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_follow_circle;
 				break;
 			default:
 				_navigation_mode = nullptr;
