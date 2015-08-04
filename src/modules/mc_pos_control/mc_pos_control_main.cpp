@@ -88,7 +88,8 @@
 #define MANUAL_THROTTLE_MAX_MULTICOPTER	0.9f
 
 #define FOLLOW_MODE_VERTICAL 0
-#define FOLLOW_MODE_CIRCLE 1
+#define FOLLOW_MODE_FIXED_CIRCLE 1
+#define FOLLOW_MODE_WP_CIRCLE 2
 
 /**
  * Multicopter position control app start / stop handling function
@@ -211,7 +212,9 @@ private:
 	bool _reset_pos_sp;
 	bool _reset_alt_sp;
 	bool _mode_auto;
-	bool _circle_init;
+	bool _move_to_edge;
+	bool _simple_circle_init;
+	bool _wp_circle_init;
 
         /* cricle parameters */
 	float _radius;        // maximum horizontal speed in cm/s during missions
@@ -230,6 +233,7 @@ private:
 	math::Vector<3> _vel_ff;
 	math::Vector<3> _sp_move_rate;
 	math::Vector<3> _center;
+	math::Vector<3> _circle_edge;
 
 	/**
 	 * Update our local parameter cache.
@@ -286,14 +290,29 @@ private:
 	void		control_auto(float dt);
 
 	/**
-	 * control auto circle
+	 * control simple circle
 	 */
-	void		control_auto_circle(float dt);
+	void		control_simple_circle(float dt);
+
+	/**
+	 * control follow circle
+	 */
+	void		control_follow_circle(float dt);
 
 	/**
 	 * circle init
 	 */
-	void		circle_init();
+	void		circle_init_simple();
+
+	/**
+	 * circle init with waypoint
+	 */
+	bool		circle_init_with_wp();
+
+	/**
+	 * center update
+	 */
+	void		center_update(float dt);
 
 	/**
 	 * circle update
@@ -309,6 +328,16 @@ private:
 	 * circle init start angle
 	 */
 	void		circle_init_start_angle(bool use_heading);
+
+	/**
+	 * get closet point
+	 */
+	void		get_closest_point_on_circle();
+
+	/**
+	 * move to closest point on circle
+	 */
+	void		move_to_edge(float dt);
 
 	/**
 	 * Select between barometric and global (AMSL) altitudes
@@ -370,7 +399,9 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_reset_pos_sp(true),
 	_reset_alt_sp(true),
 	_mode_auto(false),
-	_circle_init(false),
+	_move_to_edge(false),
+	_simple_circle_init(false),
+	_wp_circle_init(false),
 
 	_radius(5.0f),
 	_rate(20.0f),
@@ -411,6 +442,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_vel_ff.zero();
 	_sp_move_rate.zero();
 	_center.zero();
+	_circle_edge.zero();
 
 	_params_handles.thr_min		= param_find("MPC_THR_MIN");
 	_params_handles.thr_max		= param_find("MPC_THR_MAX");
@@ -881,23 +913,71 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3>& sphere_c, f
 	}
 }
 
-void MulticopterPositionControl::circle_init()
+void MulticopterPositionControl::circle_init_simple()
 {
-	if (_circle_init) {
+	if (_simple_circle_init) {
 		return;
 	}
-        /* set circle center to circle_radius ahead of pos_sp point */
-        _center(0) = _pos_sp(0) + _radius * cosf(_att.yaw);
-        _center(1) = _pos_sp(1) + _radius * sinf(_att.yaw);
-        _center(2) = _pos_sp(2);
 
-        // calculate velocities
-        circle_calc_velocities();
+	/* set circle center to circle_radius ahead of pos_sp point */
+	_center(0) = _pos_sp(0) + _radius * cosf(_att.yaw);
+	_center(1) = _pos_sp(1) + _radius * sinf(_att.yaw);
+	_center(2) = _pos_sp(2);
 
-        // set starting angle from vehicle heading
-        circle_init_start_angle(true);
+	// calculate velocities
+	circle_calc_velocities();
 
-	_circle_init = true;
+	// set starting angle from vehicle heading
+	circle_init_start_angle(true);
+
+	_simple_circle_init = true;
+}
+
+bool MulticopterPositionControl::circle_init_with_wp()
+{
+	if (_wp_circle_init) {
+		return true;
+	}
+
+	//Poll position setpoint
+	bool updated;
+	orb_check(_pos_sp_triplet_sub, &updated);
+	if (updated) {
+		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+
+		//Make sure that the position setpoint is valid
+		if (!isfinite(_pos_sp_triplet.current.lat) ||
+			!isfinite(_pos_sp_triplet.current.lon) ||
+			!isfinite(_pos_sp_triplet.current.alt)) {
+			_pos_sp_triplet.current.valid = false;
+		}
+	}
+
+	if (_pos_sp_triplet.current.valid) {
+		/* project setpoint to local frame */
+		math::Vector<3> curr_sp;
+		map_projection_project(&_ref_pos,
+		_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,
+		&curr_sp.data[0], &curr_sp.data[1]);
+		curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
+
+		_center = curr_sp;
+
+		// calculate velocities
+		circle_calc_velocities();
+
+		// set starting angle from vehicle heading
+		circle_init_start_angle(false);
+		get_closest_point_on_circle();
+
+		_wp_circle_init = true;
+		_move_to_edge = true;
+
+		return true;
+
+	} else {
+		return false;
+	}
 }
 
 void MulticopterPositionControl::circle_update(float dt)
@@ -976,7 +1056,131 @@ void MulticopterPositionControl::circle_init_start_angle(bool use_heading)
         }
 }
 
-void MulticopterPositionControl::control_auto_circle(float dt)
+void MulticopterPositionControl::get_closest_point_on_circle()
+{
+    // return center if radius is zero
+    if (_radius <= 0.0f) {
+        _circle_edge = _center;
+        return;
+    }
+
+    // calc vector from current location to circle center
+    math::Vector<2> vec;   // vector from circle center to current location
+    vec(0) = (_pos_sp(0) - _center(0));
+    vec(1) = (_pos_sp(1) - _center(1));
+
+    float dist = sqrtf(vec(0) * vec(0) + vec(1) * vec(1));
+
+    // if current location is exactly at the center of the circle return edge directly behind vehicle
+    if (fabsf(dist) < FLT_EPSILON) {
+        _circle_edge(0) = _center(0) - _radius * cosf(_att.yaw);// _ahrs.cos_yaw();
+        _circle_edge(1) = _center(1) - _radius * sinf(_att.yaw);//_ahrs.sin_yaw();
+        _circle_edge(2) = _center(2);
+
+        return;
+    }
+
+    // calculate closest point on edge of circle
+    _circle_edge(0) = _center(0) + vec(0) / dist * _radius;
+    _circle_edge(1) = _center(1) + vec(1) / dist * _radius;
+    _circle_edge(2) = _center(2);
+}
+
+void MulticopterPositionControl::move_to_edge(float dt)
+{
+	/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+	math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+
+	/* move setpoint not faster than max allowed speed */
+	math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+
+	/* convert current setpoint to scaled space */
+	math::Vector<3> pos_sp_s = _circle_edge.emult(scale);
+
+	/* difference between current and desired position setpoints, 1 = max speed */
+	math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+	float d_pos_m_len = d_pos_m.length();
+
+	if (d_pos_m_len > dt) {
+		pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+	}
+
+	/* scale result back to normal space */
+	_pos_sp = pos_sp_s.edivide(scale);
+
+	/* towards to center */
+	_att_sp.yaw_body = _wrap_pi(_angle-M_PI_F);
+
+}
+
+void MulticopterPositionControl::center_update(float dt)
+{
+	//Poll position setpoint
+	bool updated;
+	orb_check(_pos_sp_triplet_sub, &updated);
+	if (updated) {
+		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+
+		//Make sure that the position setpoint is valid
+		if (!isfinite(_pos_sp_triplet.current.lat) ||
+			!isfinite(_pos_sp_triplet.current.lon) ||
+			!isfinite(_pos_sp_triplet.current.alt)) {
+			_pos_sp_triplet.current.valid = false;
+		}
+	}
+
+	if (_pos_sp_triplet.current.valid) {
+		/* in case of interrupted mission don't go to waypoint but stay at current position */
+		_reset_pos_sp = true;
+		_reset_alt_sp = true;
+
+		/* project setpoint to local frame */
+		math::Vector<3> curr_sp;
+		map_projection_project(&_ref_pos,
+			_pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,
+			&curr_sp.data[0], &curr_sp.data[1]);
+
+		curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
+
+		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+		math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+
+		/* convert current setpoint to scaled space */
+		math::Vector<3> curr_sp_s = curr_sp.emult(scale);
+
+		/* by default use current setpoint as is */
+		math::Vector<3> pos_sp_s = curr_sp_s;
+
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+
+			/* find X - cross point of L1 sphere and trajectory */
+			math::Vector<3> center_s = _center.emult(scale);
+			math::Vector<3> curr_pos_s = center_s - curr_sp_s;
+			float curr_pos_s_len = curr_pos_s.length();
+
+			if (curr_pos_s_len > 1.0f) {
+
+				mavlink_log_info(_mavlink_fd, "[mpc] center update");
+				/* move setpoint not faster than max allowed speed */
+				math::Vector<3> pos_sp_old_s = _center.emult(scale);
+
+				/* difference between current and desired position setpoints, 1 = max speed */
+				math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+				float d_pos_m_len = d_pos_m.length();
+				if (d_pos_m_len > (dt / 2.0f)) {
+					pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * (dt / 2.0f)).emult(_params.pos_p);
+				}
+
+				/* scale result back to normal space */
+				_center = pos_sp_s.edivide(scale);
+			}
+		}
+	} else {
+		/* no waypoint, do nothing, setpoint was already reset */
+	}
+}
+
+void MulticopterPositionControl::control_follow_circle(float dt)
 {
         if (!_mode_auto) {
                 _mode_auto = true;
@@ -984,7 +1188,45 @@ void MulticopterPositionControl::control_auto_circle(float dt)
                 reset_pos_sp();
                 reset_alt_sp();
         }
-	circle_init();
+
+	bool init = circle_init_with_wp();
+
+	if (!init) {
+		return;
+	}
+
+	if (!_move_to_edge) {
+		/* need update circle center */
+		center_update(dt);
+
+		circle_update(dt);
+		//mavlink_log_info(_mavlink_fd, "[mpc] circle update");
+
+	} else {
+		if ((_pos_sp - _circle_edge).length() < MIN_DIST) {
+			_move_to_edge = false;
+
+			mavlink_log_info(_mavlink_fd, "[mpc] moving to edge done");
+
+		} else {
+			move_to_edge(dt);
+
+		//	mavlink_log_info(_mavlink_fd, "[mpc] moving to edge");
+		}
+	}
+}
+
+void MulticopterPositionControl::control_simple_circle(float dt)
+{
+
+        if (!_mode_auto) {
+                _mode_auto = true;
+                /* reset position setpoint on AUTO mode activation */
+                reset_pos_sp();
+                reset_alt_sp();
+        }
+
+	circle_init_simple();
 
 	circle_update(dt);
 }
@@ -1253,9 +1495,17 @@ MulticopterPositionControl::task_main()
 			_vel_ff.zero();
 			_sp_move_rate.zero();
 
-			if (!_control_mode.flag_control_auto_follow_enable
-				|| _params.follow_mode != FOLLOW_MODE_CIRCLE) {
-				_circle_init = false;
+			if (!_control_mode.flag_control_auto_follow_enable) {
+				_simple_circle_init = false;
+				_wp_circle_init = false;
+
+			} else if (_params.follow_mode != FOLLOW_MODE_FIXED_CIRCLE) {
+				_simple_circle_init = false;
+
+			} else if (_params.follow_mode != FOLLOW_MODE_WP_CIRCLE) {
+				_wp_circle_init = false;
+			} else {
+				//TODO more follow mode
 			}
 
 			/* select control source */
@@ -1269,8 +1519,14 @@ MulticopterPositionControl::task_main()
 				control_offboard(dt);
 				_mode_auto = false;
 			} else if (_control_mode.flag_control_auto_follow_enable) {
-				if (_params.follow_mode == FOLLOW_MODE_CIRCLE) {
-					control_auto_circle(dt);
+				if (_params.follow_mode == FOLLOW_MODE_FIXED_CIRCLE) {
+					control_simple_circle(dt);
+				} else if (_params.follow_mode == FOLLOW_MODE_WP_CIRCLE) {
+					control_follow_circle(dt);
+				} else if (_params.follow_mode == FOLLOW_MODE_VERTICAL) {
+					control_auto(dt);
+				} else {
+					//TODO more follow mode
 				}
 
 			} else {
