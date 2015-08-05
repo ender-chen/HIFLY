@@ -570,15 +570,31 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		else if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && !status->should_into_rtl)
 		{
 			status->failsafe = true;
-			warnx("[cmd] NAVIGATION_STATE_FS_LOITER change");
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_FS_LOITER;
+			if (status->condition_global_position_valid)
+			{
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FS_LOITER;
+			} else if (status->condition_local_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
+			} else if (status->condition_local_altitude_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+			}
 			break;
 		}
 		else if (status->should_into_rtl)
 		{
 			status->failsafe = true;
-			warnx("[cmd] should_into_rtl");
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+			if (status->condition_global_position_valid)
+			{
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+			} else if (status->condition_local_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
+			} else if (status->condition_local_altitude_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+			}
 			break;
 		} else {
 			switch (status->main_state) {
