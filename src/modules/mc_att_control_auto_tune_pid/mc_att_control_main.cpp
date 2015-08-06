@@ -1004,7 +1004,7 @@ void
 MulticopterAttitudeControl::control_attitude(float dt)
 {
 	float rotation_rate;        // rotation rate in radians/second
-	int32_t lean_angle;
+	float lean_angle;
 	float autotune_target_angle_cd = math::radians(20.0f);
 	float autotune_target_rate_cds = math::radians(90.0f);
 
@@ -1123,10 +1123,10 @@ MulticopterAttitudeControl::control_attitude(float dt)
 				//hold level attitude
 				R_sp.from_euler(0.0f, 0.0f, tar_yaw);
 
-//				if ((fabs(math::degrees(_v_att.roll)) > AUTOTUNE_LEVEL_ANGLE_CD) || (fabs(math::degrees(_v_att.pitch)) > AUTOTUNE_LEVEL_ANGLE_CD)) {
-//					autotune_step_start_time = hrt_absolute_time();
-//				}
-//
+				if ((fabs(math::degrees(_v_att.roll)) > AUTOTUNE_LEVEL_ANGLE_CD) || (fabs(math::degrees(_v_att.pitch)) > AUTOTUNE_LEVEL_ANGLE_CD)) {
+					autotune_step_start_time = hrt_absolute_time();
+				}
+
 				if (hrt_absolute_time() - autotune_step_start_time >= AUTOTUNE_REQUIRED_LEVEL_TIME_MS) {
 					// init variables for next step
 					autotune_state.step = AUTOTUNE_STEP_TWITCHING;
