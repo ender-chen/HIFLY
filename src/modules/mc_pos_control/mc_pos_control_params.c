@@ -253,8 +253,19 @@ PARAM_DEFINE_FLOAT(MPC_MAN_Y_MAX, 120.0f);
  * follow mode
  *
  * 0: normal follow mode
- * 1: circle follow mode
+ * 1: fix circle mode
+ * 2: circle follow mode
+ * 3: loiter follow mode 
  *
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_INT32(MPC_FOLLOW_MODE, 0);
+
+/**
+ * follow safe distance
+ *
+ * keep safe distance with people
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOLLOW_DIST, 5.0f);

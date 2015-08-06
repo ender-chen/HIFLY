@@ -84,10 +84,9 @@ private:
 
 	void set_follow_item();
 
-	void set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, struct position_setpoint_triplet_s *pos_sp_triplet, bool update_xy, bool update_z);
+	void set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, struct position_setpoint_triplet_s *pos_sp_triplet, bool update_z);
 
 	control::BlockParamInt _param_yaw_mode;
-	control::BlockParamFloat _param_wp_hordist;
 	control::BlockParamFloat _param_wp_verdist;
 	control::BlockParamFloat _param_rel_alt;
 	control::BlockParamInt _param_enable_alt_update;

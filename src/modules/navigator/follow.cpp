@@ -99,7 +99,6 @@ void Follow::publish_waypoint_excuted(const struct waypoint_s& waypoint)
 Follow::Follow(Navigator *navigator, const char *name) :
 	MissionBlock(navigator, name),
 	_param_yaw_mode(this, "FOL_YAW_MODE",false),
-	_param_wp_hordist(this, "FOL_WP_HORDIST",false),
 	_param_wp_verdist(this, "FOL_WP_VERDIST",false),
 	_param_rel_alt(this, "FOL_RELATIVE_ALT",false),
 	_param_enable_alt_update(this, "FOL_ENABLE_ALT_UPDATE",false),
@@ -172,9 +171,7 @@ Follow::reset_follow_item()
 void
 Follow::set_follow_item()
 {
-	bool update_xy = false;
 	bool update_z = false;
-	float dist_xy = -1.0f;
 	float dist_z = -1.0f;
 
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
@@ -184,33 +181,14 @@ Follow::set_follow_item()
 
 	float altitude_amsl = _waypoint.alt + _param_rel_alt.get();
 
-	if (pos_sp_triplet->current.valid) {
-		get_distance_to_point_global_wgs84(_waypoint.lat, _waypoint.lon, altitude_amsl,
-				pos_sp_triplet->current.lat, pos_sp_triplet->current.lon,
-				pos_sp_triplet->current.alt, &dist_xy, &dist_z);
+	dist_z = fabsf(altitude_amsl - _navigator->get_global_position()->alt);
 
-		if (dist_xy > _param_wp_hordist.get()) {
-			update_xy = true;
-		}
-
-		if (dist_z > _param_wp_verdist.get()) {
-			update_z = true;
-		}
-
-	} else {
-		update_xy = true;
+	if (dist_z > _param_wp_verdist.get()) {
 		update_z = true;
 	}
 
-	if (!update_xy && !update_z) {
-		return;
-	}
-
-	/* set current position setpoint to previous */
-	set_previous_pos_setpoint();
-
 	/* set current position setpoint from waypoint */
-	set_waypoint_to_position_setpoint(&_waypoint, pos_sp_triplet, update_xy, update_z);
+	set_waypoint_to_position_setpoint(&_waypoint, pos_sp_triplet, update_z);
 
 	/* next item is unused */
 	pos_sp_triplet->next.valid = false;
@@ -223,7 +201,7 @@ Follow::set_follow_item()
 }
 
 void
-Follow::set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, struct position_setpoint_triplet_s *pos_sp_triplet, bool update_xy, bool update_z)
+Follow::set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, struct position_setpoint_triplet_s *pos_sp_triplet, bool update_z)
 {
 	if (_navigator->get_vstatus()->condition_landed) {
 		/* landed, don't follow, but switch to IDLE mode */
@@ -232,25 +210,12 @@ Follow::set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, str
 	} else {
 		pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 
-		if (update_xy) {
-			pos_sp_triplet->current.lat = waypoint->lat;
-			pos_sp_triplet->current.lon = waypoint->lon;
-			mavlink_log_critical(_navigator->get_mavlink_fd(),"[follow] update xy");
+		pos_sp_triplet->current.lat = waypoint->lat;
+		pos_sp_triplet->current.lon = waypoint->lon;
 
-		} else {
-			pos_sp_triplet->current.lat = pos_sp_triplet->previous.lat;
-			pos_sp_triplet->current.lon = pos_sp_triplet->previous.lon;
-		}
-
-		if (_param_enable_alt_update.get()) {
-			if (update_z) {
+		if (_param_enable_alt_update.get() && update_z) {
 				pos_sp_triplet->current.alt = waypoint->alt + _param_rel_alt.get();
 				mavlink_log_critical(_navigator->get_mavlink_fd(),"[follow] update z");
-
-			}else {
-				pos_sp_triplet->current.alt = pos_sp_triplet->previous.alt;
-			}
-
 		} else {
 			pos_sp_triplet->current.alt = _navigator->get_home_position()->alt + _param_rel_alt.get();
 		}

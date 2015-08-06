@@ -58,18 +58,7 @@
  * @max 1
  * @group Follow
  */
-PARAM_DEFINE_INT32(FOL_YAW_MODE, 0);
-
-/**
- * Waypoint horizontal distance.
- *
- * Set to > 0 to limit horizontal distance, if the distance of previous waypoint and current waypoint 
- * is large than FOL_WP_HORDIST, update new waypoint.
- *
- * @unit meters
- * @group Follow
- */
-PARAM_DEFINE_FLOAT(FOL_WP_HORDIST, 3.0f);
+PARAM_DEFINE_INT32(FOL_YAW_MODE, 1);
 
 /**
  * Waypoint vertical distance.
