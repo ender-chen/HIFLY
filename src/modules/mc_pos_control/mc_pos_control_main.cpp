@@ -374,8 +374,6 @@ static const int ERROR = -1;
 MulticopterPositionControl	*g_control;
 }
 
-float simple_yaw = 0.0f;
-float surper_simple_yaw = 0.0f;
 MulticopterPositionControl::MulticopterPositionControl() :
 
 	_task_should_exit(false),
@@ -741,12 +739,18 @@ MulticopterPositionControl::control_manual(float dt)
 	if (_control_mode.flag_control_altitude_enabled) {
 		/* move altitude setpoint with throttle stick */
 		_sp_move_rate(2) = -scale_control(_manual.z - 0.5f, 0.5f, alt_ctl_dz);
+
+		if((_sp_move_rate(2) < 0 && _geofence_result.geofence_ver_violated))
+			/* cant move altitude setpoint */
+			_sp_move_rate(2) = 0.0f;
 	}
 
 	if (_control_mode.flag_control_position_enabled) {
 		/* move position setpoint with roll/pitch stick */
 
+#if 0
 		float rollx, pitchx, rolly, pitchy;
+		float surper_simple_yaw = 0.0f;
 
 		float home_bearing;
 
@@ -788,10 +792,10 @@ MulticopterPositionControl::control_manual(float dt)
 		//_sp_move_rate(0) = _manual.x;
 		//_sp_move_rate(1) = _manual.y;
 	}
+#endif
+		_sp_move_rate(0) = _manual.x;
+		_sp_move_rate(1) = _manual.y;
 
-	if (_control_mode.flag_control_altitude_enabled) {
-		if((_sp_move_rate(2) < 0 && _geofence_result.geofence_ver_violated))
-		_sp_move_rate(2) = 0;
 	}
 
 	/* limit setpoint move rate */
@@ -805,6 +809,29 @@ MulticopterPositionControl::control_manual(float dt)
 	math::Matrix<3, 3> R_yaw_sp;
 	R_yaw_sp.from_euler(0.0f, 0.0f, _att_sp.yaw_body);
 	_sp_move_rate = R_yaw_sp * _sp_move_rate.emult(_params.vel_max);
+
+	if (_control_mode.flag_control_position_enabled) {
+		/* check if position setpoint excess limited range*/
+		math::Vector<3> _pos_tmp;
+		_pos_tmp.zero();
+
+		float _hor_tmp = 0.0f;
+		float _hor_next = 0.0f;
+		float _hor_now = 0.0f;
+
+		_pos_tmp = _pos_sp + _sp_move_rate * dt;
+
+		_hor_now = sqrt(_pos_sp(0) * _pos_sp(0) + _pos_sp(1) * _pos_sp(1));
+		_hor_next = sqrt(_pos_tmp(0) * _pos_tmp(0) + _pos_tmp(1) * _pos_tmp(1));
+
+		_hor_tmp = _hor_next - _hor_now;
+
+		if ( _hor_tmp > 0 && _geofence_result.geofence_hor_violated) {
+			/* cant move x, y position setpoint */
+			_sp_move_rate(0) = 0.0f;
+			_sp_move_rate(1) = 0.0f;
+		}
+	}
 
 	if (_control_mode.flag_control_altitude_enabled) {
 		/* reset alt setpoint to current altitude if needed */
@@ -1566,13 +1593,6 @@ MulticopterPositionControl::task_main()
 			reset_int_z = true;
 			reset_int_xy = true;
 			reset_yaw_sp = true;
-			simple_yaw = _att.yaw;
-			surper_simple_yaw = _att.yaw + PI;
-
-			while(surper_simple_yaw >= 2*PI)
-				surper_simple_yaw -= 2*PI;
-			while(surper_simple_yaw < 0)
-				surper_simple_yaw += 2*PI;
 		}
 
 		//Update previous arming state
