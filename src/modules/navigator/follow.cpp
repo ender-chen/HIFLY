@@ -210,6 +210,10 @@ Follow::set_waypoint_to_position_setpoint(const struct waypoint_s *waypoint, str
 	} else {
 		pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 
+		pos_sp_triplet->current.vx = waypoint->vel_n_m_s;
+		pos_sp_triplet->current.vy = waypoint->vel_e_m_s;
+		pos_sp_triplet->current.vz = waypoint->vel_d_m_s;
+
 		pos_sp_triplet->current.lat = waypoint->lat;
 		pos_sp_triplet->current.lon = waypoint->lon;
 

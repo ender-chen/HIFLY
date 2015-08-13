@@ -836,8 +836,10 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 		break;
 
 	case vehicle_command_s::VEHICLE_CMD_NAV_WAYPOINT: {
-
 			/* follow me position */
+			waypoint->vel_n_m_s = cmd->param2;
+			waypoint->vel_e_m_s = cmd->param3;
+			waypoint->vel_d_m_s = cmd->param4;
 			waypoint->lat = cmd->param5;
 			waypoint->lon = cmd->param6;
 			waypoint->alt = cmd->param7;

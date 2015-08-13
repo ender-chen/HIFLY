@@ -1275,8 +1275,18 @@ void MulticopterPositionControl::control_follow(float dt)
 				       &curr_sp.data[0], &curr_sp.data[1]);
 		curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
 
+		float vel_xy = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
+				_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
+
+		math::Vector<3> follow_vel;
+
+		follow_vel(0) = math::constrain(vel_xy, 1.0f, _params.vel_max(0));
+		follow_vel(1) = math::constrain(vel_xy, 1.0f, _params.vel_max(1));
+		follow_vel(2) = math::constrain(_pos_sp_triplet.current.vz, 1.0f, _params.vel_max(2));
+
 		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-		math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+		//math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+		math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
 
 		/* convert current setpoint to scaled space */
 		math::Vector<3> curr_sp_s = curr_sp.emult(scale);
