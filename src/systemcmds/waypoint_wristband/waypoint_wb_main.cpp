@@ -52,6 +52,7 @@
 #include <systemlib/perf_counter.h>
 #include <string.h>
 #include <uORB/topics/vehicle_global_position.h>
+#include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/vehicle_command.h>
 
 #include <drivers/drv_hrt.h>
@@ -178,6 +179,10 @@ waypoint_wb_task_main()
     fsync(fd_waypoint_sent);
 
     int _global_position_sub = orb_subscribe(ORB_ID(vehicle_global_position));
+    int _gps_position_sub = orb_subscribe(ORB_ID(vehicle_gps_position));
+    struct vehicle_gps_position_s gps_position;
+    memset(&gps_position, 0 ,sizeof(gps_position));
+
     orb_advert_t _cmd_long_pub = -1;
     while(!_task_should_exit)
     {
@@ -188,14 +193,27 @@ waypoint_wb_task_main()
         {
             struct vehicle_global_position_s global_position;
             orb_copy(ORB_ID(vehicle_global_position), _global_position_sub, &global_position);
+
+            orb_check(_gps_position_sub, &updated);
+            if (updated)
+            {
+                orb_copy(ORB_ID(vehicle_gps_position), _gps_position_sub, &gps_position);
+            }
+
+
             struct vehicle_command_s cmd;
             cmd.command = vehicle_command_s::VEHICLE_CMD_NAV_WAYPOINT;
             cmd.target_system = 1;
             cmd.target_component = 50;
+            cmd.param2 =(float)gps_position.vel_n_m_s;
+            cmd.param3 =(float)gps_position.vel_e_m_s;
+            cmd.param4 =(float)gps_position.vel_d_m_s;
             cmd.param5 =(float)global_position.lat;
             cmd.param6 =(float)global_position.lon;
             cmd.param7 =(float)global_position.alt;
-            warnx("global position update %d,%.7f %.7f\n", cmd.command, cmd.param5,cmd.param6);
+            warnx("global position update %d, %.7f %.7f %.7f %.7f %.7f\n", cmd.command,
+                cmd.param2, cmd.param3, cmd.param4,
+                cmd.param5,cmd.param6);
             if (_cmd_long_pub <= 0)
             {
                 _cmd_long_pub = orb_advertise(ORB_ID(vehicle_command), &cmd);
