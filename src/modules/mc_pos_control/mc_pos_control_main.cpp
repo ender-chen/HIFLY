@@ -183,6 +183,7 @@ private:
 		param_t mc_att_yaw_p;
 		param_t follow_mode;
 		param_t follow_dist;
+		param_t circle_radius;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -198,6 +199,7 @@ private:
 		float mc_att_yaw_p;
 		int   follow_mode;
 		float follow_dist;
+		float circle_radius;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -408,7 +410,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_simple_circle_init(false),
 	_wp_circle_init(false),
 
-	_radius(5.0f),
+	_radius(0.0f),
 	_rate(20.0f),
 
 	_angle(0.0f),
@@ -473,6 +475,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.mc_att_yaw_p = param_find("MC_YAW_P");
 	_params_handles.follow_mode = param_find("MPC_FOLLOW_MODE");
 	_params_handles.follow_dist = param_find("MPC_FOLLOW_DIST");
+	_params_handles.circle_radius = param_find("MPC_CIRCLE_R");
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -525,6 +528,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
 		param_get(_params_handles.follow_mode, &_params.follow_mode);
 		param_get(_params_handles.follow_dist, &_params.follow_dist);
+		param_get(_params_handles.circle_radius, &_params.circle_radius);
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -1581,6 +1585,8 @@ MulticopterPositionControl::task_main()
 
 		poll_subscriptions();
 		parameters_update(false);
+
+		_radius = math::constrain(_params.circle_radius, 3.0f, 10.0f);
 
 		hrt_abstime t = hrt_absolute_time();
 		float dt = t_prev != 0 ? (t - t_prev) * 0.000001f : 0.0f;
