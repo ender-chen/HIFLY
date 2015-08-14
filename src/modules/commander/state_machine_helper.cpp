@@ -544,6 +544,7 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	case vehicle_status_s::MAIN_STATE_ALTCTL:
 	case vehicle_status_s::MAIN_STATE_POSCTL:
 	case vehicle_status_s::MAIN_STATE_AUTO_MISSION:
+	case vehicle_status_s::MAIN_STATE_AUTO_FOLLOW:
 		/* require RC for all manual modes */
 		// if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && armed && !status->condition_landed) {
 		// 	status->failsafe = true;
@@ -557,7 +558,7 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		 || status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY || status->fly_in_restricted_area) && armed && !status->condition_landed) {
 			status->failsafe = true;
 			// if (status->condition_global_position_valid && status->condition_home_position_valid) {
-			if (status->condition_global_position_valid && status->condition_home_position_valid && (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL || (status->fly_in_restricted_area && (nav_state_old == vehicle_status_s::NAVIGATION_STATE_POSCTL || nav_state_old == vehicle_status_s::NAVIGATION_STATE_AUTO_RTL) && status->battery_warning != vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY))) {
+			if (status->condition_global_position_valid && status->condition_home_position_valid && (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL || (status->fly_in_restricted_area && (nav_state_old != vehicle_status_s::NAVIGATION_STATE_ALTCTL) && status->battery_warning != vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY))) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
@@ -607,6 +608,9 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 				break;
 			case vehicle_status_s::MAIN_STATE_AUTO_MISSION:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION;
+				break;
+			case vehicle_status_s::MAIN_STATE_AUTO_FOLLOW:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW;
 				break;
 			default:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
@@ -790,22 +794,6 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			}
 		} else {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_CUSTOM;
-		}
-		break;
-
-	case vehicle_status_s::MAIN_STATE_AUTO_FOLLOW:
-		if (!status->condition_global_position_valid) {
-			status->failsafe = true;
-
-			if (status->condition_local_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
-			} else if (status->condition_local_altitude_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
-			} else {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
-			}
-		} else {
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW;
 		}
 		break;
 
