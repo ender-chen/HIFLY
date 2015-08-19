@@ -373,9 +373,9 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 	case vehicle_status_s::MAIN_STATE_OFFBOARD:
 
 		/* need offboard signal */
-		if (!status->offboard_control_signal_lost) {
+		//if (!status->offboard_control_signal_lost) {
 			ret = TRANSITION_CHANGED;
-		}
+		//}
 
 		break;
 	case vehicle_status_s::MAIN_STATE_TAKEOFF:
@@ -811,13 +811,15 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 
 	case vehicle_status_s::MAIN_STATE_OFFBOARD:
 		/* require offboard control, otherwise stay where you are */
-		if (status->offboard_control_signal_lost && !status->rc_signal_lost) {
-			status->failsafe = true;
+		// if (/*status->offboard_control_signal_lost && */!status->rc_signal_lost) {
+		// 	status->failsafe = true;
 
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
-		} else if (status->offboard_control_signal_lost && status->rc_signal_lost) {
-			status->failsafe = true;
-
+		// 	status->nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
+		// } else 
+		// if (/*status->offboard_control_signal_lost && */status->rc_signal_lost) {
+		// 	status->failsafe = true;
+		if (!status->condition_global_position_valid)
+		{
 			if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
 			} else if (status->condition_local_altitude_valid) {
@@ -826,8 +828,9 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
 			}
 		} else {
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_FCF;
 		}
+		break;
 	default:
 		break;
 	}

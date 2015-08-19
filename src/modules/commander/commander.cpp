@@ -999,6 +999,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_IDLE]			= "IDLE";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FS_LOITER]			= "FS_LOITER";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW]		= "AUTO_FOLLOW";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FCF]				= "FCF_FOLLOW";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -3078,12 +3079,21 @@ set_control_mode()
 		control_mode.flag_control_climb_rate_enabled = false;
 		control_mode.flag_control_termination_enabled = true;
 		break;
-
+	case vehicle_status_s::NAVIGATION_STATE_FCF:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = false;
+		control_mode.flag_control_offboard_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		break;
 	case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;
 		control_mode.flag_control_offboard_enabled = true;
-
 		/*
 		 * The control flags depend on what is ignored according to the offboard control mode topic
 		 * Inner loop flags (e.g. attitude) also depend on outer loop ignore flags (e.g. position)

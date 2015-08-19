@@ -61,7 +61,9 @@ SRCS		= navigator_main.cpp \
 		  takeoff_params.c \
 		  idle.cpp \
 		  follow.cpp \
-		  follow_params.c
+		  follow_params.c \
+		  fcf.cpp \
+		  fcf_params.c
 
 ifeq ($(CONFIG_BOARD), PX4FMU_V2)
 EXTRADEFINES = -D__WAYPOINT_DEBUG__

@@ -101,6 +101,7 @@ Navigator::Navigator() :
 	_navigator_task(-1),
 	_mavlink_fd(-1),
 	_global_pos_sub(-1),
+	_local_pos_sub(-1),
 	_gps_pos_sub(-1),
 	_home_pos_sub(-1),
 	_roi_pos_sub(-1),
@@ -118,6 +119,7 @@ Navigator::Navigator() :
 	_vstatus{},
 	_control_mode{},
 	_global_pos{},
+	_local_pos{},
 	_gps_pos{},
 	_sensor_combined{},
 	_home_pos{},
@@ -143,6 +145,7 @@ Navigator::Navigator() :
 	_takeoff(this, "TAKEOFF"),
 	_land(this, "LAND"),
 	_idle(this, "IDLE"),
+	_fcf(this, "FCF"),
 	_follow(this, "FOLLOW"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
@@ -169,6 +172,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[8] = &_takeoff;
 	_navigation_mode_array[9] = &_land;
 	_navigation_mode_array[10] = &_idle;
+	_navigation_mode_array[11] = &_fcf;
 
 	updateParams();
 }
@@ -204,6 +208,11 @@ Navigator::global_position_update()
 	orb_copy(ORB_ID(vehicle_global_position), _global_pos_sub, &_global_pos);
 }
 
+void
+Navigator::local_position_update()
+{
+	orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
+}
 void
 Navigator::gps_position_update()
 {
@@ -306,6 +315,7 @@ Navigator::task_main()
 
 	/* do subscriptions */
 	_global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
+	_local_pos_sub = orb_subscribe(ORB_ID(vehicle_local_position));
 	_gps_pos_sub = orb_subscribe(ORB_ID(vehicle_gps_position));
 	_sensor_combined_sub = orb_subscribe(ORB_ID(sensor_combined));
 	_capabilities_sub = orb_subscribe(ORB_ID(navigation_capabilities));
@@ -322,6 +332,7 @@ Navigator::task_main()
 	vehicle_status_update();
 	vehicle_control_mode_update();
 	global_position_update();
+	local_position_update();
 	gps_position_update();
 	sensor_combined_update();
 	home_position_update();
@@ -332,12 +343,13 @@ Navigator::task_main()
 	/* rate limit position and sensor updates to 50 Hz */
 	orb_set_interval(_global_pos_sub, 20);
 	orb_set_interval(_sensor_combined_sub, 20);
+	orb_set_interval(_local_pos_sub,20);
 
 	hrt_abstime mavlink_open_time = 0;
 	const hrt_abstime mavlink_open_interval = 500000;
 
 	/* wakeup source(s) */
-	struct pollfd fds[9];
+	struct pollfd fds[10];
 
 	/* Setup of loop */
 	fds[0].fd = _global_pos_sub;
@@ -358,6 +370,9 @@ Navigator::task_main()
 	fds[7].events = POLLIN;
 	fds[8].fd = _roi_pos_sub;
 	fds[8].events = POLLIN;
+	fds[9].fd = _local_pos_sub;
+	fds[9].events = POLLIN;
+
 
 	while (!_task_should_exit) {
 
@@ -384,6 +399,9 @@ Navigator::task_main()
 
 		static bool have_geofence_position_data = false;
 		/* roi position updated */
+		if (fds[9].revents & POLLIN) {
+			local_position_update();
+		}
 		if (fds[8].revents & POLLIN) {
 			roi_position_update();
 		}
@@ -522,6 +540,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_IDLE:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_idle;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_FCF:
+				_pos_sp_triplet_published_invalid_once =false;
+				_navigation_mode = &_fcf;
 				break;
 			default:
 				_navigation_mode = nullptr;

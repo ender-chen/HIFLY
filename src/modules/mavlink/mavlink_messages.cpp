@@ -201,7 +201,7 @@ void get_mavlink_mode_state(struct vehicle_status_s *status, struct position_set
 			custom_mode.main_mode = PX4_CUSTOM_MAIN_MODE_MANUAL;
 			break;
 
-		case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
+		case vehicle_status_s::NAVIGATION_STATE_FCF:
 			*mavlink_base_mode |= MAV_MODE_FLAG_AUTO_ENABLED
 			                      | MAV_MODE_FLAG_STABILIZE_ENABLED
 					      | MAV_MODE_FLAG_GUIDED_ENABLED;
