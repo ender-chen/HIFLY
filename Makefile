@@ -55,13 +55,23 @@ GIT_DESC_SHORT := $(shell echo $(GIT_DESC) | cut -c1-16)
 # Canned firmware configurations that we (know how to) build.
 #
 KNOWN_CONFIGS		:= $(subst config_,,$(basename $(notdir $(wildcard $(PX4_MK_DIR)config_*.mk))))
+ifeq ($(BUILD_FULL), true)
 CONFIGS			?= $(KNOWN_CONFIGS)
+else
+SIMPLIFY_CONFIGS := px4fmu-v2% hifly%
+CONFIGS			?= $(filter $(SIMPLIFY_CONFIGS), $(KNOWN_CONFIGS))
+endif
 
 #
 # Boards that we (know how to) build NuttX export kits for.
 #
 KNOWN_BOARDS		:= $(subst board_,,$(basename $(notdir $(wildcard $(PX4_MK_DIR)board_*.mk))))
+ifeq ($(BUILD_FULL), true)
 BOARDS			?= $(KNOWN_BOARDS)
+else
+SIMPLIFY_BOARDS := px4fmu-v2% hifly%
+BOARDS			?= $(filter $(SIMPLIFY_BOARDS), $(KNOWN_BOARDS))
+endif
 
 #
 # Debugging
@@ -136,6 +146,8 @@ $(FIRMWARES): $(BUILD_DIR)%.build/firmware.px4:	checkgitversion generateuorbtopi
 		WORK_DIR=$(work_dir) \
 		$(FIRMWARE_GOAL)
 
+ifeq ($(BUILD_FULL), true)
+
 #
 # Make FMU firmwares depend on the corresponding IO firmware.
 #
@@ -148,6 +160,8 @@ $(BUILD_DIR)$(1).build/firmware.px4: $(IMAGE_DIR)px4io-$(call FMU_VERSION,$(1))_
 endef
 FMU_CONFIGS		:= $(filter px4fmu%,$(CONFIGS))
 $(foreach config,$(FMU_CONFIGS),$(eval $(call FMU_DEP,$(config))))
+
+endif
 
 #
 # Build the NuttX export archives.
