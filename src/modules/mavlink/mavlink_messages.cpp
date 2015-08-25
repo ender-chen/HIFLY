@@ -1695,7 +1695,7 @@ public:
 	}
 
 private:
-	MavlinkOrbSubscription *_pos_sp_triplet_sub;
+	MavlinkOrbSubscription *_pos_sp_sub;
 
 	/* do not allow top copying this class */
 	MavlinkStreamPositionTargetGlobalInt(MavlinkStreamPositionTargetGlobalInt &);
@@ -1703,21 +1703,22 @@ private:
 
 protected:
 	explicit MavlinkStreamPositionTargetGlobalInt(Mavlink *mavlink) : MavlinkStream(mavlink),
-		_pos_sp_triplet_sub(_mavlink->add_orb_subscription(ORB_ID(position_setpoint_triplet)))
+		_pos_sp_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_local_position_setpoint)))
 	{}
 
 	void send(const hrt_abstime t)
 	{
-		struct position_setpoint_triplet_s pos_sp_triplet;
-
-		if (_pos_sp_triplet_sub->update(&pos_sp_triplet)) {
+		struct vehicle_local_position_setpoint_s pos_sp; 
+		if (_pos_sp_sub->update(&pos_sp))
+		{
 			mavlink_position_target_global_int_t msg{};
+			msg.afx = pos_sp.x;
+			msg.afy = pos_sp.y;
+			msg.afz = pos_sp.z;
+			msg.vx = pos_sp.vx;
+			msg.vy = pos_sp.vy;
+			msg.vz = pos_sp.vz; 
 
-			msg.time_boot_ms = hrt_absolute_time()/1000;
-			msg.coordinate_frame = MAV_FRAME_GLOBAL;
-			msg.lat_int = pos_sp_triplet.current.lat * 1e7;
-			msg.lon_int = pos_sp_triplet.current.lon * 1e7;
-			msg.alt = pos_sp_triplet.current.alt;
 
 			_mavlink->send_message(MAVLINK_MSG_ID_POSITION_TARGET_GLOBAL_INT, &msg);
 		}
