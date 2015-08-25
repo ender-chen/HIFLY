@@ -142,7 +142,7 @@ void
 FCF::fcf_item_to_position_setpoint(const struct fcf_item_s *item, struct position_setpoint_s *sp)
 {
 	set_triplet_offboard_rate(item->x, _navigator->get_local_position()->x, _param_rate_x.get(), &sp->vx);
-	set_triplet_offboard_rate(item->y, _navigator->get_local_position()->y, _param_rate_y.get(), &sp->vy);
+	set_triplet_offboard_rate(item->y, _navigator->get_local_position()->y, 0, &sp->vy);
 	set_triplet_offboard_rate(item->z, _navigator->get_local_position()->z, _param_rate_z.get(), &sp->vz);
 	sp->valid = true;
 	sp->velocity_valid = true;
