@@ -90,8 +90,6 @@ FCF::on_inactive()
 void
 FCF::on_activation()
 {
-	mavlink_log_critical(_navigator->get_mavlink_fd(), "FCF: on_activation");
-
 	/* decide where to enter the RTL procedure when we switch into it */
 	if (_fcf_state == FCF_STATE_NONE) {
 		/* if lower than set altitude, climb up first */
@@ -112,7 +110,6 @@ void
 FCF::on_active()
 {
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
-	mavlink_log_critical(_navigator->get_mavlink_fd(), "FCF: on_active");
 	if (is_fcf_item_reached()) {
 		advance_fcf();
 		set_fcf_item();
