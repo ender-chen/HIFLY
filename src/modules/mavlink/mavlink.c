@@ -52,7 +52,11 @@
  * @min 1
  * @max 250
  */
+#ifdef __MAV_TYPE_WB__
+PARAM_DEFINE_INT32(MAV_SYS_ID, 50);
+#else
 PARAM_DEFINE_INT32(MAV_SYS_ID, 1);
+#endif
 
 /**
  * MAVLink component ID

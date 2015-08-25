@@ -121,6 +121,8 @@ BUILD_GIT_HASH := $(shell git log -1 --pretty=format:%H | cut -c1-6)
 BUILD_DATE_TIME := $(shell date '+%y%m%d_%H%M%S')
 export BUILD_ID := $(BUILD_DATE_TIME)_$(BUILD_GIT_HASH)
 
+export MAV_TYPE
+
 #
 # Copy FIRMWARES into the image directory.
 #

@@ -10,6 +10,8 @@ ROMFS_ROOT	 = $(PX4_BASE)/ROMFS/px4fmu_common
 ROMFS_OPTIONAL_FILES = $(PX4_BASE)/Images/px4io-v2_default.bin
 ROMFS_OPTIONAL_RC = $(PX4_BASE)/ROMFS/RC/px4fmu-v2_follow_wb
 
+MAV_TYPE = wristband
+
 #
 # Board support modules
 #
