@@ -469,6 +469,7 @@ then
 		fi
 	fi
 
+    set MAVLINK_F "-d /dev/ttyS1 -b 19200"
 	mavlink start $MAVLINK_F
 	unset MAVLINK_F
 
