@@ -271,6 +271,15 @@ PARAM_DEFINE_INT32(MPC_FOLLOW_MODE, 0);
 PARAM_DEFINE_FLOAT(MPC_FOLLOW_DIST, 5.0f);
 
 /**
+ * yaw update distance when loiter follow
+ *
+ * @min 0m
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOLLOW_YAW, 2.0f);
+
+/**
  * circle radius
  *
  * @min 3m

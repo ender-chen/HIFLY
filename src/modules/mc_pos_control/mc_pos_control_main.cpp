@@ -183,6 +183,7 @@ private:
 		param_t mc_att_yaw_p;
 		param_t follow_mode;
 		param_t follow_dist;
+		param_t follow_yaw;
 		param_t circle_radius;
 	}		_params_handles;		/**< handles for interesting parameters */
 
@@ -199,6 +200,7 @@ private:
 		float mc_att_yaw_p;
 		int   follow_mode;
 		float follow_dist;
+		float follow_yaw;
 		float circle_radius;
 
 		math::Vector<3> pos_p;
@@ -475,6 +477,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.mc_att_yaw_p = param_find("MC_YAW_P");
 	_params_handles.follow_mode = param_find("MPC_FOLLOW_MODE");
 	_params_handles.follow_dist = param_find("MPC_FOLLOW_DIST");
+	_params_handles.follow_yaw = param_find("MPC_FOLLOW_YAW");
 	_params_handles.circle_radius = param_find("MPC_CIRCLE_R");
 
 	/* fetch initial parameter values */
@@ -528,6 +531,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		_params.tilt_max_land = math::radians(_params.tilt_max_land);
 		param_get(_params_handles.follow_mode, &_params.follow_mode);
 		param_get(_params_handles.follow_dist, &_params.follow_dist);
+		param_get(_params_handles.follow_yaw, &_params.follow_yaw);
 		param_get(_params_handles.circle_radius, &_params.circle_radius);
 
 		float v;
@@ -1351,7 +1355,9 @@ void MulticopterPositionControl::control_follow(float dt)
 
 				/* scale result back to normal space */
 				_pos_sp = pos_sp_s.edivide(scale);
+			}
 
+			if (dist > _params.follow_yaw) {
 				/* update yaw setpoint if needed */
 				if (isfinite(_pos_sp_triplet.current.yaw)) {
 					_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
