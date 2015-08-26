@@ -321,6 +321,11 @@ private:
 	 */
 	void		control_follow_loiter(float dt);
 
+    /**
+    * control follow camera
+    */
+    void        control_follow_camera(float dt);
+
 	/**
 	 * Select between barometric and global (AMSL) altitudes
 	 */
@@ -1150,6 +1155,53 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 	}
 }
 
+void MulticopterPositionControl::control_follow_camera(float dt)
+{
+    if (!_mode_auto) {
+        _mode_auto = true;
+        /* reset position setpoint on AUTO mode activation */
+        reset_pos_sp();
+        reset_alt_sp();
+    }
+
+    //Poll position setpoint
+    bool updated;
+    orb_check(_pos_sp_triplet_sub, &updated);
+    if (updated) {
+        orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+
+        //Make sure that the position setpoint is valid
+        if (!isfinite(_pos_sp_triplet.current.lat) ||
+                !isfinite(_pos_sp_triplet.current.lon) ||
+                !isfinite(_pos_sp_triplet.current.alt)) {
+            _pos_sp_triplet.current.valid = false;
+        }
+    }
+
+    if (_pos_sp_triplet.current.valid) {
+        /* in case of interrupted mission don't go to waypoint but stay at current position */
+        _reset_pos_sp = true;
+        _reset_alt_sp = true;
+
+        /* project setpoint to local frame */
+        math::Vector<3> curr_sp;
+        map_projection_project(&_ref_pos,
+                _pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,
+                &curr_sp.data[0], &curr_sp.data[1]);
+        curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
+
+        if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
+            move_to_sp(curr_sp, dt);
+            return;
+        }
+
+        /* just update yaw setpoint if needed */
+        if (isfinite(_pos_sp_triplet.current.yaw)) {
+            _att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+        }
+    }
+}
+
 void MulticopterPositionControl::control_auto(float dt)
 {
 	if (!_mode_auto) {
@@ -1427,6 +1479,8 @@ MulticopterPositionControl::task_main()
 				control_circle_fixed(dt);
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
 				control_follow_loiter(dt);
+			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA) {
+                control_follow_camera(dt);
 			} else {
 				/* AUTO */
 				control_auto(dt);
