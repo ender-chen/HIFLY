@@ -1319,9 +1319,6 @@ void MulticopterPositionControl::control_follow(float dt)
 		//math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
 		math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
 
-		/* convert current setpoint to scaled space */
-		math::Vector<3> curr_sp_s = curr_sp.emult(scale);
-
 		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
 
 			float dx = curr_sp(0) - _pos(0);
@@ -1329,30 +1326,22 @@ void MulticopterPositionControl::control_follow(float dt)
 			float dist = sqrtf(dx * dx + dy * dy);
 
 			if (dist > _params.follow_dist) {
-				/* find X - cross point of L1 sphere and trajectory */
-				math::Vector<3> pos_s = _pos.emult(scale);
-				math::Vector<3> curr_pos_s = pos_s - curr_sp_s;
+				/* move setpoint not faster than max allowed speed */
+				math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
 
-				float curr_pos_s_len = curr_pos_s.length();
+				/* convert current setpoint to scaled space */
+				math::Vector<3> pos_sp_s = curr_sp.emult(scale);
 
-				if (curr_pos_s_len > 1.0f) {
-					/* move setpoint not faster than max allowed speed */
-					math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+				/* difference between current and desired position setpoints, 1 = max speed */
+				math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+				float d_pos_m_len = d_pos_m.length();
 
-					/* convert current setpoint to scaled space */
-					math::Vector<3> pos_sp_s = curr_sp.emult(scale);
-
-					/* difference between current and desired position setpoints, 1 = max speed */
-					math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
-					float d_pos_m_len = d_pos_m.length();
-
-					if (d_pos_m_len > dt) {
-						pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
-					}
-
-					/* scale result back to normal space */
-					_pos_sp = pos_sp_s.edivide(scale);
+				if (d_pos_m_len > dt) {
+					pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
 				}
+
+				/* scale result back to normal space */
+				_pos_sp = pos_sp_s.edivide(scale);
 
 				/* update yaw setpoint if needed */
 				if (isfinite(_pos_sp_triplet.current.yaw)) {
