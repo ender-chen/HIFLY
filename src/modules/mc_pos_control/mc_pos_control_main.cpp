@@ -800,6 +800,38 @@ MulticopterPositionControl::control_manual(float dt)
 		_sp_move_rate(0) = _manual.x;
 		_sp_move_rate(1) = _manual.y;
 
+		static float slow_down = 1.0f;
+		/* check position setpoing when geofence horizon violated */
+		if (_geofence_result.geofence_hor_violated) {
+			float _hor_tmp = 0.0f;
+			float _hor_next = 0.0f;
+			float _hor_now = 0.0f;
+
+			math::Vector<3> _pos_tmp;
+			_pos_tmp.zero();
+
+			/* calculate next position setpoints */
+			_pos_tmp = _pos + _sp_move_rate * dt;
+			_hor_now = sqrt(_pos(0) * _pos(0) + _pos(1) * _pos(1));
+			_hor_next = sqrt(_pos_tmp(0) * _pos_tmp(0) + _pos_tmp(1) * _pos_tmp(1));
+			_hor_tmp = _hor_next - _hor_now;
+
+			slow_down -= dt;
+
+			if(slow_down < 0.0f) {
+				slow_down = 0.0f;
+			}
+
+			/* check whether position is more and more far away from home*/
+			if (_hor_tmp > 0) {
+				/* far away from home, slow the vehicle down */
+				_sp_move_rate(0) *= slow_down;
+				_sp_move_rate(1) *= slow_down;
+			}
+
+		} else {
+			slow_down = 1.0f;
+		}
 	}
 
 	/* limit setpoint move rate */
@@ -813,29 +845,6 @@ MulticopterPositionControl::control_manual(float dt)
 	math::Matrix<3, 3> R_yaw_sp;
 	R_yaw_sp.from_euler(0.0f, 0.0f, _att_sp.yaw_body);
 	_sp_move_rate = R_yaw_sp * _sp_move_rate.emult(_params.vel_max);
-
-	if (_control_mode.flag_control_position_enabled) {
-		/* check if position setpoint excess limited range*/
-		math::Vector<3> _pos_tmp;
-		_pos_tmp.zero();
-
-		float _hor_tmp = 0.0f;
-		float _hor_next = 0.0f;
-		float _hor_now = 0.0f;
-
-		_pos_tmp = _pos_sp + _sp_move_rate * dt;
-
-		_hor_now = sqrt(_pos_sp(0) * _pos_sp(0) + _pos_sp(1) * _pos_sp(1));
-		_hor_next = sqrt(_pos_tmp(0) * _pos_tmp(0) + _pos_tmp(1) * _pos_tmp(1));
-
-		_hor_tmp = _hor_next - _hor_now;
-
-		if ( _hor_tmp > 0 && _geofence_result.geofence_hor_violated) {
-			/* cant move x, y position setpoint */
-			_sp_move_rate(0) = 0.0f;
-			_sp_move_rate(1) = 0.0f;
-		}
-	}
 
 	if (_control_mode.flag_control_altitude_enabled) {
 		/* reset alt setpoint to current altitude if needed */
