@@ -1,0 +1,12 @@
+20150907: porting on px4 release v1.0.1 from stable branch
+
+   last commit infomation:
+
+    commit 8580ac0155215ae0d0ad7b7303797fe1c8cce4a7
+    Merge: de6d3a1 d722292
+    Author: Lorenz Meier <lm@inf.ethz.ch>
+    Date:   Sun Aug 30 22:43:19 2015 +0200
+
+    Merge branch 'beta' into stable
+   
+
