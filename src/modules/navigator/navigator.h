@@ -73,11 +73,12 @@
 #include "follow_loiter.h"
 #include "follow_camera.h"
 #include "follow_circle.h"
+#include "follow_fc.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 12
+#define NAVIGATOR_MODE_ARRAY_SIZE 13
 
 class Navigator : public control::SuperBlock
 {
@@ -149,6 +150,7 @@ public:
 	struct geofence_result_s*		    get_geofence_result() { return &_geofence_result; }
 	struct vehicle_attitude_setpoint_s* get_att_sp() { return &_att_sp; }
     struct waypoint_s* get_waypoint_sp() { return &_waypoint_sp; }
+	struct vehicle_local_position_s*	get_local_position() { return &_local_pos; }
 
 	int		get_onboard_mission_sub() { return _onboard_mission_sub; }
 	int		get_offboard_mission_sub() { return _offboard_mission_sub; }
@@ -194,6 +196,7 @@ private:
 	int		_offboard_mission_sub;		/**< offboard mission subscription */
 	int		_param_update_sub;		/**< param update subscription */
     int     _waypoint_sub;      /**< waypoint subscription */
+	int 	_local_pos_sub;			/**< local position subscription */
 
 	orb_advert_t	_pos_sp_triplet_pub;		/**< publish position setpoint triplet */
 	orb_advert_t	_mission_result_pub;
@@ -218,6 +221,7 @@ private:
 	vehicle_attitude_setpoint_s			_att_sp;
 
     waypoint_s _waypoint_sp;
+	vehicle_local_position_s 			_local_pos;			/**< local vehicle position */
 
 	bool 		_home_position_set;
 	bool 		_roi_position_set;
@@ -242,6 +246,7 @@ private:
     FollowLoiter _follow_loiter;
     FollowCamera _follow_camera;
     FollowCircle _follow_circle;
+    FollowFC _follow_fc;
 	DataLinkLoss	_dataLinkLoss;			/**< class that handles the OBC datalink loss mode */
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode
 							  (FW only!) */
@@ -308,6 +313,11 @@ private:
      * Update waypoint
      */
     void waypoint_update();
+
+	/**
+	 * Retrieve local position
+	 */
+	void		local_position_update();
 
 	/**
 	 * Shim for calling task_main from task_create.

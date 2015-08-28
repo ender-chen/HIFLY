@@ -63,7 +63,9 @@ SRCS		= navigator_main.cpp \
           follow_params.c \
           follow_loiter.cpp \
           follow_camera.cpp \
-          follow_circle.cpp
+          follow_circle.cpp \
+          follow_fc.cpp \
+          follow_fc_params.c
 
 INCLUDE_DIRS	 += $(MAVLINK_SRC)/include/mavlink
 

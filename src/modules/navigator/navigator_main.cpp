@@ -111,6 +111,7 @@ Navigator::Navigator() :
 	_offboard_mission_sub(-1),
 	_param_update_sub(-1),
     _waypoint_sub(-1),
+	_local_pos_sub(-1),
 	_pos_sp_triplet_pub(-1),
 	_mission_result_pub(-1),
 	_geofence_result_pub(-1),
@@ -128,6 +129,7 @@ Navigator::Navigator() :
 	_mission_result{},
 	_att_sp{},
     _waypoint_sp{},
+	_local_pos{},
 	_home_position_set(false),
 	_roi_position_set(false),
 	_mission_item_valid(false),
@@ -146,6 +148,7 @@ Navigator::Navigator() :
     _follow_loiter(this, "FOLLOI"),
     _follow_camera(this, "FOLCAM"),
     _follow_circle(this, "FOLCLE"),
+    _follow_fc(this, "FOLFC"),
 	_dataLinkLoss(this, "DLL"),
 	_engineFailure(this, "EF"),
 	_gpsFailure(this, "GPSF"),
@@ -171,6 +174,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[9] = &_follow_loiter;
 	_navigation_mode_array[10] = &_follow_camera;
 	_navigation_mode_array[11] = &_follow_circle;
+	_navigation_mode_array[12] = &_follow_fc;
 
 	updateParams();
 }
@@ -204,6 +208,12 @@ void
 Navigator::global_position_update()
 {
 	orb_copy(ORB_ID(vehicle_global_position), _global_pos_sub, &_global_pos);
+}
+
+void
+Navigator::local_position_update()
+{
+	orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
 }
 
 void
@@ -331,6 +341,7 @@ Navigator::task_main()
 	_offboard_mission_sub = orb_subscribe(ORB_ID(offboard_mission));
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
     _waypoint_sub = orb_subscribe(ORB_ID(waypoint));
+	_local_pos_sub = orb_subscribe(ORB_ID(vehicle_local_position));
 
 	/* copy all topics first time */
 	vehicle_status_update();
@@ -343,16 +354,18 @@ Navigator::task_main()
 	navigation_capabilities_update();
 	params_update();
     waypoint_update();
+	local_position_update();
 
 	/* rate limit position and sensor updates to 50 Hz */
 	orb_set_interval(_global_pos_sub, 20);
 	orb_set_interval(_sensor_combined_sub, 20);
+	orb_set_interval(_local_pos_sub,20);
 
 	hrt_abstime mavlink_open_time = 0;
 	const hrt_abstime mavlink_open_interval = 500000;
 
 	/* wakeup source(s) */
-	struct pollfd fds[10];
+	struct pollfd fds[11];
 
 	/* Setup of loop */
 	fds[0].fd = _global_pos_sub;
@@ -375,6 +388,8 @@ Navigator::task_main()
 	fds[8].events = POLLIN;
     fds[9].fd = _waypoint_sub;
     fds[9].events = POLLIN;
+	fds[10].fd = _local_pos_sub;
+	fds[10].events = POLLIN;
 
 	while (!_task_should_exit) {
 
@@ -400,7 +415,12 @@ Navigator::task_main()
 		}
 
 		static bool have_geofence_position_data = false;
-		if (fds[9].revents & POLLIN) {
+
+		if (fds[10].revents & POLLIN) {
+			local_position_update();
+		}
+
+		if (fds[10].revents & POLLIN) {
 			waypoint_update();
 		}
 
@@ -547,6 +567,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_follow_circle;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_follow_fc;
 				break;
 			default:
 				_navigation_mode = nullptr;
