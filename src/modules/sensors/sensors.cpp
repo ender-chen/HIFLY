@@ -291,6 +291,9 @@ private:
 		int rc_map_loiter_sw;
 		int rc_map_acro_sw;
 		int rc_map_offboard_sw;
+		int rc_map_custom_mode_sw;
+		int rc_map_follow_sw;
+		int rc_map_follow_sub_sw;
 
 		int rc_map_flaps;
 
@@ -310,6 +313,9 @@ private:
 		float rc_loiter_th;
 		float rc_acro_th;
 		float rc_offboard_th;
+		float rc_custom_mode_th;
+		float rc_follow_th;
+		float rc_follow_sub_th;
 		bool rc_assist_inv;
 		bool rc_auto_inv;
 		bool rc_posctl_inv;
@@ -317,6 +323,9 @@ private:
 		bool rc_loiter_inv;
 		bool rc_acro_inv;
 		bool rc_offboard_inv;
+		bool rc_custom_mode_inv;
+		bool rc_follow_inv;
+		bool rc_follow_sub_inv;
 
 		float battery_voltage_scaling;
 		float battery_current_scaling;
@@ -347,6 +356,11 @@ private:
 		param_t rc_map_loiter_sw;
 		param_t rc_map_acro_sw;
 		param_t rc_map_offboard_sw;
+		param_t rc_map_custom_mode_sw;
+		param_t rc_map_follow_sw;
+		param_t rc_map_follow_sub_sw;
+
+
 
 		param_t rc_map_flaps;
 
@@ -370,6 +384,10 @@ private:
 		param_t rc_loiter_th;
 		param_t rc_acro_th;
 		param_t rc_offboard_th;
+		param_t rc_custom_mode_th;
+		param_t rc_follow_th;
+		param_t rc_follow_sub_th;
+
 
 		param_t battery_voltage_scaling;
 		param_t battery_current_scaling;
@@ -588,6 +606,10 @@ Sensors::Sensors() :
 	_parameter_handles.rc_map_loiter_sw = param_find("RC_MAP_LOITER_SW");
 	_parameter_handles.rc_map_acro_sw = param_find("RC_MAP_ACRO_SW");
 	_parameter_handles.rc_map_offboard_sw = param_find("RC_MAP_OFFB_SW");
+	_parameter_handles.rc_map_custom_mode_sw = param_find("RC_MAP_CUSM_SW");
+	_parameter_handles.rc_map_follow_sw = param_find("RC_MAP_FOLL_SW");
+	_parameter_handles.rc_map_follow_sub_sw = param_find("RC_MAP_FOLLS_SW");
+
 
 	_parameter_handles.rc_map_aux1 = param_find("RC_MAP_AUX1");
 	_parameter_handles.rc_map_aux2 = param_find("RC_MAP_AUX2");
@@ -611,6 +633,11 @@ Sensors::Sensors() :
 	_parameter_handles.rc_loiter_th = param_find("RC_LOITER_TH");
 	_parameter_handles.rc_acro_th = param_find("RC_ACRO_TH");
 	_parameter_handles.rc_offboard_th = param_find("RC_OFFB_TH");
+	_parameter_handles.rc_custom_mode_th = param_find("RC_CUSM_TH");
+	_parameter_handles.rc_follow_th = param_find("RC_FOLL_TH");
+	_parameter_handles.rc_follow_sub_th = param_find("RC_FOLLS_TH");
+
+
 
 	/* Differential pressure offset */
 	_parameter_handles.diff_pres_offset_pa = param_find("SENS_DPRES_OFF");
@@ -764,6 +791,18 @@ Sensors::parameters_update()
 		warnx("%s", paramerr);
 	}
 
+	if (param_get(_parameter_handles.rc_map_custom_mode_sw, &(_parameters.rc_map_custom_mode_sw)) != OK) {
+		warnx("%s", paramerr);
+	}
+
+	if (param_get(_parameter_handles.rc_map_follow_sw, &(_parameters.rc_map_follow_sw)) != OK) {
+		warnx("%s", paramerr);
+	}
+
+	if (param_get(_parameter_handles.rc_map_follow_sub_sw, &(_parameters.rc_map_follow_sub_sw)) != OK) {
+		warnx("%s", paramerr);
+	}
+
 	if (param_get(_parameter_handles.rc_map_flaps, &(_parameters.rc_map_flaps)) != OK) {
 		warnx("%s", paramerr);
 	}
@@ -801,6 +840,16 @@ Sensors::parameters_update()
 	_parameters.rc_offboard_inv = (_parameters.rc_offboard_th < 0);
 	_parameters.rc_offboard_th = fabs(_parameters.rc_offboard_th);
 
+    param_get(_parameter_handles.rc_custom_mode_th, &(_parameters.rc_custom_mode_th));
+	_parameters.rc_custom_mode_inv = (_parameters.rc_custom_mode_th < 0);
+	_parameters.rc_custom_mode_th = fabs(_parameters.rc_custom_mode_th);
+	param_get(_parameter_handles.rc_follow_th, &(_parameters.rc_follow_th));
+	_parameters.rc_follow_inv = (_parameters.rc_follow_th < 0);
+	_parameters.rc_follow_th = fabs(_parameters.rc_follow_th);
+	param_get(_parameter_handles.rc_follow_sub_th, &(_parameters.rc_follow_sub_th));
+	_parameters.rc_follow_sub_inv = (_parameters.rc_follow_sub_th < 0);
+	_parameters.rc_follow_sub_th = fabs(_parameters.rc_follow_sub_th);
+
 	/* update RC function mappings */
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_THROTTLE] = _parameters.rc_map_throttle - 1;
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_ROLL] = _parameters.rc_map_roll - 1;
@@ -813,6 +862,9 @@ Sensors::parameters_update()
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_LOITER] = _parameters.rc_map_loiter_sw - 1;
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_ACRO] = _parameters.rc_map_acro_sw - 1;
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD] = _parameters.rc_map_offboard_sw - 1;
+	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_CUSTOM_MODE] = _parameters.rc_map_custom_mode_sw - 1;
+	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_FOLLOW] = _parameters.rc_map_follow_sw - 1;
+	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_FOLLOW_SUB] = _parameters.rc_map_follow_sub_sw - 1;
 
 	_rc.function[rc_channels_s::RC_CHANNELS_FUNCTION_FLAPS] = _parameters.rc_map_flaps - 1;
 
@@ -2032,6 +2084,9 @@ Sensors::rc_poll()
 			manual.loiter_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_LOITER, _parameters.rc_loiter_th, _parameters.rc_loiter_inv);
 			manual.acro_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_ACRO, _parameters.rc_acro_th, _parameters.rc_acro_inv);
 			manual.offboard_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD, _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
+			manual.custom_mode_switch = get_rc_sw3pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_CUSTOM_MODE, _parameters.rc_custom_mode_th, _parameters.rc_custom_mode_inv, _parameters.rc_assist_th, _parameters.rc_assist_inv);
+			manual.follow_switch = get_rc_sw3pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_FOLLOW, _parameters.rc_follow_th, _parameters.rc_follow_inv, _parameters.rc_assist_th, _parameters.rc_assist_inv);
+			manual.follow_sub_switch = get_rc_sw2pos_position (rc_channels_s::RC_CHANNELS_FUNCTION_FOLLOW_SUB, _parameters.rc_follow_sub_th, _parameters.rc_follow_sub_inv);
 			manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_RC;
 			/* publish manual_control_setpoint topic */
 			if (_manual_control_pub > 0) {

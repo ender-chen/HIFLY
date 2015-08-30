@@ -2006,6 +2006,33 @@ PARAM_DEFINE_INT32(RC_MAP_ACRO_SW, 0);
 PARAM_DEFINE_INT32(RC_MAP_OFFB_SW, 0);
 
 /**
+ * customized main mode switch channel mapping.
+ *
+ * @min 0
+ * @max 18
+ * @group Radio Switches
+ */
+PARAM_DEFINE_INT32(RC_MAP_CUSM_SW, 0);
+
+/**
+ * follow switch channel mapping.
+ *
+ * @min 0
+ * @max 18
+ * @group Radio Switches
+ */
+PARAM_DEFINE_INT32(RC_MAP_FOLL_SW, 0);
+
+/**
+ * follow sub switch channel mapping.
+ *
+ * @min 0
+ * @max 18
+ * @group Radio Switches
+ */
+PARAM_DEFINE_INT32(RC_MAP_FOLLS_SW, 0);
+
+/**
  * Flaps channel mapping.
  *
  * @min 0
@@ -2222,6 +2249,61 @@ PARAM_DEFINE_FLOAT(RC_ACRO_TH, 0.5f);
  */
 PARAM_DEFINE_FLOAT(RC_OFFB_TH, 0.5f);
 
+
+/**
+ * Threshold for selecting custom mode
+ *
+ * 0-1 indicate where in the full channel range the threshold sits
+ * 		0 : min
+ * 		1 : max
+ * sign indicates polarity of comparison
+ * 		positive : true when channel>th
+ * 		negative : true when channel<th
+ *
+ * @min -1
+ * @max 1
+ * @group Radio Switches
+ *
+ *
+ */
+PARAM_DEFINE_FLOAT(RC_CUSM_TH, 0.75f);
+
+/**
+ * Threshold for selecting follow
+ *
+ * 0-1 indicate where in the full channel range the threshold sits
+ * 		0 : min
+ * 		1 : max
+ * sign indicates polarity of comparison
+ * 		positive : true when channel>th
+ * 		negative : true when channel<th
+ *
+ * @min -1
+ * @max 1
+ * @group Radio Switches
+ *
+ *
+ */
+PARAM_DEFINE_FLOAT(RC_FOLL_TH, 0.75f);
+
+/**
+ * Threshold for selecting follow sub
+ *
+ * 0-1 indicate where in the full channel range the threshold sits
+ * 		0 : min
+ * 		1 : max
+ * sign indicates polarity of comparison
+ * 		positive : true when channel>th
+ * 		negative : true when channel<th
+ *
+ * @min -1
+ * @max 1
+ * @group Radio Switches
+ *
+ *
+ */
+PARAM_DEFINE_FLOAT(RC_FOLLS_TH, 0.5f);
+
 /**
  * PWM input channel that provides RSSI.
  *
@@ -2235,6 +2317,8 @@ PARAM_DEFINE_FLOAT(RC_OFFB_TH, 0.5f);
  * @group Radio Calibration
  *
  */
+
+
 PARAM_DEFINE_INT32(RC_RSSI_PWM_CHAN, 0);
 
 /**
@@ -2367,3 +2451,5 @@ PARAM_DEFINE_INT32(PWM_AUX_MAX, 2000);
  * @group PWM Outputs
  */
 PARAM_DEFINE_INT32(PWM_AUX_DISARMED, 1000);
+
+

@@ -394,6 +394,18 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 	case vehicle_status_s::MAIN_STATE_IDLE:
 		ret = TRANSITION_CHANGED;
 		break;
+	case vehicle_status_s::MAIN_STATE_CIRCLE:
+		ret = TRANSITION_CHANGED;
+		break;
+	case vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA:
+	case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
+	case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
+	case vehicle_status_s::MAIN_STATE_FOLLOW_FC:
+		/* need global position estimate */
+		if (status->condition_global_position_valid) {
+			ret = TRANSITION_CHANGED;
+		}
+		break;
 	case vehicle_status_s::MAIN_STATE_MAX:
 	default:
 		break;
@@ -541,6 +553,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	case vehicle_status_s::MAIN_STATE_STAB:
 	case vehicle_status_s::MAIN_STATE_ALTCTL:
 	case vehicle_status_s::MAIN_STATE_POSCTL:
+    case vehicle_status_s::MAIN_STATE_CIRCLE:
+    case vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA:
+    case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
+    case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
+    case vehicle_status_s::MAIN_STATE_FOLLOW_FC:
 		/* require RC for all manual modes */
 		if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && armed && !status->condition_landed) {
 			status->failsafe = true;
@@ -580,6 +597,22 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 
 			case vehicle_status_s::MAIN_STATE_POSCTL:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_POSCTL;
+				break;
+
+			case vehicle_status_s::MAIN_STATE_CIRCLE:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_CIRCLE;
+				break;
+			case vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA;
+				break;
+			case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER;
+				break;
+			case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE;
+				break;
+			case vehicle_status_s::MAIN_STATE_FOLLOW_FC:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC;
 				break;
 
 			default:
@@ -785,7 +818,12 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
         if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||
                 status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
                 status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
-                status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER) {
+                status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
+                status->main_state == vehicle_status_s::MAIN_STATE_CIRCLE ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_LOITER ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_FC) {
 
             status->failsafe = true;
             if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
@@ -817,7 +855,12 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
                 status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
                 status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
                 status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
-                status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD) {
+                status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD ||
+                status->main_state == vehicle_status_s::MAIN_STATE_CIRCLE ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_LOITER ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_FC) {
 
             status->failsafe = true;
             if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
@@ -842,7 +885,12 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
                 status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
                 status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
                 status->main_state == vehicle_status_s::MAIN_STATE_AUTO_RTL ||
-                status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD) {
+                status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD ||
+                status->main_state == vehicle_status_s::MAIN_STATE_CIRCLE ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_LOITER ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE ||
+                status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_FC) {
 
             status->failsafe = true;
             if (status->condition_local_position_valid) {

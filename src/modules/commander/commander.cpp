@@ -947,6 +947,12 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_LAND_SHORTCUT]                             = "LAND_SHORTCUT";
 	main_states_str[vehicle_status_s::MAIN_STATE_IDLE]	             = "IDLE";
 
+	main_states_str[vehicle_status_s::MAIN_STATE_CIRCLE]            = "CIRCLE";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA]	= "FOLLOW_CAMERA";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_LOITER]		= "FOLLOW_LOITER";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE]		= "FOLLOW_CIRCLE";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_FC]		    = "FOLLOW_FC";
+
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
 	arming_states_str[vehicle_status_s::ARMING_STATE_STANDBY]			= "STANDBY";
@@ -975,6 +981,12 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT] 			= "TAKEOFF_SHORTCUT";
     nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT]		= "LAND_SHORTCUT";
+
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_CIRCLE]		        = "CIRCLE";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA]		= "FOLLOW_CAMERA";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER]		= "FOLLOW_LOITER";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE]		= "FOLLOW_CIRCLE";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC]		    = "FOLLOW_FC";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -2632,6 +2644,98 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 		}
 	}
 
+    /* if custom_mode_switch is set, overrides main switch */
+    switch (sp_man->custom_mode_switch) {
+        case manual_control_setpoint_s::SWITCH_POS_NONE:
+            res = TRANSITION_NOT_CHANGED;
+            /* custom_mode_switch isn't set, go to next switch */
+            break;
+        case manual_control_setpoint_s::SWITCH_POS_ON:
+            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_MANUAL);
+            if (res == TRANSITION_DENIED) {
+                print_reject_mode(status_local, "MANUAL");
+            }
+            break;
+        case manual_control_setpoint_s::SWITCH_POS_MIDDLE:
+            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_POSCTL);
+            if (res == TRANSITION_DENIED) {
+                print_reject_mode(status_local, "POSCTL");
+
+            }
+            break;
+        case manual_control_setpoint_s::SWITCH_POS_OFF:
+            {
+                switch (sp_man->follow_switch) {
+                    case manual_control_setpoint_s::SWITCH_POS_ON:
+                        res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_CIRCLE);
+                        if (res == TRANSITION_DENIED) {
+                            print_reject_mode(status_local, "CIRCLE");
+                        }
+                        break;
+                    case manual_control_setpoint_s::SWITCH_POS_MIDDLE:
+                        if (sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+                            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA);
+                            if (res == TRANSITION_DENIED) {
+                                print_reject_mode(status_local, "FOLLOW_CAMERA");
+                            }
+                            break;
+                        }
+                        else if(sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
+                            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_LOITER);
+                            if (res == TRANSITION_DENIED) {
+                                print_reject_mode(status_local, "FOLLOW_LOITER");
+                            }
+                            break;
+                        }
+                        else {
+                            res = TRANSITION_NOT_CHANGED;
+                            break;
+                        }
+                    case manual_control_setpoint_s::SWITCH_POS_OFF:
+                        if (sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+                            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE);
+                            if (res == TRANSITION_DENIED) {
+                                print_reject_mode(status_local, "FOLLOW_CIRCLE");
+                            }
+                            break;
+                        }
+                        else if(sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
+                            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_FC);
+                            if (res == TRANSITION_DENIED) {
+                                print_reject_mode(status_local, "FOLLOW_FC");
+                            }
+                            break;
+                        }
+                        else {
+                            res = TRANSITION_NOT_CHANGED;
+                            break;
+                        }
+                    default:
+                       res = TRANSITION_NOT_CHANGED;
+                        break;
+                }
+                break;
+            }
+        default:
+            break;
+    }
+
+    if (sp_man->custom_mode_switch != manual_control_setpoint_s::SWITCH_POS_NONE) {
+        if (res == TRANSITION_DENIED) {
+            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_ALTCTL);
+
+            if (res == TRANSITION_DENIED) {
+                print_reject_mode(status_local, "ALTCTL");
+                
+                res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_MANUAL);
+            }
+        }
+
+        /* override main mode */
+        return res;
+    }
+    /* custom main mode end */
+
 	/* RTL switch overrides main switch */
 	if (sp_man->return_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
 		res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_RTL);
@@ -2712,7 +2816,6 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 			}
 
 			print_reject_mode(status_local, "AUTO_LOITER");
-
 		} else {
 			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_MISSION);
 
@@ -2881,6 +2984,7 @@ set_control_mode()
 	control_mode.flag_external_manual_override_ok = (!status.is_rotary_wing && !status.is_vtol);
 	control_mode.flag_system_hil_enabled = status.hil_state == vehicle_status_s::HIL_STATE_ON;
 	control_mode.flag_control_offboard_enabled = false;
+	control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_NONE;
 
 	switch (status.nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
@@ -2954,7 +3058,65 @@ set_control_mode()
 		control_mode.flag_control_velocity_enabled = true;
 		control_mode.flag_control_termination_enabled = false;
 		break;
-
+	case vehicle_status_s::NAVIGATION_STATE_CIRCLE:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_CIRCLE;
+		break;
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA;
+        break;
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER;
+        break;
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE;
+        break;
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = false;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC;
+        break;
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;
@@ -3018,7 +3180,6 @@ set_control_mode()
 		control_mode.flag_control_climb_rate_enabled = false;
 		control_mode.flag_control_termination_enabled = true;
 		break;
-
 	case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;
