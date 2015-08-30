@@ -966,7 +966,9 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_TAKEOFF]                        = "TAKEOFF";
 	main_states_str[vehicle_status_s::MAIN_STATE_LAND]                             = "LAND";
 	main_states_str[vehicle_status_s::MAIN_STATE_IDLE]	                          = "IDLE";
-	main_states_str[vehicle_status_s::MAIN_STATE_AUTO_FOLLOW]		= "AUTO_FOLLOW";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_LOITER]		= "FOLLOW_LOITER";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_FC]		= "FOLLOW_FC";
+
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -999,6 +1001,8 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_IDLE]			= "IDLE";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FS_LOITER]			= "FS_LOITER";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_AUTO_FOLLOW]		= "AUTO_FOLLOW";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC]		= "FOLLOW_FC";
+
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -2667,6 +2671,36 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 		}
 	}
 
+	if (sp_man->custom_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+		switch (sp_man->follow_mode_switch) {
+		case manual_control_setpoint_s::SWITCH_POS_NONE:
+			res = TRANSITION_NOT_CHANGED;
+			break;
+		case manual_control_setpoint_s::SWITCH_POS_OFF:
+			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_FC);
+			if (res == TRANSITION_DENIED) {
+				print_reject_mode(status_local, "FOLLOW_FC");
+				/* mode rejected, continue to evaluate the main system mode */
+
+			} else {
+				/* changed successfully or already in this state */
+				return res;
+			}
+		case manual_control_setpoint_s::SWITCH_POS_ON:
+			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_LOITER);
+			if (res == TRANSITION_DENIED) {
+				print_reject_mode(status_local, "FOLLOW_LOITER");
+				/* mode rejected, continue to evaluate the main system mode */
+
+			} else {
+				/* changed successfully or already in this state */
+				return res;
+			}
+		default:
+			break;
+		}
+	}
+
 	/* RTL switch overrides main switch */
 	if (sp_man->return_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
 		res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_RTL);
@@ -2747,16 +2781,6 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 			}
 
 			print_reject_mode(status_local, "AUTO_LOITER");
-
-		} else if (sp_man->loiter_switch == manual_control_setpoint_s::SWITCH_POS_MIDDLE) {
-			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_FOLLOW);
-
-			if (res != TRANSITION_DENIED) {
-				break;  // changed successfully or already in this state
-			}
-
-			print_reject_mode(status_local, "AUTO_FOLLOW");
-
 		} else {
 			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_MISSION);
 
@@ -3078,7 +3102,16 @@ set_control_mode()
 		control_mode.flag_control_climb_rate_enabled = false;
 		control_mode.flag_control_termination_enabled = true;
 		break;
-
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = false;
+		control_mode.flag_control_offboard_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
 	case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;

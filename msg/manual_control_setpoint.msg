@@ -47,4 +47,6 @@ uint8 posctl_switch		 # position control 2 position switch (optional): _ALTCTL_,
 uint8 loiter_switch		 # loiter 2 position switch (optional): _MISSION_, LOITER
 uint8 acro_switch		 # acro 2 position switch (optional): _MANUAL_, ACRO
 uint8 offboard_switch		 # offboard 2 position switch (optional): _NORMAL_, OFFBOARD
+uint8 follow_mode_switch     #follow_mode 2 position (optional): _LOITER_, FOLLOW_FC
+uint8 custom_switch			#custom switch 2 position (mandatory):_follow_mode_
 uint8 control_source		 # control from different source _NONE,_RC,_APP,_CUSTOM
