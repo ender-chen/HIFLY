@@ -86,3 +86,8 @@ PARAM_DEFINE_FLOAT(FCF_RATE_Z, 1);
  */
 PARAM_DEFINE_FLOAT(FCF_OFFSET_POS, 0.5);
 
+/**
+  *Far close follow direction.
+  */
+PARAM_DEFINE_FLOAT(FCF_DIR, 0);
+

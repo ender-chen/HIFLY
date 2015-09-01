@@ -289,6 +289,7 @@ __EXPORT float get_distance_to_next_waypoint(double lat_now, double lon_now, dou
 	return CONSTANTS_RADIUS_OF_EARTH * c;
 }
 
+
 __EXPORT float get_bearing_to_next_waypoint(double lat_now, double lon_now, double lat_next, double lon_next)
 {
 	double lat_now_rad = lat_now * M_DEG_TO_RAD;
@@ -305,7 +306,14 @@ __EXPORT float get_bearing_to_next_waypoint(double lat_now, double lon_now, doub
 
 	return theta;
 }
+__EXPORT float get_bearing_to_point_local(float current_x, float current_y, float point_x, float point_y)
+{
+	float theta = atan2f(point_y - current_y, point_x - current_x);
 
+	theta = _wrap_pi(theta);
+
+	return theta;
+}
 __EXPORT void get_vector_to_next_waypoint(double lat_now, double lon_now, double lat_next, double lon_next, float *v_n, float *v_e)
 {
 	double lat_now_rad = lat_now * M_DEG_TO_RAD;

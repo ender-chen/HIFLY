@@ -243,6 +243,8 @@ __EXPORT float get_distance_to_next_waypoint(double lat_now, double lon_now, dou
  */
 __EXPORT float get_bearing_to_next_waypoint(double lat_now, double lon_now, double lat_next, double lon_next);
 
+__EXPORT float get_bearing_to_point_local(float current_x, float current_y, float point_x, float point_y);
+
 __EXPORT void get_vector_to_next_waypoint(double lat_now, double lon_now, double lat_next, double lon_next, float *v_n, float *v_e);
 
 __EXPORT void get_vector_to_next_waypoint_fast(double lat_now, double lon_now, double lat_next, double lon_next, float *v_n, float *v_e);

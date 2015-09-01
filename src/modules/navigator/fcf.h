@@ -125,6 +125,7 @@ private:
 	control::BlockParamFloat _param_rate_x;
 	control::BlockParamFloat _param_rate_y;
 	control::BlockParamFloat _param_rate_z;
+	control::BlockParamFloat _param_set_direction;
 };
 
 #endif

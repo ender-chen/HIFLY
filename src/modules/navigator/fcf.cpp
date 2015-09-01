@@ -69,7 +69,8 @@ FCF::FCF(Navigator *navigator, const char *name) :
 	_param_acceptance_radius(this, "FCF_ACC_RAD", false),
 	_param_rate_x(this, "FCF_RATE_X", false),
 	_param_rate_y(this, "FCF_RATE_Y", false),
-	_param_rate_z(this, "FCF_RATE_Z", false)
+	_param_rate_z(this, "FCF_RATE_Z", false),
+	_param_set_direction(this, "FCF_DIR", false)
 {
 	/* load initial params */
 	updateParams();
@@ -115,13 +116,11 @@ FCF::on_active()
 		target_local_position_update();
 		advance_fcf();
 		set_fcf_item();
-		fcf_item_to_position_setpoint(&_fcf_item, &pos_sp_triplet->current);
+		
 		_navigator->set_position_setpoint_triplet_updated();
 	}
+	fcf_item_to_position_setpoint(&_fcf_item, &pos_sp_triplet->current);
 }
-
-
-
 
 void
 FCF::fcf_item_to_position_setpoint(const struct fcf_item_s *item, struct position_setpoint_s *sp)
@@ -130,6 +129,8 @@ FCF::fcf_item_to_position_setpoint(const struct fcf_item_s *item, struct positio
 	sp->x = item->x;
 	sp->y = item->y;
 	sp->z = item->z;
+	sp->yaw = get_bearing_to_point_local(_navigator->get_local_position()->x, _navigator->get_local_position()->y, get_target_local_position()->x, get_target_local_position()->y);
+	sp->yaw_valid = true;
 	sp->valid = true;
 	sp->position_valid = true;
 }
@@ -188,8 +189,8 @@ FCF::set_fcf_item()
 
 	case FCF_STATE_RIGHT_GO: {
 		float top_alt = _param_top_alt.get();
-		_fcf_item.x = get_target_local_position() -> x + _param_hori_dist.get();
-		_fcf_item.y = get_target_local_position() -> y;
+		_fcf_item.x = get_target_local_position() -> x + _param_hori_dist.get() * fabsf(cosf(_wrap_pi(_param_set_direction.get() * M_DEG_TO_RAD_F)));
+		_fcf_item.y = get_target_local_position() -> y + _param_hori_dist.get() * fabsf(sinf(_wrap_pi(_param_set_direction.get() * M_DEG_TO_RAD_F)));
 		_fcf_item.z = -top_alt;
 		_fcf_item.yaw = NAN;
 
@@ -210,8 +211,8 @@ FCF::set_fcf_item()
 
 	case FCF_STATE_LEFT_GO: {
 		float top_alt = _param_top_alt.get();
-		_fcf_item.x = get_target_local_position() -> x - _param_hori_dist.get();
-		_fcf_item.y = get_target_local_position() -> y;
+		_fcf_item.x = get_target_local_position() -> x - _param_hori_dist.get() * fabsf(cosf(_wrap_pi(_param_set_direction.get() * M_DEG_TO_RAD_F)));
+		_fcf_item.y = get_target_local_position() -> y - _param_hori_dist.get() * fabsf(sinf(_wrap_pi(_param_set_direction.get() * M_DEG_TO_RAD_F)));
 		_fcf_item.z = -top_alt;
 		_fcf_item.yaw = NAN;
 
