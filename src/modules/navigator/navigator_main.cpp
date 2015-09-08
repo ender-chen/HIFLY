@@ -265,6 +265,12 @@ Navigator::waypoint_update()
 
 	if (updated) {
 		orb_copy(ORB_ID(waypoint), _waypoint_sub, &_waypoint_sp);
+
+        static uint64_t print_time =  hrt_absolute_time();
+        if (hrt_elapsed_time(&print_time) > 10000000) {
+            print_time = hrt_absolute_time();
+            mavlink_log_info(_mavlink_fd, "waypoint update lat:%.7f, lon:%.7f", _waypoint_sp.lat, _waypoint_sp.lon);
+        }
 	}
 }
 
