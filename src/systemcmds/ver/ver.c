@@ -118,7 +118,7 @@ int ver_main(int argc, char *argv[])
 			}
 
             if (show_all || !strncmp(argv[1], sz_ver_bid_str, sizeof(sz_ver_bid_str))) {
-				printf("Build id: %s\n", __BUILD_ID__);
+				printf("Build id: %s_%s\n", __PROJECT_NAME__, __BUILD_ID__);
 				ret = 0;
 			}
 
