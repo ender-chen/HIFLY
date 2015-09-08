@@ -2396,8 +2396,7 @@ int commander_thread_main(int argc, char *argv[])
 		/* now set navigation state according to failsafe and main state */
 		bool nav_state_changed = set_nav_state(&status, (bool)datalink_loss_enabled,
 						       mission_result.finished,
-						       mission_result.stay_in_failsafe,
-                               mission_result.flight_termination);
+						       mission_result.stay_in_failsafe);
 
 		if (status.failsafe != failsafe_old) {
 			status_changed = true;
