@@ -1742,6 +1742,7 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_log_critical(mavlink_fd, "LANDING DETECTED");
+                    mission_result.rcloss_finished = false;
 				} else {
 					mavlink_log_critical(mavlink_fd, "TAKEOFF DETECTED");
 					status.had_in_air = true;
@@ -1990,7 +1991,7 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			if (counter % (1000000 / COMMANDER_MONITORING_INTERVAL) == 0) {
-				mavlink_log_critical(mavlink_fd, "Flight termination active");
+				//mavlink_log_critical(mavlink_fd, "Flight termination active");
 			}
 		} // no reset is done here on purpose, on geofence violation we want to stay in flighttermination
 
@@ -2396,7 +2397,8 @@ int commander_thread_main(int argc, char *argv[])
 		/* now set navigation state according to failsafe and main state */
 		bool nav_state_changed = set_nav_state(&status, (bool)datalink_loss_enabled,
 						       mission_result.finished,
-						       mission_result.stay_in_failsafe);
+						       mission_result.stay_in_failsafe,
+                               mission_result.rcloss_finished);
 
 		if (status.failsafe != failsafe_old) {
 			status_changed = true;
