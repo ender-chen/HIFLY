@@ -275,47 +275,51 @@ PARAM_DEFINE_INT32(COM_AUTOS_PAR, 1);
  * @max 2
  */
 PARAM_DEFINE_INT32(COM_RC_IN_MODE, 0);
-/**
- *Battery warning capacity
- *
- *Defines the low warning capacity of the attached battery.
- *
- *@dong.chen
- */
 
+/**
+ * Battery warning capacity
+ *
+ * Defines the low warning capacity of the attached battery.
+ * @group Battery Calibration
+ * @unit V
+ *
+ */
 PARAM_DEFINE_FLOAT(BAT_WARN_LOW, 11.0f);
-/**
- *Battery warning capacity
- *
- *Defines the critical warning capacity of the attached battery.
- *
- *@dong.chen
- */
 
- PARAM_DEFINE_FLOAT(BAT_WARN_CRIT, 10.9f);
 /**
- *Battery warning capacity
+ * Battery warning capacity
  *
- *Defines the emergency warning capacity of the attached battery.
+ * Defines the critical warning capacity of the attached battery.
+ * @group Battery Calibration
+ * @unit V
  *
- *@dong.chen
+ */
+ PARAM_DEFINE_FLOAT(BAT_WARN_CRIT, 10.9f);
+
+/**
+ * Battery warning capacity
+ *
+ * Defines the emergency warning capacity of the attached battery.
+ * @group Battery Calibration
+ * @unit V
+ *
  */
 PARAM_DEFINE_FLOAT(BAT_WARN_EMER, 10.8f);
 
 /**
- *Region of interesting lat
+ * Region of interesting lat
  *
- *Defines the Region of interesting
+ * Defines the Region of interesting
+ * @group Commander
  *
- *@dong.chen
  */
  PARAM_DEFINE_FLOAT(ROI_POS_LAT, 0.0f);
 
  /**
- *Region of interesting lon
+ * Region of interesting lon
  *
- *Defines the Region of interesting
+ * Defines the Region of interesting
+ * @group Commander
  *
- *@dong.chen
  */
  PARAM_DEFINE_FLOAT(ROI_POS_LON, 0.0f);
