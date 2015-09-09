@@ -395,8 +395,6 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		ret = TRANSITION_CHANGED;
 		break;
 	case vehicle_status_s::MAIN_STATE_CIRCLE:
-		ret = TRANSITION_CHANGED;
-		break;
 	case vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA:
 	case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
 	case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
