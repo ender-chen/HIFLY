@@ -551,6 +551,8 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	case vehicle_status_s::MAIN_STATE_ACRO:
 	case vehicle_status_s::MAIN_STATE_MANUAL:
 	case vehicle_status_s::MAIN_STATE_STAB:
+		status->nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
+		break;
 	case vehicle_status_s::MAIN_STATE_ALTCTL:
 	case vehicle_status_s::MAIN_STATE_POSCTL:
     case vehicle_status_s::MAIN_STATE_CIRCLE:
