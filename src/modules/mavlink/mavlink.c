@@ -64,7 +64,12 @@ PARAM_DEFINE_INT32(MAV_SYS_ID, 1);
  * @min 1
  * @max 250
  */
+#ifdef __MAV_TYPE_WB__
 PARAM_DEFINE_INT32(MAV_COMP_ID, 1);
+#else
+PARAM_DEFINE_INT32(MAV_COMP_ID, 50);
+#endif
+
 
 /**
  * MAVLink Radio ID
