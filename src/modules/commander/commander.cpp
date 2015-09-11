@@ -1000,7 +1000,6 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TERMINATION]		= "TERMINATION";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_OFFBOARD]		= "OFFBOARD";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT] 			= "TAKEOFF_SHORTCUT";
-    nav_states_str[vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT]		= "LAND_SHORTCUT";
 
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_CIRCLE]		        = "CIRCLE";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA]		= "FOLLOW_CAMERA";
@@ -3068,7 +3067,6 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 	case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
-	case vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;

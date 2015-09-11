@@ -176,7 +176,6 @@ void get_mavlink_mode_state(struct vehicle_status_s *status, struct position_set
 			break;
 
 		case vehicle_status_s::NAVIGATION_STATE_LAND:
-		case vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT:
 		case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL:
 		case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
 			/* fallthrough */

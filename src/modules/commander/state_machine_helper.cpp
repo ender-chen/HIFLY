@@ -709,18 +709,14 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	case vehicle_status_s::MAIN_STATE_LAND_SHORTCUT:
 		if (status->engine_failure) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
-		} else if (!status->condition_global_position_valid) {
+		} else if (status->condition_local_position_valid) {
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+		} else if (status->condition_local_altitude_valid) {
 			status->failsafe = true;
-
-			if (status->condition_local_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
-			} else if (status->condition_local_altitude_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
-			} else {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
-			}
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
 		} else {
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT;
+			status->failsafe = true;
+			status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
 		}
 		break;
 	case vehicle_status_s::MAIN_STATE_AUTO_LOITER:

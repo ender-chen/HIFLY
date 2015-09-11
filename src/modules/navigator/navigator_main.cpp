@@ -510,7 +510,6 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_ACRO:
 			case vehicle_status_s::NAVIGATION_STATE_ALTCTL:
 			case vehicle_status_s::NAVIGATION_STATE_POSCTL:
-			case vehicle_status_s::NAVIGATION_STATE_LAND:
 			case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
 			case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 				_navigation_mode = nullptr;
@@ -558,7 +557,7 @@ Navigator::task_main()
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_takeoff;
 				break;
-			case vehicle_status_s::NAVIGATION_STATE_LAND_SHORTCUT:
+			case vehicle_status_s::NAVIGATION_STATE_LAND:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_land;
 				break;
