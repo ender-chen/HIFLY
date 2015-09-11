@@ -97,9 +97,10 @@ then
 	fi
 fi
 
-# This is a FMUv2+ thing
-if ver hwcmp PX4FMU_V1
+# HIFLY don't load AUX outputs
+if ver hwcmp HIFLY
 then
+    echo "rc.interface HIFLY" >> $LOG_FILE
 	set MIXER_AUX none
 fi
 
