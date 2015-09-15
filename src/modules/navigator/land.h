@@ -55,34 +55,45 @@ class Navigator;
 
 class LAND : public MissionBlock
 {
-public:
-	LAND(Navigator *navigator, const char *name);
+    public:
+        LAND(Navigator *navigator, const char *name);
 
-	~LAND();
+        ~LAND();
 
-	virtual void on_inactive();
+        virtual void on_inactive();
 
-	virtual void on_activation();
+        virtual void on_activation();
 
-	virtual void on_active();
+        virtual void on_active();
 
-private:
-	/**
-	 * Set the LAND item
-	 */
-	void		set_land_item();
+    private:
+        enum LANDState {
+            LAND_STATE_NONE = 0,
+            LAND_STATE_LAND,
+            LAND_STATE_LANDED,
+        };
 
-	/**
-	 * Move to next LAND item
-	 */
-	void		advance_land();
+        /**
+         * is running in a group of valid mission item
+         */
+        bool is_running_item(LANDState state);
 
-	enum LANDState {
-		LAND_STATE_NONE = 0,
-		LAND_STATE_LAND,
-		LAND_STATE_LANDED,
-	} _land_state;
+        /**
+         * Set the LAND item
+         */
+        void set_item(LANDState state, struct mission_item_s *mission_item);
 
+        /**
+         * Update mission item
+         */
+        void update_item_to_sp(struct mission_item_s *mission_item);
+
+        /**
+         * Move to next item
+         */
+        void transit_next_state(LANDState *state);
+
+        LANDState _land_state;
 };
 
 #endif

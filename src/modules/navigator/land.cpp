@@ -64,91 +64,106 @@ LAND::LAND(Navigator *navigator, const char *name) :
     on_inactive();
 }
 
-LAND::~LAND()
-{
+LAND::~LAND() {
 }
 
-    void
-LAND::on_inactive()
-{
+void
+LAND::on_inactive() {
     _land_state = LAND_STATE_NONE;
     reset_mission_item_reached();
 }
 
-    void
-LAND::on_activation()
-{
-    /* for safety reasons don't go into LAND if landed */
-    if (!_navigator->get_vstatus()->condition_landed
-            && _land_state == LAND_STATE_NONE) {
-        advance_land();
-        set_land_item();
+void
+LAND::on_activation() {
+
+    if (_navigator->get_vstatus()->condition_landed ||
+        _land_state != LAND_STATE_NONE) {
+        return;
     }
-}
-
-    void
-LAND::on_active()
-{
-    if (_land_state != LAND_STATE_LANDED && is_mission_item_reached()) {
-        advance_land();
-
-        if (_land_state != LAND_STATE_LANDED)
-        {
-            set_land_item();
-        }
-    }
-}
-
-    void
-LAND::set_land_item()
-{
-    struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
     /* make sure we have the latest params */
     updateParams();
 
-    switch(_land_state){
-        case LAND_STATE_LAND:
-            _mission_item.lat = _navigator->get_global_position()->lat;
-            _mission_item.lon = _navigator->get_global_position()->lon;
-            _mission_item.altitude_is_relative = false;
-            _mission_item.altitude = _navigator->get_home_position()->alt;
-            _mission_item.yaw = NAN;
-            _mission_item.loiter_radius = _navigator->get_loiter_radius();
-            _mission_item.loiter_direction = 1;
-            _mission_item.nav_cmd = NAV_CMD_LAND;
-            _mission_item.acceptance_radius = _navigator->get_acceptance_radius();
-            _mission_item.time_inside = 0.0f;
-            _mission_item.pitch_min = 0.0f;
-            _mission_item.autocontinue = true;
-            _mission_item.origin = ORIGIN_ONBOARD;
+    transit_next_state(&_land_state);
+    set_item(_land_state, &_mission_item);
+    update_item_to_sp(&_mission_item);
+}
 
-            mavlink_log_info(_navigator->get_mavlink_fd(), "#audio: LAND: land at home alt");
+void
+LAND::on_active() {
+    if (is_running_item(_land_state) &&
+            is_mission_item_reached()) {
+
+        transit_next_state(&_land_state);
+        if (is_running_item(_land_state)) {
+            set_item(_land_state, &_mission_item);
+            update_item_to_sp(&_mission_item);
+        }
+    }
+}
+
+bool
+LAND::is_running_item(LANDState state) {
+
+    if (!_navigator->get_vstatus()->condition_landed &&
+             state == LAND_STATE_LAND) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+void
+LAND::set_item(LANDState state, struct mission_item_s *mission_item) {
+
+    updateParams();
+
+    switch(state){
+        case LAND_STATE_LAND:
+            mission_item->lat = _navigator->get_global_position()->lat;
+            mission_item->lon = _navigator->get_global_position()->lon;
+            mission_item->altitude_is_relative = false;
+            mission_item->altitude = _navigator->get_home_position()->alt;
+            mission_item->yaw = NAN;
+            mission_item->loiter_radius = _navigator->get_loiter_radius();
+            mission_item->loiter_direction = 1;
+            mission_item->nav_cmd = NAV_CMD_LAND;
+            mission_item->acceptance_radius = _navigator->get_acceptance_radius();
+            mission_item->time_inside = 0.0f;
+            mission_item->pitch_min = 0.0f;
+            mission_item->autocontinue = true;
+            mission_item->origin = ORIGIN_ONBOARD;
+
+            mavlink_log_info(_navigator->get_mavlink_fd(), "LAND: land at home alt");
             break;
 
         default:
             break;
     }
+}
+
+void
+LAND::update_item_to_sp(struct mission_item_s *mission_item) {
 
     reset_mission_item_reached();
 
     /* convert mission item to current position setpoint and make it valid */
-    mission_item_to_position_setpoint(&_mission_item, &pos_sp_triplet->current);
+    struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
+    mission_item_to_position_setpoint(mission_item, &pos_sp_triplet->current);
     pos_sp_triplet->next.valid = false;
-
     _navigator->set_position_setpoint_triplet_updated();
 }
 
-    void
-LAND::advance_land()
-{
-    switch (_land_state)
+void
+LAND::transit_next_state(LANDState *state) {
+    switch (*state)
     {
         case LAND_STATE_NONE:
-            _land_state = LAND_STATE_LAND;
+            *state = LAND_STATE_LAND;
             break;
         case LAND_STATE_LAND:
-            _land_state = LAND_STATE_LANDED;
+            *state = LAND_STATE_LANDED;
             break;
         default:
             break;
