@@ -119,6 +119,9 @@ Follow::is_valid_follow_item(const struct waypoint_s *waypoint) {
     bool result = (waypoint->timestamp != 0 &&
                     waypoint->timestamp != _waypoint_sp.timestamp);
 
+    if (hrt_elapsed_time(&waypoint->timestamp) > 1000000)
+	result = false;
+
     return result;
 }
 
@@ -186,7 +189,7 @@ Follow::is_alt_reached()
 
     float alt = fabsf(alt_now - alt_ref);
     if (alt < 1.0f) {
-        mavlink_log_critical(_navigator->get_mavlink_fd(), "FOLLOW LOITER: climb finished");
+        mavlink_log_critical(_navigator->get_mavlink_fd(), "FOLLOW: climb finished");
         return true;
     }
 
