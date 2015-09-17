@@ -168,6 +168,11 @@ private:
 	void set_mission_finished();
 
 	/**
+	 * Reset that the mission finished flag
+	 */
+	void reset_mission_finished();
+
+	/**
 	 * Check wether a mission is ready to go
 	 */
 	bool check_mission_valid();

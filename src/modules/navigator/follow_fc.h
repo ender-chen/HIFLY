@@ -113,7 +113,7 @@ class FollowFC : public NavigatorMode
         void 		update_ref();
         bool		get_waypoint_of_target(struct waypoint_s* target);
         void 		get_local_position_of_target(struct waypoint_s* target, struct fcf_item_s* local_pos);
-        void 		update_item_to_mission(const struct fcf_item_s *item_current, const struct fcf_item_s *item_next);
+        void        update_item_to_mission(const struct fcf_item_s *item_current, const struct fcf_item_s *item_next, const struct fcf_item_s *item_gap);
         void        reset_item_reached(bool *item_reached);
 
         bool                                _first_run;
@@ -121,7 +121,7 @@ class FollowFC : public NavigatorMode
 
         enum fcf_state_e				    _state_current;
         struct fcf_item_s 					_item_current;
-        struct fcf_item_s					_item_next;
+        struct fcf_item_s                   _item_next;
 
         struct waypoint_s 					_target_waypoint;
         struct fcf_item_s 					_target_local_pos;
@@ -132,7 +132,7 @@ class FollowFC : public NavigatorMode
         struct mission_s					_onboard_mission;
         orb_advert_t						_onboard_mission_pub;
         bool                                _fcf_item_reached;
-        int 		_mission_onboard_enabled_old;                   /**< To store the previous onboard status */
+       	int 		_mission_onboard_enabled_old;                   /**< To store the previous onboard status */
 		bool		_have_set_mission_onboard;						/**< If We have set the mission status */
 
 

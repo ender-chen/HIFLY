@@ -98,7 +98,7 @@ FollowFC::on_inactive() {
     memset(&_target_local_pos, 0, sizeof(_target_local_pos));
     if (_have_set_mission_onboard)
     {
-		param_set(param_find("MIS_ONBOARD_EN"), &_mission_onboard_enabled_old);
+    	param_set(param_find("MIS_ONBOARD_EN"), &_mission_onboard_enabled_old);
 		_have_set_mission_onboard = false;
 	}
 }
@@ -110,7 +110,6 @@ FollowFC::on_activation() {
     _have_set_mission_onboard = true;
     int set_onboard_enabled = 1;
     param_set(param_find("MIS_ONBOARD_EN"), &set_onboard_enabled);
-    //mavlink_log_info(_navigator->get_mavlink_fd(), "set the onboard 1");
 
     if (_navigator->get_vstatus()->condition_landed) {
         return;
@@ -133,7 +132,8 @@ FollowFC::on_activation() {
         transit_next_state(&next_state);
         set_item(&_item_next, _target_local_pos, next_state);
         /* publish item to mission mode */
-        update_item_to_mission(&_item_current, &_item_next);
+        update_item_to_mission(&_item_current, &_item_next, nullptr);
+        _state_current = next_state;
     }
 }
 
@@ -142,8 +142,7 @@ FollowFC::on_active() {
     if (_navigator->get_vstatus()->condition_landed) {
         return;
     }
-
-    if (is_item_reached(_fcf_item_reached)) {
+    if (_navigator->get_mission_result()->finished) {
 
         update_ref();
         if (get_waypoint_of_target(&_target_waypoint)) {
@@ -159,9 +158,8 @@ FollowFC::on_active() {
             enum fcf_state_e next_state = _state_current;
             transit_next_state(&next_state);
             set_item(&_item_next, _target_local_pos, next_state);
-
-            update_item_to_mission(&_item_current, &_item_next);
-            reset_item_reached(&_fcf_item_reached);
+            update_item_to_mission(&_item_current, &_item_next, nullptr);
+            _state_current = next_state;
         }
     }
 }
@@ -280,6 +278,8 @@ void
 FollowFC::get_local_position_of_target(struct waypoint_s* target, struct fcf_item_s* local_pos) {
     double lat_sp = target->lat;
     double lon_sp = target->lon;
+    // double lat_sp = _navigator->get_home_position()->lat;
+    // double lon_sp = _navigator->get_home_position()->lon;
     float alt_sp = target->alt;
     map_projection_project(&_ref_pos, lat_sp, lon_sp, &local_pos->x, &local_pos->y);
     local_pos->z = -(alt_sp - _ref_alt);
@@ -346,7 +346,7 @@ FollowFC::set_item(struct fcf_item_s *item, const struct fcf_item_s target_local
                 item->z = -top_alt;
                 item->yaw = NAN;
 
-                mavlink_log_info(_navigator->get_mavlink_fd(), "Left item->x is %.2lf item->y is %.2lf",
+                mavlink_log_info(_navigator->get_mavlink_fd(), "Left go item->x is %.2lf item->y is %.2lf",
                     (double)item->x, (double)item->y);
                 break;
             }
@@ -396,9 +396,9 @@ FollowFC::transit_next_state(enum fcf_state_e *state) {
     }
 }
 
-	void
-FollowFC::update_item_to_mission(const struct fcf_item_s *item_current, const struct fcf_item_s *item_next) {
-
+    void
+FollowFC::update_item_to_mission(const struct fcf_item_s *item_current, const struct fcf_item_s *item_next, const struct fcf_item_s *item_gap)
+{
     struct mission_item_s flight_vector_s {};
     flight_vector_s.nav_cmd = NAV_CMD_WAYPOINT;
     flight_vector_s.acceptance_radius = _param_acceptance_radius.get();
@@ -420,7 +420,6 @@ FollowFC::update_item_to_mission(const struct fcf_item_s *item_current, const st
     map_projection_reproject(&_ref_pos,
         item_next->x, item_next->y,
         &flight_vector_e.lat, &flight_vector_e.lon);
-
     if (dm_write(DM_KEY_WAYPOINTS_ONBOARD, 0, DM_PERSIST_IN_FLIGHT_RESET, &flight_vector_s, len) != len) {
         warnx("ERROR: could not save onboard WP");
     }
@@ -428,8 +427,30 @@ FollowFC::update_item_to_mission(const struct fcf_item_s *item_current, const st
     if (dm_write(DM_KEY_WAYPOINTS_ONBOARD, 1, DM_PERSIST_IN_FLIGHT_RESET, &flight_vector_e, len) != len) {\
         warnx("ERROR: could not save onboard WP");
     }
-    _onboard_mission.count = 2;
-    _onboard_mission.current_seq = 0;
+    if (item_gap != nullptr)
+    {
+        struct mission_item_s flight_vector_g {};
+        flight_vector_g.nav_cmd = NAV_CMD_WAYPOINT;
+        flight_vector_g.acceptance_radius = _param_acceptance_radius.get();
+        flight_vector_g.autocontinue = true;
+        flight_vector_g.altitude_is_relative = true;
+        flight_vector_g.altitude = -item_gap->z;
+        map_projection_reproject(&_ref_pos,
+            item_gap->x, item_gap->y,
+            &flight_vector_g.lat, &flight_vector_g.lon);
+
+        if (dm_write(DM_KEY_WAYPOINTS_ONBOARD, 2, DM_PERSIST_IN_FLIGHT_RESET, &flight_vector_g, len) != len) {\
+            warnx("ERROR: could not save onboard WP");
+        }
+        _onboard_mission.count = 3;
+        _onboard_mission.current_seq = 0;
+    }
+    else
+    {
+        _onboard_mission.count = 2;
+        _onboard_mission.current_seq = 0;
+
+    }
 
     if (_onboard_mission_pub > 0) {
         orb_publish(ORB_ID(onboard_mission), _onboard_mission_pub, &_onboard_mission);

@@ -220,11 +220,13 @@ Mission::update_onboard_mission()
 		_navigator->increment_mission_instance_count();
 		_navigator->set_mission_result_updated();
 
+
 	} else {
 		_onboard_mission.count = 0;
 		_onboard_mission.current_seq = 0;
 		_current_onboard_mission_index = 0;
 	}
+	reset_mission_finished();
 }
 
 void
@@ -812,6 +814,13 @@ Mission::set_current_offboard_mission_item()
 	save_offboard_mission_state();
 }
 
+void
+Mission::reset_mission_finished()
+{
+	_navigator->get_mission_result()->finished = false;
+	_navigator->set_mission_result_updated();
+
+}
 void
 Mission::set_mission_finished()
 {
