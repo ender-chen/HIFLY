@@ -135,7 +135,7 @@ PARAM_DEFINE_INT32(CBRK_ENGINEFAIL, 284953);
  * @max 240024
  * @group Circuit Breaker
  */
-PARAM_DEFINE_INT32(CBRK_GPSFAIL, 240024);
+PARAM_DEFINE_INT32(CBRK_GPSFAIL, 0);
 
 /**
 * Circuit breaker for attitude control fail
