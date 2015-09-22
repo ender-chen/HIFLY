@@ -80,10 +80,8 @@ Follow::on_activation() {
     reset_follow_item();
     advance_follow();
 
-    struct waypoint_s* waypoint_sp = _navigator->get_waypoint_sp();
-    if (is_valid_follow_item(waypoint_sp)) {
-        set_follow_item(waypoint_sp);
-    }
+    /* climb state, waypoint is unnecessary */
+    set_follow_item(NULL);
 
     _inited = true;
 }
