@@ -541,20 +541,20 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 				/* use autopilot-specific mode */
 				if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_MANUAL) {
 					/* MANUAL */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
+					//main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_MANUAL);
 					app_main_state = vehicle_status_s::MAIN_STATE_MANUAL;
 
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_ALTCTL) {
 					/* ALTCTL */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
+					//main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_ALTCTL);
 					app_main_state = vehicle_status_s::MAIN_STATE_ALTCTL;
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_POSCTL) {
 					/* POSCTL */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
+					//main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_POSCTL);
 					app_main_state = vehicle_status_s::MAIN_STATE_POSCTL;
 				} else if (custom_main_mode == PX4_CUSTOM_MAIN_MODE_AUTO) {
 					/* AUTO */
-					main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
+					//main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_MISSION);
 
 					/* TAKEOFF */
 					if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF) {
@@ -566,6 +566,10 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 					/* AUTOMISSION */
 					else if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_MISSION) {
 						app_main_state = vehicle_status_s::MAIN_STATE_AUTO_MISSION;
+					}
+					/* RTL */
+					else if (custom_sub_mode == PX4_CUSTOM_SUB_MODE_AUTO_RTL) {
+						app_main_state = vehicle_status_s::MAIN_STATE_AUTO_RTL;
 					}
 					else {
 					}
