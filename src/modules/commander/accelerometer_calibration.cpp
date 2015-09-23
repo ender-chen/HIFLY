@@ -232,29 +232,36 @@ int do_accel_calibration(int mavlink_fd)
 	}
 
 	/* measurements completed successfully, rotate calibration values */
-	param_t board_rotation_h = param_find("SENS_BOARD_ROT");
-	int32_t board_rotation_int;
-	param_get(board_rotation_h, &(board_rotation_int));
-	enum Rotation board_rotation_id = (enum Rotation)board_rotation_int;
-	math::Matrix<3, 3> board_rotation;
-	get_rot_matrix(board_rotation_id, &board_rotation);
-	math::Matrix<3, 3> board_rotation_t = board_rotation.transposed();
+//	param_t board_rotation_h = param_find("SENS_BOARD_ROT");
+//	int32_t board_rotation_int;
+//	param_get(board_rotation_h, &(board_rotation_int));
+//	enum Rotation board_rotation_id = (enum Rotation)board_rotation_int;
+//	math::Matrix<3, 3> board_rotation;
+//	get_rot_matrix(board_rotation_id, &board_rotation);
+//	math::Matrix<3, 3> board_rotation_t = board_rotation.transposed();
 
 	for (unsigned i = 0; i < active_sensors; i++) {
 
-		/* handle individual sensors, one by one */
-		math::Vector<3> accel_offs_vec(accel_offs[i]);
-		math::Vector<3> accel_offs_rotated = board_rotation_t * accel_offs_vec;
-		math::Matrix<3, 3> accel_T_mat(accel_T[i]);
-		math::Matrix<3, 3> accel_T_rotated = board_rotation_t * accel_T_mat * board_rotation;
-
-		accel_scale.x_offset = accel_offs_rotated(0);
-		accel_scale.x_scale = accel_T_rotated(0, 0);
-		accel_scale.y_offset = accel_offs_rotated(1);
-		accel_scale.y_scale = accel_T_rotated(1, 1);
-		accel_scale.z_offset = accel_offs_rotated(2);
-		accel_scale.z_scale = accel_T_rotated(2, 2);
+//		/* handle individual sensors, one by one */
+//		math::Vector<3> accel_offs_vec(accel_offs[i]);
+//		math::Vector<3> accel_offs_rotated = board_rotation_t * accel_offs_vec;
+//		math::Matrix<3, 3> accel_T_mat(accel_T[i]);
+//		math::Matrix<3, 3> accel_T_rotated = board_rotation_t * accel_T_mat * board_rotation;
+//
+//		accel_scale.x_offset = accel_offs_rotated(0);
+//		accel_scale.x_scale = accel_T_rotated(0, 0);
+//		accel_scale.y_offset = accel_offs_rotated(1);
+//		accel_scale.y_scale = accel_T_rotated(1, 1);
+//		accel_scale.z_offset = accel_offs_rotated(2);
+//		accel_scale.z_scale = accel_T_rotated(2, 2);
 		
+		accel_scale.x_offset = accel_offs[i][0];
+		accel_scale.x_scale = accel_T[i][0][0];
+		accel_scale.y_offset = accel_offs[i][1];
+		accel_scale.y_scale = accel_T[i][1][1];
+		accel_scale.z_offset = accel_offs[i][2];
+		accel_scale.z_scale = accel_T[i][2][2];
+
 		bool failed = false;
 
 		/* set parameters */
@@ -319,7 +326,7 @@ int do_accel_calibration(int mavlink_fd)
 
 static calibrate_return accel_calibration_worker(detect_orientation_return orientation, int cancel_sub, void* data)
 {
-	const unsigned samples_num = 3000;
+	const unsigned samples_num = 200;
 	accel_worker_data_t* worker_data = (accel_worker_data_t*)(data);
 	
 	mavlink_and_console_log_info(worker_data->mavlink_fd, "[cal] Hold still, measuring %s side", detect_orientation_str(orientation));
@@ -348,7 +355,7 @@ calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel
 	worker_data.mavlink_fd = mavlink_fd;
 	worker_data.done_count = 0;
 
-	bool data_collected[detect_orientation_side_count] = { false, false, false, false, false, false };
+	bool data_collected[detect_orientation_side_count] = { true, true, true, true, true, false };
 
 	// Initialize subs to error condition so we know which ones are open and which are not
 	for (size_t i=0; i<max_accel_sens; i++) {
@@ -521,36 +528,77 @@ int mat_invert3(float src[3][3], float dst[3][3])
 
 calibrate_return calculate_calibration_values(unsigned sensor, float (&accel_ref)[max_accel_sens][detect_orientation_side_count][3], float (&accel_T)[max_accel_sens][3][3], float (&accel_offs)[max_accel_sens][3], float g)
 {
+	param_t accel_off[3];
+	param_t accel_scale[3];
+
+	char str[30];
+
+	(void)sprintf(str, "CAL_ACC%u_XOFF", sensor);
+	accel_off[0] = param_find(str);
+	(void)sprintf(str, "CAL_ACC%u_YOFF", sensor);
+	accel_off[1] = param_find(str);
+	(void)sprintf(str, "CAL_ACC%u_ZOFF", sensor);
+	accel_off[2] = param_find(str);
+	(void)sprintf(str, "CAL_ACC%u_XSCALE", sensor);
+	accel_scale[0] = param_find(str);
+	(void)sprintf(str, "CAL_ACC%u_YSCALE", sensor);
+	accel_scale[1] = param_find(str);
+	(void)sprintf(str, "CAL_ACC%u_ZSCALE", sensor);
+	accel_scale[2] = param_find(str);
+
+	float accel_scale1[3];
+	float accel_off1[3];
+	float accel_scale_t[3];
+
+	param_get(accel_scale[0], &(accel_scale1[0]));
+	param_get(accel_scale[1], &(accel_scale1[1]));
+	param_get(accel_scale[2], &(accel_scale1[2]));
+	param_get(accel_off[0], &(accel_off1[0]));
+	param_get(accel_off[1], &(accel_off1[1]));
+	param_get(accel_off[2], &(accel_off1[2]));
+
+
+	accel_off1[0] = -accel_ref[sensor][5][1];
+	accel_off1[1] = -accel_ref[sensor][5][0];
+
+
+	accel_scale_t[2] = accel_scale1[2] / ((((-CONSTANTS_ONE_G * accel_scale1[2])) / (accel_ref[sensor][5][2] - accel_off1[2])));
+
+	for(int i = 1; i >= 0; i--) {
+		accel_scale_t[i] = accel_scale1[i] / (accel_scale1[2] / accel_scale_t[2]);
+	}
+
 	/* calculate offsets */
 	for (unsigned i = 0; i < 3; i++) {
-		accel_offs[sensor][i] = (accel_ref[sensor][i * 2][i] + accel_ref[sensor][i * 2 + 1][i]) / 2;
+		accel_offs[sensor][i] = accel_off1[i];//(accel_ref[sensor][i * 2][i] + accel_ref[sensor][i * 2 + 1][i]) / 2;
+		accel_T[sensor][i][i] = accel_scale_t[i];
 	}
 
 	/* fill matrix A for linear equations system*/
-	float mat_A[3][3];
-	memset(mat_A, 0, sizeof(mat_A));
+//	float mat_A[3][3];
+//	memset(mat_A, 0, sizeof(mat_A));
 
-	for (unsigned i = 0; i < 3; i++) {
-		for (unsigned j = 0; j < 3; j++) {
-			float a = accel_ref[sensor][i * 2][j] - accel_offs[sensor][j];
-			mat_A[i][j] = a;
-		}
-	}
+//	for (unsigned i = 0; i < 3; i++) {
+//		for (unsigned j = 0; j < 3; j++) {
+//			float a = accel_ref[sensor][i * 2][j] - accel_offs[sensor][j];
+//			mat_A[i][j] = a;
+//		}
+//	}
 
 	/* calculate inverse matrix for A */
-	float mat_A_inv[3][3];
+//	float mat_A_inv[3][3];
 
-	if (mat_invert3(mat_A, mat_A_inv) != OK) {
-		return calibrate_return_error;
-	}
-
+//	if (mat_invert3(mat_A, mat_A_inv) != OK) {
+//		return calibrate_return_error;
+//	}
+;
 	/* copy results to accel_T */
-	for (unsigned i = 0; i < 3; i++) {
-		for (unsigned j = 0; j < 3; j++) {
+//	for (unsigned i = 0; i < 3; i++) {
+//		for (unsigned j = 0; j < 3; j++) {
 			/* simplify matrices mult because b has only one non-zero element == g at index i */
-			accel_T[sensor][j][i] = mat_A_inv[j][i] * g;
-		}
-	}
+//			accel_T[sensor][j][i] = mat_A_inv[j][i] * g;
+//		}
+//	}
 
 	return calibrate_return_ok;
 }
