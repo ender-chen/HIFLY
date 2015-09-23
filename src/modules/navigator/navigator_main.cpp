@@ -174,7 +174,6 @@ Navigator::Navigator() :
 	_navigation_mode_array[9] = &_follow_loiter;
 	_navigation_mode_array[10] = &_follow_camera;
 	_navigation_mode_array[11] = &_follow_circle;
-	_navigation_mode_array[12] = &_follow_fc;
 
 	updateParams();
 }
@@ -504,6 +503,11 @@ Navigator::task_main()
 			}
 		}
 
+        if (_vstatus.nav_state != vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC) {
+            _follow_fc.stop_item();
+        }
+
+
 		/* Do stuff according to navigation state set by commander */
 		switch (_vstatus.nav_state) {
 			case vehicle_status_s::NAVIGATION_STATE_MANUAL:
@@ -574,15 +578,17 @@ Navigator::task_main()
 				_navigation_mode = &_follow_circle;
 				break;
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC:
+			{
 				_pos_sp_triplet_published_invalid_once = false;
-				_navigation_mode = &_follow_fc;
+                _follow_fc.start_item();
+                _navigation_mode = &_mission;
 				break;
+			}
 			default:
 				_navigation_mode = nullptr;
 				_can_loiter_at_sp = false;
 				break;
 		}
-
 		/* iterate through navigation modes and set active/inactive for each */
 		for(unsigned int i = 0; i < NAVIGATOR_MODE_ARRAY_SIZE; i++) {
 			_navigation_mode_array[i]->run(_navigation_mode == _navigation_mode_array[i]);

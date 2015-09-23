@@ -78,7 +78,7 @@
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 13
+#define NAVIGATOR_MODE_ARRAY_SIZE 12
 
 class Navigator : public control::SuperBlock
 {
@@ -251,8 +251,6 @@ private:
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode
 							  (FW only!) */
 	GpsFailure	_gpsFailure;			/**< class that handles the OBC gpsfailure loss mode */
-
-
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 
 	bool		_can_loiter_at_sp;			/**< flags if current position SP can be used to loiter */
@@ -264,6 +262,7 @@ private:
 	control::BlockParamFloat _param_acceptance_radius;	/**< acceptance for takeoff */
 	control::BlockParamInt _param_datalinkloss_obc;	/**< if true: obc mode on data link loss enabled */
 	control::BlockParamInt _param_rcloss_obc;	/**< if true: obc mode on rc loss enabled */
+
 	/**
 	 * Retrieve global position
 	 */

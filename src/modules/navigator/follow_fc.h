@@ -56,75 +56,96 @@ class Navigator;
 
 class FollowFC : public NavigatorMode
 {
-public:
-	FollowFC(Navigator *navigator, const char *name);
+    public:
+        FollowFC(Navigator *navigator, const char *name);
 
-	~FollowFC();
+        ~FollowFC();
 
-	virtual void on_inactive();
+        virtual void on_inactive();
 
-	virtual void on_activation();
+        virtual void on_activation();
 
-	virtual void on_active();
+        virtual void on_active();
 
-private:
-	/**
-	 * Set the FCF item
-	 */
-	void		set_fcf_item();
+        void start_item();
 
-	struct fcf_item_s {
-		float x;
-		float y;
-		float z;
-		bool position_valid;
-		float vx;
-		float vy;
-		float vz;
-		bool velocity_valid;
-		float yaw;
-		bool yaw_valid;
-		float yawspeed;
-		bool yawspeed_valid;
-	};
-	/**
-	 * Move to next FCF item
-	 */
-	void		advance_fcf();
-	void		fcf_item_to_position_setpoint(const struct fcf_item_s *item, struct position_setpoint_s *sp);
-	bool 		is_fcf_item_reached();
-	void 		reset_fcf_item_reached()
-	{
-		_fcf_item_reached = false;
-	}
-	void 		set_triplet_offboard_rate(float next, float current, float set_value, float *setting_value);
-	void 		waypoint_update();
-	void 		update_ref();
-	void 		target_local_position_update();
-	struct fcf_item_s* get_target_local_position() {return &_local_pos;}
-	void 		follow_strategy();
+        void stop_item();
 
-	enum FCFState {
-		FCF_STATE_NONE = 0,
-		FCF_STATE_CLIMB,
-		FCF_STATE_RIGHT_GO,
-		FCF_STATE_RIGHT_BACK,
-		FCF_STATE_LEFT_GO,
-		FCF_STATE_LEFT_BACK,
-	} _fcf_state;
-	struct fcf_item_s 				_fcf_item;
-	struct waypoint_s 				_waypoint;
-	struct fcf_item_s 				_local_pos;
-	struct map_projection_reference_s _ref_pos;
-	float 							_ref_alt;
-	bool 							_fcf_item_reached;
-	control::BlockParamFloat _param_bottom_alt;
-	control::BlockParamFloat _param_top_alt;
-	control::BlockParamFloat _param_hori_dist;
-	control::BlockParamFloat _param_acceptance_radius;
-	control::BlockParamFloat _param_rate_x;
-	control::BlockParamFloat _param_rate_y;
-	control::BlockParamFloat _param_rate_z;
+        bool should_run_item();
+
+        bool is_first_run();
+
+        void set_first_run(bool flag);
+    private:
+        enum fcf_state_e {
+            FCF_STATE_NONE = 0,
+            FCF_STATE_GOTO,
+            FCF_STATE_RIGHT_GO,
+            FCF_STATE_RIGHT_BACK,
+            FCF_STATE_LEFT_GO,
+            FCF_STATE_LEFT_BACK,
+        };
+
+        /**
+         * Set the FCF item
+         */
+        struct fcf_item_s {
+            float x;
+            float y;
+            float z;
+            bool position_valid;
+            float vx;
+            float vy;
+            float vz;
+            bool velocity_valid;
+            float yaw;
+            bool yaw_valid;
+            float yawspeed;
+            bool yawspeed_valid;
+        };
+
+        static void*       item_thread(void* arg);
+
+        bool		is_running_item();
+        void		set_item(struct fcf_item_s *item, const struct fcf_item_s target_local_pos, const enum fcf_state_e state);
+        void		transit_next_state(enum fcf_state_e *state);
+        bool 		is_item_reached(bool item_reached);
+        void 		update_ref();
+        bool		get_waypoint_of_target(struct waypoint_s* target);
+        void 		get_local_position_of_target(struct waypoint_s* target, struct fcf_item_s* local_pos);
+        void 		update_item_to_mission(const struct fcf_item_s *item_current, const struct fcf_item_s *item_next);
+        void        reset_item_reached(bool *item_reached);
+
+        bool                                _first_run;
+        bool                                _should_run_item;
+
+        enum fcf_state_e				    _state_current;
+        struct fcf_item_s 					_item_current;
+        struct fcf_item_s					_item_next;
+
+        struct waypoint_s 					_target_waypoint;
+        struct fcf_item_s 					_target_local_pos;
+
+        struct map_projection_reference_s 	_ref_pos;
+        float 								_ref_alt;
+
+        struct mission_s					_onboard_mission;
+        orb_advert_t						_onboard_mission_pub;
+        bool                                _fcf_item_reached;
+        int 		_mission_onboard_enabled_old;                   /**< To store the previous onboard status */
+		bool		_have_set_mission_onboard;						/**< If We have set the mission status */
+
+
+        control::BlockParamFloat 			_param_bottom_alt;
+        control::BlockParamFloat 			_param_top_alt;
+        control::BlockParamFloat 			_param_hori_dist;
+        control::BlockParamFloat 			_param_acceptance_radius;
+        control::BlockParamFloat 			_param_rate_x;
+        control::BlockParamFloat 			_param_rate_y;
+        control::BlockParamFloat 			_param_rate_z;
+        control::BlockParamFloat 			_param_set_direction;
+        control::BlockParamInt              _param_onboard_enabled;  /**< if true: mission onboard enabled */
+
 };
 
 #endif

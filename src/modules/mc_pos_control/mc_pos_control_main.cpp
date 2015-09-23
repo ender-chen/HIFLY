@@ -1661,7 +1661,7 @@ MulticopterPositionControl::task_main()
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE) {
 				control_follow_circle(dt);
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC) {
-				control_offboard(dt);
+				control_auto(dt);
 			} else {
 				/* AUTO */
 				control_auto(dt);
