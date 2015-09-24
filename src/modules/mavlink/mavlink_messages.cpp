@@ -546,7 +546,7 @@ protected:
 			msg.current_battery = status.battery_current * 100.0f;
 			msg.drop_rate_comm = status.drop_rate_comm;
 			msg.errors_comm = status.errors_comm;
-			msg.errors_count1 = status.errors_count1;
+			msg.errors_count1 = msg.errors_count1 | !status.condition_landed;
 			msg.errors_count2 = status.errors_count2;
 			msg.errors_count3 = status.errors_count3;
 			msg.errors_count4 = status.errors_count4;
