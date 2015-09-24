@@ -44,6 +44,7 @@
 #include <commander/px4_custom_mode.h>
 #include <lib/geo/geo.h>
 #include <uORB/uORB.h>
+#include <sys/stat.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/vehicle_gps_position.h>
@@ -382,7 +383,16 @@ protected:
 				/* write log messages in first instance to disk */
 				if (_mavlink->get_instance_id() == 0) {
 					if (fp) {
-						if (EOF == fputs(msg.text, fp)) {
+						char log_time[32] = "";
+						timespec ts;
+						clock_gettime(CLOCK_REALTIME, &ts);
+						/* use GPS time for log file naming, e.g. /fs/microsd/2014-01-19/19_37_52.bin */
+						// Use beijing time GMT+8, 8 * 60 * 60 = 28800;
+						time_t gps_time_sec = ts.tv_sec + 28800;
+						struct tm tt;
+						gmtime_r(&gps_time_sec, &tt);
+						strftime(log_time, sizeof(log_time), "%Y_%m_%d_%H_%M_%S\t", &tt);
+						if (EOF == fputs(log_time, fp)) {
 							write_err_count++;
 						} else {
 							write_err_count = 0;
@@ -392,6 +402,7 @@ protected:
 							(void)fclose(fp);
 							fp = nullptr;
 						} else {
+							(void)fputs(msg.text, fp);
 							(void)fputs("\n", fp);
 							(void)fsync(fileno(fp));
 						}
@@ -404,16 +415,17 @@ protected:
 						timespec ts;
 						clock_gettime(CLOCK_REALTIME, &ts);
 						/* use GPS time for log file naming, e.g. /fs/microsd/2014-01-19/19_37_52.bin */
-						time_t gps_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
+						// Use beijing time GMT+8, 8 * 60 * 60 = 28800;
+						time_t gps_time_sec = ts.tv_sec + 28800;
 						struct tm tt;
 						gmtime_r(&gps_time_sec, &tt);
-
-						// XXX we do not want to interfere here with the SD log app
-						strftime(log_file_name, sizeof(log_file_name), "msgs_%Y_%m_%d_%H_%M_%S.txt", &tt);
+						snprintf(log_file_name, sizeof(log_file_name), "mavlink_log.txt");
 						snprintf(log_file_path, sizeof(log_file_path), "/fs/microsd/%s", log_file_name);
 						fp = fopen(log_file_path, "ab");
-
 						/* write first message */
+						char log_time[32] = "";
+						strftime(log_time, sizeof(log_time), "%Y_%m_%d_%H_%M_%S\t", &tt);
+						fputs(log_time, fp);
 						fputs(msg.text, fp);
 						fputs("\n", fp);
 					}

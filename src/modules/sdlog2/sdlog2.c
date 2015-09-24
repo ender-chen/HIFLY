@@ -414,7 +414,8 @@ bool get_log_time_utc_tt(struct tm *tt, bool boot_time) {
 	time_t utc_time_sec;
 
 	if (_gpstime_only && has_gps_3d_fix) {
-		utc_time_sec = gps_time_sec;
+		//Use beijing time for sdlog GMT+8 8* 60 * 60 = 28800
+		utc_time_sec = gps_time_sec + 28800;
 	} else {
 		utc_time_sec = ts.tv_sec + (ts.tv_nsec / 1e9);
 	}
