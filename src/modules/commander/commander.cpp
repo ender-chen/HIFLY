@@ -2158,6 +2158,7 @@ int commander_thread_main(int argc, char *argv[])
 			else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP) {
 				if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
 					app_main_state = vehicle_status_s::MAIN_STATE_IDLE;
+                    status.main_state = app_main_state;
 				}
 
                 // if landed after seconds, disarmd
@@ -2177,6 +2178,8 @@ int commander_thread_main(int argc, char *argv[])
                                 if (arming_ret == TRANSITION_CHANGED) {
                                     arming_state_changed = true;
                                 }
+
+                                _time_on_off_before_takeoff = 0;
                             }
                         }
                     } else {
@@ -2197,6 +2200,8 @@ int commander_thread_main(int argc, char *argv[])
                                     arming_state_changed = true;
 
                                 }
+
+                                _time_on_off_after_land = 0;
                             }
                         }
                     } else {
