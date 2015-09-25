@@ -185,7 +185,7 @@ waypoint_wb_task_main()
 
     param_t _param_fc_system_id = param_find("WB_2FC_SYS_ID");
     param_t _param_fc_component_id = param_find("WB_2FC_COMP_ID");
-    param_t _param_eph_threshold = parm_find("COM_HOME_H_T");
+    param_t _param_eph_threshold = param_find("COM_HOME_H_T");
     int32_t system_id;
     param_get(_param_fc_system_id, &system_id);
     int32_t component_id;
