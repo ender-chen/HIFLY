@@ -300,3 +300,42 @@ PARAM_DEFINE_FLOAT(MPC_FOLLOW_YAW, 2.0f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(MPC_CIRCLE_R, 5.0f);
+
+/**
+ * follow minimum velocity
+ *
+ * @min 2
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_VEL_MIN, 1.5f);
+
+/**
+ * follow velocity weight of target
+ *
+ * @max 1
+ * @min 0.01
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_VEL_P, 0.005f);
+
+/**
+ * follow velocity compensation according to distance
+ *
+ * @min 0.1
+ * @max 0.5
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_VEL_DV, 0.0f);
+
+/**
+ * follow Maximum Acceleration
+ *
+ * @min 0.0
+ * @max 3.0
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_MAX_ACC, 1.0f);

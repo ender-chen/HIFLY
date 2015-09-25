@@ -181,6 +181,10 @@ private:
 		param_t follow_dist;
 		param_t follow_yaw;
 		param_t circle_radius;
+		param_t fol_vel_min;
+		param_t fol_vel_p;
+		param_t fol_vel_dv;
+		param_t fol_acc_max;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -197,6 +201,10 @@ private:
 		float follow_dist;
 		float follow_yaw;
 		float circle_radius;
+		float fol_vel_min;
+		float fol_vel_p;
+		float fol_vel_dv;
+		float fol_acc_max;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -227,6 +235,8 @@ private:
 	float _circle_angle_total;   // total angle travelled in radians
 	float _circle_angular_vel;   // angular velocity in radians/sec
 	float _circle_angular_vel_max;   // maximum velocity in radians/sec
+
+	float _fol_vel_xy;
 
 	math::Vector<3> _pos;
 	math::Vector<3> _pos_sp;
@@ -424,7 +434,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_circle_angle(0.0f),
 	_circle_angle_total(0.0f),
 	_circle_angular_vel(0.0f),
-	_circle_angular_vel_max(0.0f)
+	_circle_angular_vel_max(0.0f),
+	_fol_vel_xy(0.0f)
 {
 	memset(&_vehicle_status, 0, sizeof(_vehicle_status));
 	memset(&_att, 0, sizeof(_att));
@@ -485,6 +496,10 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.follow_dist = param_find("MPC_FOLLOW_DIST");
 	_params_handles.follow_yaw = param_find("MPC_FOLLOW_YAW");
 	_params_handles.circle_radius = param_find("MPC_CIRCLE_R");
+	_params_handles.fol_vel_min = param_find("MPC_FOL_VEL_MIN");
+	_params_handles.fol_vel_p = param_find("MPC_FOL_VEL_P");
+	_params_handles.fol_vel_dv = param_find("MPC_FOL_VEL_DV");
+	_params_handles.fol_acc_max = param_find("MPC_FOL_ACC_MAX");
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -543,6 +558,10 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.follow_dist, &_params.follow_dist);
 		param_get(_params_handles.follow_yaw, &_params.follow_yaw);
 		param_get(_params_handles.circle_radius, &_params.circle_radius);
+		param_get(_params_handles.fol_vel_min, &_params.fol_vel_min);
+		param_get(_params_handles.fol_vel_p, &_params.fol_vel_p);
+		param_get(_params_handles.fol_vel_dv, &_params.fol_vel_dv);
+		param_get(_params_handles.fol_acc_max, &_params.fol_acc_max);
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -1143,23 +1162,33 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 		float vel_xy = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
 				_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
 
-		math::Vector<3> follow_vel;
-
-		follow_vel(0) = math::constrain(vel_xy, 1.0f, _params.vel_max(0));
-		follow_vel(1) = math::constrain(vel_xy, 1.0f, _params.vel_max(1));
-		follow_vel(2) = math::constrain(_pos_sp_triplet.current.vz, 1.0f, _params.vel_max(2));
-
-		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-		//math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
-		math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
 
 		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
-
 			float dx = curr_sp(0) - _pos(0);
 			float dy = curr_sp(1) - _pos(1);
+			/* calculate distance */
 			float dist = sqrtf(dx * dx + dy * dy);
 
 			if (dist > _params.follow_dist) {
+				/* Rapid Deceleration */
+				if ((vel_xy - _fol_vel_xy) / dt < -_params.fol_acc_max) {
+					/* smooth velocity */
+					_fol_vel_xy = _fol_vel_xy * (1 - _params.fol_vel_p) + vel_xy * _params.fol_vel_p;
+				} else {
+					_fol_vel_xy = vel_xy;
+				}
+
+				/* velocity compensation according to distance, not recommended */
+				float dv = (dist - _params.follow_dist) * _params.fol_vel_dv;
+
+				math::Vector<3> follow_vel;
+				follow_vel(0) = math::constrain(_fol_vel_xy + dv, _params.fol_vel_min, _params.vel_max(0));
+				follow_vel(1) = math::constrain(_fol_vel_xy + dv, _params.fol_vel_min, _params.vel_max(1));
+				follow_vel(2) = _params.vel_max(2);
+
+				/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+				math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
+
 				/* move setpoint not faster than max allowed speed */
 				math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
 
@@ -1640,6 +1669,10 @@ MulticopterPositionControl::task_main()
 
 			if (_control_mode.flag_control_custom_mode != vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE) {
 				_circle_follow_init = false;
+			}
+
+			if (_control_mode.flag_control_custom_mode != vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
+				_fol_vel_xy = 0.0f;
 			}
 
 			/* select control source */
