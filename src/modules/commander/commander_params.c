@@ -235,7 +235,7 @@ PARAM_DEFINE_FLOAT(COM_RC_LOSS_T, 0.5f);
  * @min 2
  * @max 15
  */
-PARAM_DEFINE_FLOAT(COM_HOME_H_T, 5.0f);
+PARAM_DEFINE_FLOAT(COM_HOME_H_T, 2.0f);
 
 /**
  * Home set vertical threshold
