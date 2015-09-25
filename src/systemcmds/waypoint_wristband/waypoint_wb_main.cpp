@@ -185,10 +185,14 @@ waypoint_wb_task_main()
 
     param_t _param_fc_system_id = param_find("WB_2FC_SYS_ID");
     param_t _param_fc_component_id = param_find("WB_2FC_COMP_ID");
+    param_t _param_eph_threshold = parm_find("COM_HOME_H_T");
     int32_t system_id;
     param_get(_param_fc_system_id, &system_id);
     int32_t component_id;
     param_get(_param_fc_component_id, &component_id);
+    int32_t eph_threshold;
+    param_get(_param_eph_threshold, &eph_threshold);
+
 
     orb_advert_t _cmd_long_pub = -1;
     while(!_task_should_exit)
@@ -206,7 +210,6 @@ waypoint_wb_task_main()
             {
                 orb_copy(ORB_ID(vehicle_gps_position), _gps_position_sub, &gps_position);
             }
-
             float vel_xy = sqrtf(gps_position.vel_n_m_s * gps_position.vel_n_m_s
                 + gps_position.vel_e_m_s * gps_position.vel_e_m_s);
 
@@ -223,16 +226,19 @@ waypoint_wb_task_main()
             warnx("global position update %d, %d %d, %.7f %.7f %.7f %.7f %.7f, %.7f %.7f, eph%.7f epv%.7f sa%d",
                 cmd.command, cmd.target_system, cmd.target_component,
                 cmd.param2, cmd.param3, cmd.param4,
-                cmd.param5,cmd.param6, 
+                cmd.param5,cmd.param6,
                 vel_xy, gps_position.vel_d_m_s,
                 gps_position.eph, gps_position.epv, gps_position.satellites_used);
-            if (_cmd_long_pub <= 0)
+            if (gps_position.fix_type == 3 && gps_position.eph < eph_threshold)
             {
-                _cmd_long_pub = orb_advertise(ORB_ID(vehicle_command), &cmd);
-            }
-            else
-            {
-                orb_publish(ORB_ID(vehicle_command), _cmd_long_pub, &cmd);
+                if (_cmd_long_pub <= 0)
+                {
+                    _cmd_long_pub = orb_advertise(ORB_ID(vehicle_command), &cmd);
+                }
+                else
+                {
+                    orb_publish(ORB_ID(vehicle_command), _cmd_long_pub, &cmd);
+                }
             }
 
             char buf[256] ;
