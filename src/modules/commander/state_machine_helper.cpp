@@ -383,8 +383,7 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 
 		break;
 	case vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT:
-		if (status->main_state == vehicle_status_s::MAIN_STATE_IDLE &&
-            status->condition_global_position_valid &&
+		if (status->condition_global_position_valid &&
             status->condition_home_position_valid &&
             !status->takeoff_finished) {
 			ret = TRANSITION_CHANGED;
@@ -802,8 +801,8 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_OFFBOARD;
 		}
         break;
-    case vehicle_status_s::MAIN_STATE_IDLE:
-        status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+	case vehicle_status_s::MAIN_STATE_IDLE:
+		status->nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
         break;
 	default:
 		break;

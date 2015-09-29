@@ -517,6 +517,7 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_CIRCLE:
 			case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
 			case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
+			case vehicle_status_s::NAVIGATION_STATE_IDLE:
 				_navigation_mode = nullptr;
 				_can_loiter_at_sp = false;
 				break;

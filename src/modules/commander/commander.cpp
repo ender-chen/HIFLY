@@ -153,8 +153,8 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define HIL_ID_MIN 1000
 #define HIL_ID_MAX 1999
 
-#define PERIOD_CLOSE_MOTOR_TAKEOFF (10 *1000 * 1000)
-#define PERIOD_CLOSE_MOTOR_LAND    (2 * 1000 * 1000)
+#define PERIOD_CLOSE_MOTOR_TAKEOFF 10000000
+#define PERIOD_CLOSE_MOTOR_LAND    100000
 
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
@@ -184,7 +184,7 @@ static hrt_abstime commander_boot_timestamp = 0;
 
 static bool control_source_change = false;
 static uint8_t last_control_source = manual_control_setpoint_s::CONTROL_SOURCE_NONE;
-static main_state_t app_main_state = vehicle_status_s::MAIN_STATE_MANUAL;
+static main_state_t app_main_state = vehicle_status_s::MAIN_STATE_IDLE;
 
 static unsigned int leds_counter;
 /* To remember when last notification was sent */
@@ -277,7 +277,7 @@ void answer_command(struct vehicle_command_s &cmd, unsigned result);
  */
 bool is_hil_setup(int id);
 
-transition_result_t set_main_state_app(struct vehicle_status_s *status);
+transition_result_t set_main_state_app(struct vehicle_status_s *status, main_state_t new_main_state);
 
 bool is_hil_setup(int id) {
 	return (id >= HIL_ID_MIN) && (id <= HIL_ID_MAX);
@@ -517,6 +517,7 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 			uint8_t custom_main_mode = (uint8_t)cmd->param2;
 			uint8_t custom_sub_mode = (uint8_t)cmd->param3;
 
+			mavlink_log_info(mavlink_fd, "set mode %d %d %d", base_mode, custom_main_mode, custom_sub_mode);
 			transition_result_t arming_ret = TRANSITION_NOT_CHANGED;
 
 			transition_result_t main_ret = TRANSITION_NOT_CHANGED;
@@ -1044,6 +1045,7 @@ int commander_thread_main(int argc, char *argv[])
 	status.arming_state = vehicle_status_s::ARMING_STATE_INIT;
 	status.hil_state = vehicle_status_s::HIL_STATE_OFF;
 	status.failsafe = false;
+	status.takeoff_finished = false;
 
 	/* neither manual nor offboard control commands have been received */
 	status.offboard_control_signal_found_once = false;
@@ -1745,7 +1747,9 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_log_critical(mavlink_fd, "LANDING DETECTED");
-                    mission_result.rcloss_finished = false;
+					mission_result.rcloss_finished = false;
+					mission_result.takeoff_finished = false;
+					status.takeoff_finished = false;
 				} else {
 					mavlink_log_critical(mavlink_fd, "TAKEOFF DETECTED");
 					status.had_in_air = true;
@@ -2155,24 +2159,23 @@ int commander_thread_main(int argc, char *argv[])
             else {
             }
             } //end control source rc
-			else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP) {
-				if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
-					app_main_state = vehicle_status_s::MAIN_STATE_IDLE;
-                    status.main_state = app_main_state;
-				}
+            else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP) {
+                if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
+                    status.main_state = vehicle_status_s::MAIN_STATE_IDLE;
+                }
 
                 // if landed after seconds, disarmd
                 if (status.is_rotary_wing &&
                         (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED || status.arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR)) {
 
                     //before takeoff
-                    if (status.main_state == vehicle_status_s::MAIN_STATE_IDLE &&
-                            status.condition_landed) {
+                    if (status.main_state == vehicle_status_s::MAIN_STATE_IDLE) {
                         if (_time_on_off_before_takeoff == 0) {
                             _time_on_off_before_takeoff = hrt_absolute_time();
                         } else {
                             if (hrt_elapsed_time(&_time_on_off_before_takeoff) > PERIOD_CLOSE_MOTOR_TAKEOFF) {
                                 /* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
+                                mavlink_log_info(mavlink_fd, "takeoff timeout");
                                 arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY : vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
                                 arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,mavlink_fd);
                                 if (arming_ret == TRANSITION_CHANGED) {
@@ -2194,6 +2197,7 @@ int commander_thread_main(int argc, char *argv[])
                         } else {
                             if (hrt_elapsed_time(&_time_on_off_after_land) > PERIOD_CLOSE_MOTOR_LAND) {
                                 /* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
+                                mavlink_log_info(mavlink_fd, "auto disarm after land");
                                 arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY : vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
                                 arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,mavlink_fd);
                                 if (arming_ret == TRANSITION_CHANGED) {
@@ -2209,13 +2213,22 @@ int commander_thread_main(int argc, char *argv[])
                     }
                 }
 
-				if (set_main_state_app(&status)) {
-					status_changed = true;
-				}
-			}
-			else {
-			}
-		} else {
+                transition_result_t main_res = set_main_state_app(&status, app_main_state);
+                /* play tune on mode change only if armed, blink LED always */
+                if (main_res == TRANSITION_CHANGED) {
+                    tune_positive(armed.armed);
+                    main_state_changed = true;
+
+                } else if (main_res == TRANSITION_DENIED) {
+                    /* DENIED here indicates bug in the commander */
+                    mavlink_log_critical(mavlink_fd, "app main state transition denied");
+                }
+                else {
+                }
+            }
+            else {
+            }
+        } else {
 			if (!status.rc_signal_lost) {
 				mavlink_log_critical(mavlink_fd, "RC SIGNAL LOST (at t=%llums)", hrt_absolute_time() / 1000);
 				status.rc_signal_lost = true;
@@ -2425,7 +2438,7 @@ int commander_thread_main(int argc, char *argv[])
 		if (main_state_changed || nav_state_changed) {
 			status_changed = true;
 			warnx("main state: %s nav state: %s", main_states_str[status.main_state], nav_states_str[status.nav_state]);
-			mavlink_log_info(mavlink_fd, "Flight mode: %s", nav_states_str[status.nav_state]);
+			mavlink_log_info(mavlink_fd, "Flight mode: main state:%s nav state: %s", main_states_str[status.main_state], nav_states_str[status.nav_state]);
 			main_state_changed = false;
 		}
 
@@ -2889,9 +2902,9 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 }
 
 transition_result_t
-set_main_state_app(struct vehicle_status_s *status_local) {
+set_main_state_app(struct vehicle_status_s *status_local, main_state_t new_main_state) {
 	transition_result_t res = TRANSITION_DENIED;
-	switch (app_main_state) {
+	switch (new_main_state) {
 	case vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT:
 		res = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_TAKEOFF_SHORTCUT);
 

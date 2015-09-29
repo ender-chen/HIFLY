@@ -76,19 +76,16 @@ TAKEOFF::on_inactive()
     _takeoff_state = TAKEOFF_STATE_NONE;
     reset_mission_item_reached();
 
-	/* not at TAKEOFF_SHORTCUT mode, this function always run,
-		when landed, it's time to reset takeoff_finished to false*/
-	if (_navigator->get_vstatus()->condition_landed) {
-		_navigator->get_mission_result()->takeoff_finished = false;
-	}
+	_navigator->get_mission_result()->takeoff_finished = false;
 }
 
     void
 TAKEOFF::on_activation()
 {
     /* for safety reasons don't go into Takeoff if not landed */
-    if (_navigator->get_vstatus()->condition_landed
-            && _takeoff_state == TAKEOFF_STATE_NONE) {
+    /* but condition_landed maybe not accurate after arming the mav */
+    if (/*_navigator->get_vstatus()->condition_landed
+            && */_takeoff_state == TAKEOFF_STATE_NONE) {
 
         advance_takeoff();
         set_takeoff_item();
@@ -99,7 +96,7 @@ TAKEOFF::on_activation()
 TAKEOFF::on_active()
 {
 
-    if (_takeoff_state != TAKEOFF_STATE_NONE
+    if (_takeoff_state == TAKEOFF_STATE_CLIMB
             && is_mission_item_reached())
     {
         advance_takeoff();
@@ -125,8 +122,7 @@ TAKEOFF::set_takeoff_item()
     {
         case TAKEOFF_STATE_CLIMB:
             {
-                float takeoff_alt = _navigator->get_home_position()->alt + _param_takeoff_alt.get();
-
+                float takeoff_alt = _param_takeoff_alt.get();
                 _mission_item.nav_cmd = NAV_CMD_TAKEOFF;
                 _mission_item.lat = _navigator->get_global_position()->lat;
                 _mission_item.lon = _navigator->get_global_position()->lon;
@@ -134,16 +130,16 @@ TAKEOFF::set_takeoff_item()
                 _mission_item.loiter_radius = _navigator->get_loiter_radius();
                 _mission_item.loiter_direction = 1;
                 _mission_item.altitude = takeoff_alt;
-                _mission_item.acceptance_radius = _navigator->get_acceptance_radius();
+                _mission_item.acceptance_radius = 1.0;
 				_mission_item.time_inside = _param_takeoff_delay.get() < 0.0f ? 0.0f : _param_takeoff_delay.get();
                 _mission_item.pitch_min = 0.0f;
-                _mission_item.altitude_is_relative = false;
+                _mission_item.altitude_is_relative = true;
                 _mission_item.autocontinue = true;
                 _mission_item.time_inside = 0;
                 _mission_item.origin = ORIGIN_ONBOARD;
 
-                mavlink_log_info(_navigator->get_mavlink_fd(), "#audio: TAKEOFF: climb to %d meters",
-                        (int)(takeoff_alt - _navigator->get_home_position()->alt));
+                mavlink_log_info(_navigator->get_mavlink_fd(), "TAKEOFF: climb to %d meters",
+                        (int)(takeoff_alt));
 
                 break;
             }
@@ -170,9 +166,10 @@ TAKEOFF::advance_takeoff()
         case TAKEOFF_STATE_CLIMB:
             _takeoff_state = TAKEOFF_STATE_FINISHED;
             break;
-		case TAKEOFF_STATE_FINISHED:
-			_navigator->get_mission_result()->takeoff_finished = true;
-			break;
+        case TAKEOFF_STATE_FINISHED:
+            _navigator->get_mission_result()->takeoff_finished = true;
+            _navigator->set_mission_result_updated();
+            break;
         default:
             break;
     }
