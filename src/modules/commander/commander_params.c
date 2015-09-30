@@ -323,3 +323,19 @@ PARAM_DEFINE_FLOAT(BAT_WARN_EMER, 10.8f);
  *
  */
  PARAM_DEFINE_FLOAT(ROI_POS_LON, 0.0f);
+ /**
+ *Out of control angel
+ *
+ *If it tilt larger than the set angel it will shutdown the motor.
+ *@group Commander
+ *
+ */
+ PARAM_DEFINE_FLOAT(OT_CT_ANG, 60.0f);
+ /**
+ *Diable takeoff angel
+ *
+ *If it tile larger than the set angel it will refuse to takeoff.
+ *@group Commander
+ *
+ */
+ PARAM_DEFINE_FLOAT(DIS_TF_ANG, 30.0f);

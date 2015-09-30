@@ -208,7 +208,7 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 
                     if (!status->condition_takeoff_attitude_valid)
 					{
-                        mavlink_and_console_log_critical(mavlink_fd, "HFMG1, ATTITUDE FAIL, REFUSE TAKEING OFF");
+                        mavlink_and_console_log_critical(mavlink_fd, "HFMG1, ATTITUDE FAIL, REFUSE DISARMING");
                         feedback_provided = true;
                         valid_transition = false;
                     }
@@ -217,7 +217,7 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
                     {
                         if (!(status->condition_local_position_valid || status->condition_global_position_valid))
                         {
-                            mavlink_and_console_log_critical(mavlink_fd, "HFMG2, NO GPS REFUSE TAKEING OFF");
+                            mavlink_and_console_log_critical(mavlink_fd, "HFMG2, NO GPS REFUSE DISARMING");
                             feedback_provided = true;
                             valid_transition = false;
                         }

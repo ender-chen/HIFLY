@@ -957,6 +957,8 @@ int commander_thread_main(int argc, char *argv[])
 	param_t _param_bat_warning_emergency = param_find("BAT_WARN_EMER");
 	param_t _param_roi_position_lat = param_find("ROI_POS_LAT");
 	param_t _param_roi_position_lon = param_find("ROI_POS_LON");
+	param_t _param_outof_control_angel = param_find("OT_CT_ANG");
+	param_t _param_disable_takeoff_angel = param_find("DIS_TF_ANG");
 
 	const char *main_states_str[vehicle_status_s::MAIN_STATE_MAX];
 	main_states_str[vehicle_status_s::MAIN_STATE_MANUAL]			= "MANUAL";
@@ -1325,6 +1327,8 @@ int commander_thread_main(int argc, char *argv[])
 	float bat_warning_low = 0.2f;
 	float bat_warning_critical = 0.1f;
 	float bat_warning_emergency = 0.05f;
+	float outof_control_angel = 60.0f;
+	float disable_takeoff_angel = 30.0f;
 
 	/* Thresholds for engine failure detection */
 	int32_t ef_throttle_thres = 1.0f;
@@ -1440,6 +1444,9 @@ int commander_thread_main(int argc, char *argv[])
 				    _roi_pub = orb_advertise(ORB_ID(roi_position), &_roi);
 				}
 			}
+			//If it tilt larger than the set angle it will shut down the motor or refuse to takeoff.
+			param_get(_param_outof_control_angel, &outof_control_angel);
+			param_get(_param_disable_takeoff_angel, &disable_takeoff_angel);
 		}
 
 		/* Set flag to autosave parameters if necessary */
@@ -1557,7 +1564,7 @@ int commander_thread_main(int argc, char *argv[])
 		{
 			orb_copy(ORB_ID(vehicle_attitude), attitude_sub, &attitude);
 			if(!status.condition_landed
-                && PX4_R(attitude.R, 2, 2) < 0.5f
+                && PX4_R(attitude.R, 2, 2) < fabsf(cosf(_wrap_pi(outof_control_angel * M_DEG_TO_RAD_F)))
                 && !status.circuit_breaker_engaged_attitudefailure_check)
 			{
                 if (attitude_failure_counter++ > 3)
@@ -1572,7 +1579,7 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			if (status.condition_landed
-                && PX4_R(attitude.R, 2, 2) < 0.85f
+                && PX4_R(attitude.R, 2, 2) < fabsf(cosf(_wrap_pi(disable_takeoff_angel * M_DEG_TO_RAD_F)))
                 && !status.circuit_breaker_engaged_takeoff_att_check)
 			{
 				status.condition_takeoff_attitude_valid = false;
