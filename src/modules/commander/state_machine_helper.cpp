@@ -390,9 +390,8 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		}
 		break;
 	case vehicle_status_s::MAIN_STATE_LAND_SHORTCUT:
-		if (status->condition_global_position_valid) {
-			ret = TRANSITION_CHANGED;
-		}
+		//must be always successful
+		ret = TRANSITION_CHANGED;
 		break;
 	case vehicle_status_s::MAIN_STATE_IDLE:
 		ret = TRANSITION_CHANGED;
