@@ -2228,7 +2228,8 @@ int commander_thread_main(int argc, char *argv[])
 
                 } else if (main_res == TRANSITION_DENIED) {
                     /* DENIED here indicates bug in the commander */
-                    mavlink_log_critical(mavlink_fd, "app main state transition denied");
+                    mavlink_log_critical(mavlink_fd, "state denied old:%s new:%s",
+                        main_states_str[status.main_state], main_states_str[app_main_state]);
                 }
                 else {
                 }
@@ -2445,7 +2446,7 @@ int commander_thread_main(int argc, char *argv[])
 		if (main_state_changed || nav_state_changed) {
 			status_changed = true;
 			warnx("main state: %s nav state: %s", main_states_str[status.main_state], nav_states_str[status.nav_state]);
-			mavlink_log_info(mavlink_fd, "Flight mode: main state:%s nav state: %s", main_states_str[status.main_state], nav_states_str[status.nav_state]);
+			mavlink_log_info(mavlink_fd, "Flight mode: main:%s nav: %s", main_states_str[status.main_state], nav_states_str[status.nav_state]);
 			main_state_changed = false;
 		}
 
