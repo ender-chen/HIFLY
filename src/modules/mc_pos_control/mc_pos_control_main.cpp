@@ -1101,7 +1101,9 @@ void MulticopterPositionControl::circle_update(float dt)
                 _pos_sp(1) = _circle_center(1) - _circle_radius * sinf(-_circle_angle);
                 _pos_sp(2) = _circle_center(2);
                 // heading is 180 deg from vehicles target position around circle
-                _att_sp.yaw_body = _wrap_pi(_circle_angle-M_PI_F);
+		/* vehicle needs 1s to speed up, but _circle_angle almost increase
+		   by _circle_angular_vel, so we ought to subtract the offset */
+		_att_sp.yaw_body = _wrap_pi(_circle_angle - M_PI_F - _circle_angular_vel);
 
         } else {
                 /*do nothing*/
