@@ -96,7 +96,7 @@ TAKEOFF::on_activation()
 TAKEOFF::on_active()
 {
 
-    if (_takeoff_state == TAKEOFF_STATE_CLIMB
+    if (_takeoff_state != TAKEOFF_STATE_NONE
             && is_mission_item_reached())
     {
         advance_takeoff();
@@ -169,6 +169,7 @@ TAKEOFF::advance_takeoff()
         case TAKEOFF_STATE_FINISHED:
             _navigator->get_mission_result()->takeoff_finished = true;
             _navigator->set_mission_result_updated();
+            mavlink_log_info(_navigator->get_mavlink_fd(), "TAKEOFF: finished");
             break;
         default:
             break;
