@@ -2169,6 +2169,8 @@ int commander_thread_main(int argc, char *argv[])
             else if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_APP) {
                 if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
                     status.main_state = vehicle_status_s::MAIN_STATE_IDLE;
+                    status.nav_state = vehicle_status_s::NAVIGATION_STATE_IDLE;
+                    app_main_state = vehicle_status_s::MAIN_STATE_IDLE;
                 }
 
                 // if landed after seconds, disarmd
@@ -2176,7 +2178,7 @@ int commander_thread_main(int argc, char *argv[])
                         (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED || status.arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR)) {
 
                     //before takeoff
-                    if (status.main_state == vehicle_status_s::MAIN_STATE_IDLE) {
+                    if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_IDLE) {
                         if (_time_on_off_before_takeoff == 0) {
                             _time_on_off_before_takeoff = hrt_absolute_time();
                         } else {
