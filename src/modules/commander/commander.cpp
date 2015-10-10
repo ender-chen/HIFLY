@@ -2182,7 +2182,7 @@ int commander_thread_main(int argc, char *argv[])
                         } else {
                             if (hrt_elapsed_time(&_time_on_off_before_takeoff) > PERIOD_CLOSE_MOTOR_TAKEOFF) {
                                 /* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
-                                mavlink_log_info(mavlink_fd, "takeoff timeout");
+                                mavlink_log_critical(mavlink_fd, "takeoff timeout,disarm");
                                 arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY : vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
                                 arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,mavlink_fd);
                                 if (arming_ret == TRANSITION_CHANGED) {
@@ -2204,7 +2204,7 @@ int commander_thread_main(int argc, char *argv[])
                         } else {
                             if (hrt_elapsed_time(&_time_on_off_after_land) > PERIOD_CLOSE_MOTOR_LAND) {
                                 /* disarm to STANDBY if ARMED or to STANDBY_ERROR if ARMED_ERROR */
-                                mavlink_log_info(mavlink_fd, "auto disarm after land");
+                                mavlink_log_critical(mavlink_fd, "landed,auto disarm");
                                 arming_state_t new_arming_state = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED ? vehicle_status_s::ARMING_STATE_STANDBY : vehicle_status_s::ARMING_STATE_STANDBY_ERROR);
                                 arming_ret = arming_state_transition(&status, &safety, new_arming_state, &armed, true /* fRunPreArmChecks */,mavlink_fd);
                                 if (arming_ret == TRANSITION_CHANGED) {
@@ -2228,8 +2228,10 @@ int commander_thread_main(int argc, char *argv[])
 
                 } else if (main_res == TRANSITION_DENIED) {
                     /* DENIED here indicates bug in the commander */
-                    mavlink_log_critical(mavlink_fd, "state denied old:%s new:%s",
+                    if (counter % (1000000 / COMMANDER_MONITORING_INTERVAL) == 0) {
+                        mavlink_log_info(mavlink_fd, "state denied old:%s new:%s",
                         main_states_str[status.main_state], main_states_str[app_main_state]);
+                    }
                 }
                 else {
                 }
@@ -3219,6 +3221,7 @@ set_control_mode()
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
+	case vehicle_status_s::NAVIGATION_STATE_IDLE:
 		/* disable all controllers on termination */
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;
