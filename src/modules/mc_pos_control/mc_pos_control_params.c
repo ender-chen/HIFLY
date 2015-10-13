@@ -302,6 +302,24 @@ PARAM_DEFINE_FLOAT(MPC_FOLLOW_YAW, 2.0f);
 PARAM_DEFINE_FLOAT(MPC_CIRCLE_R, 5.0f);
 
 /**
+ * circle velocity max
+ *
+ * @min 5m
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_CIRCLE_VEL, 5.0f);
+
+/**
+ * circle angular velocity
+ *
+ * @min 0m
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_CIRCLE_ROT, 10.0f);
+
+/**
  * follow minimum velocity
  *
  * @min 2

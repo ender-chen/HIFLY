@@ -181,6 +181,8 @@ private:
 		param_t follow_dist;
 		param_t follow_yaw;
 		param_t circle_radius;
+		param_t circle_vel;
+		param_t circle_rot;
 		param_t fol_vel_min;
 		param_t fol_vel_p;
 		param_t fol_vel_dv;
@@ -201,6 +203,8 @@ private:
 		float follow_dist;
 		float follow_yaw;
 		float circle_radius;
+		float circle_vel;
+		float circle_rot;
 		float fol_vel_min;
 		float fol_vel_p;
 		float fol_vel_dv;
@@ -430,7 +434,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_circle_follow_init(false),
 	_move_to_edge(false),
 	_circle_radius(0.0f),
-	_circle_rot_rate(20.0f),
+	_circle_rot_rate(0.0f),
 	_circle_angle(0.0f),
 	_circle_angle_total(0.0f),
 	_circle_angular_vel(0.0f),
@@ -496,6 +500,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.follow_dist = param_find("MPC_FOLLOW_DIST");
 	_params_handles.follow_yaw = param_find("MPC_FOLLOW_YAW");
 	_params_handles.circle_radius = param_find("MPC_CIRCLE_R");
+	_params_handles.circle_vel = param_find("MPC_CIRCLE_VEL");
+	_params_handles.circle_rot = param_find("MPC_CIRCLE_ROT");
 	_params_handles.fol_vel_min = param_find("MPC_FOL_VEL_MIN");
 	_params_handles.fol_vel_p = param_find("MPC_FOL_VEL_P");
 	_params_handles.fol_vel_dv = param_find("MPC_FOL_VEL_DV");
@@ -558,6 +564,8 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.follow_dist, &_params.follow_dist);
 		param_get(_params_handles.follow_yaw, &_params.follow_yaw);
 		param_get(_params_handles.circle_radius, &_params.circle_radius);
+		param_get(_params_handles.circle_vel, &_params.circle_vel);
+		param_get(_params_handles.circle_rot, &_params.circle_rot);
 		param_get(_params_handles.fol_vel_min, &_params.fol_vel_min);
 		param_get(_params_handles.fol_vel_p, &_params.fol_vel_p);
 		param_get(_params_handles.fol_vel_dv, &_params.fol_vel_dv);
@@ -1015,6 +1023,8 @@ MulticopterPositionControl::move_to_sp(const math::Vector<3>& sp, float dt)
 
 void MulticopterPositionControl::circle_calc_velocities()
 {
+	_circle_rot_rate = math::constrain(_params.circle_rot, -20.0f, 20.0f);
+
         // if we are doing a panorama set the circle_angle to the current heading
         if (_circle_radius <= 0) {
                 _circle_angular_vel_max =math::radians(_circle_rot_rate);
@@ -1023,19 +1033,14 @@ void MulticopterPositionControl::circle_calc_velocities()
                 // set starting angle to current heading - 180 degrees
                 _circle_angle = _wrap_pi(_att.yaw - M_PI_F);
 
-                /* speed */
-                float velocity_max = _params.vel_max(0) / 3.0f;
+                /* velocity max */
+                float velocity_max = math::min(_params.circle_vel, _params.vel_max(0));
 
                 // angular_velocity in radians per second
                 _circle_angular_vel_max = velocity_max/_circle_radius;
                 _circle_angular_vel_max = math::constrain(math::radians(_circle_rot_rate),-_circle_angular_vel_max,_circle_angular_vel_max);
 
-                if (_circle_rot_rate < 0.0f) {
-                        _circle_angular_vel = -_circle_angular_vel_max;
-
-                } else {
-                        _circle_angular_vel = _circle_angular_vel_max;
-                }
+		_circle_angular_vel = _circle_angular_vel_max;
         }
 }
 
@@ -1629,7 +1634,7 @@ MulticopterPositionControl::task_main()
 		poll_subscriptions();
 		parameters_update(false);
 
-		_circle_radius = math::constrain(_params.circle_radius, 3.0f, 10.0f);
+		_circle_radius = math::constrain(_params.circle_radius, 5.0f, 30.0f);
 
 		hrt_abstime t = hrt_absolute_time();
 		float dt = t_prev != 0 ? (t - t_prev) * 0.000001f : 0.0f;
