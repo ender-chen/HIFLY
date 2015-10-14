@@ -402,9 +402,7 @@ Mission::set_mission_items()
 		return;
 	}
 
-	if (pos_sp_triplet->current.valid) {
-		_on_arrival_yaw = _mission_item.yaw;
-	}
+
 
 	/* do takeoff on first waypoint for rotary wing vehicles */
 	if (_navigator->get_vstatus()->is_rotary_wing) {
@@ -469,6 +467,10 @@ Mission::set_mission_items()
 	/* set current position setpoint from mission item */
 	mission_item_to_position_setpoint(&_mission_item, &pos_sp_triplet->current);
 
+	if (pos_sp_triplet->current.valid) {
+		_on_arrival_yaw = _mission_item.yaw;
+	}
+
 	/* require takeoff after landing or idle */
 	if (pos_sp_triplet->current.type == position_setpoint_s::SETPOINT_TYPE_LAND || pos_sp_triplet->current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 		_need_takeoff = true;
@@ -521,8 +523,7 @@ Mission::heading_sp_update()
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
 	/* Don't change setpoint if last and current waypoint are not valid */
-	if (!pos_sp_triplet->previous.valid || !pos_sp_triplet->current.valid ||
-			!isfinite(_on_arrival_yaw)) {
+	if (!pos_sp_triplet->current.valid || !isfinite(_on_arrival_yaw)) {
 		return;
 	}
 
