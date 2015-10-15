@@ -161,7 +161,7 @@ waypoint_wb_task_main()
 {
     warnx("task enter");
 
-    const char* start_str = "start: send_time, lat, lon, alt";
+    const char* start_str = "start: send_time, lat, lon, alt\n";
 
     int fd_waypoint_sent = -1;
     char sent_report_filename[64] = {'\0'};
@@ -178,7 +178,6 @@ waypoint_wb_task_main()
         write(fd_waypoint_sent, start_str, strlen(start_str));
     }
 
-    int _global_position_sub = orb_subscribe(ORB_ID(vehicle_global_position));
     int _gps_position_sub = orb_subscribe(ORB_ID(vehicle_gps_position));
     struct vehicle_gps_position_s gps_position;
     memset(&gps_position, 0 ,sizeof(gps_position));
@@ -199,20 +198,12 @@ waypoint_wb_task_main()
     {
 
         bool updated = false;
-        orb_check(_global_position_sub, &updated);
+        orb_check(_gps_position_sub, &updated);
         if (updated)
         {
-            struct vehicle_global_position_s global_position;
-            orb_copy(ORB_ID(vehicle_global_position), _global_position_sub, &global_position);
-
-            orb_check(_gps_position_sub, &updated);
-            if (updated)
-            {
-                orb_copy(ORB_ID(vehicle_gps_position), _gps_position_sub, &gps_position);
-            }
+            orb_copy(ORB_ID(vehicle_gps_position), _gps_position_sub, &gps_position);
             float vel_xy = sqrtf(gps_position.vel_n_m_s * gps_position.vel_n_m_s
                 + gps_position.vel_e_m_s * gps_position.vel_e_m_s);
-
             struct vehicle_command_s cmd;
             cmd.command = vehicle_command_s::VEHICLE_CMD_NAV_WAYPOINT;
             cmd.target_system = system_id;
@@ -220,15 +211,15 @@ waypoint_wb_task_main()
             cmd.param2 =(float)gps_position.vel_n_m_s;
             cmd.param3 =(float)gps_position.vel_e_m_s;
             cmd.param4 =(float)gps_position.vel_d_m_s;
-            cmd.param5 =(float)global_position.lat;
-            cmd.param6 =(float)global_position.lon;
-            cmd.param7 =(float)global_position.alt;
-            warnx("global position update %d, %d %d, %.7f %.7f %.7f %.7f %.7f, %.7f %.7f, eph%.7f epv%.7f sa%d",
+            cmd.param5 =(float)gps_position.lat * 1E-7;
+            cmd.param6 =(float)gps_position.lon * 1E-7;
+            cmd.param7 =(float)gps_position.alt * 1E-3;
+            warnx("global position update %d, %d %d, %.7f %.7f %.7f %.7f %.7f, %.7f %.7f, %.7f %.7f %d %d\n",
                 cmd.command, cmd.target_system, cmd.target_component,
                 cmd.param2, cmd.param3, cmd.param4,
                 cmd.param5,cmd.param6,
                 vel_xy, gps_position.vel_d_m_s,
-                gps_position.eph, gps_position.epv, gps_position.satellites_used);
+                gps_position.eph, gps_position.epv, gps_position.satellites_used, gps_position.noise_per_ms);
             if (gps_position.fix_type == 3 && gps_position.eph < eph_threshold)
             {
                 if (_cmd_long_pub <= 0)
@@ -243,10 +234,10 @@ waypoint_wb_task_main()
 
             char buf[256] ;
             memset(buf, 0, 256);
-            sprintf(buf, "%llu\t%.7f\t%.7f\t%.7f\t,%.7f\t%.7f\t,eph%.7f\t epv%.7f\t sa%d\t",
-                    global_position.time_utc_usec, global_position.lat,
-                    global_position.lon, (double)global_position.alt, vel_xy, gps_position.vel_d_m_s, 
-                    gps_position.eph, gps_position.epv, gps_position.satellites_used);
+            sprintf(buf, "%llu%.7f%.7f%.7f,%.7f%.7f, %.7f %.7f %d %d\n",
+                    gps_position.time_utc_usec, gps_position.lat * 1E-7,
+                    gps_position.lon * 1E-7, (double)gps_position.alt * 1E-3, vel_xy, gps_position.vel_d_m_s, 
+                    gps_position.eph, gps_position.epv, gps_position.satellites_used, gps_position.noise_per_ms);
             if (fd_waypoint_sent > 0)
             {
                 write(fd_waypoint_sent, buf, strlen(buf));
