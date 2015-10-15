@@ -290,7 +290,7 @@ PARAM_DEFINE_FLOAT(MPC_FOLLOW_DIST, 5.0f);
  *
  * @group Multicopter Position Control
  */
-PARAM_DEFINE_FLOAT(MPC_FOLLOW_YAW, 2.0f);
+PARAM_DEFINE_FLOAT(MPC_FOLLOW_YAW, 3.0f);
 
 /**
  * circle radius
