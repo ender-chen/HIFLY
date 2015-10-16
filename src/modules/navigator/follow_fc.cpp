@@ -143,24 +143,31 @@ FollowFC::on_active() {
         return;
     }
     if (_navigator->get_mission_result()->finished) {
+        if(!_fcf_item_reached)
+        {
+            update_ref();
+            if (get_waypoint_of_target(&_target_waypoint)) {
+                get_local_position_of_target(&_target_waypoint, &_target_local_pos);
+            }
 
-        update_ref();
-        if (get_waypoint_of_target(&_target_waypoint)) {
-            get_local_position_of_target(&_target_waypoint, &_target_local_pos);
+            if (_target_local_pos.position_valid) {
+                /* get current item */
+                transit_next_state(&_state_current);
+                set_item(&_item_current, _target_local_pos, _state_current);
+
+                /* get next item */
+                enum fcf_state_e next_state = _state_current;
+                transit_next_state(&next_state);
+                set_item(&_item_next, _target_local_pos, next_state);
+                update_item_to_mission(&_item_current, &_item_next, nullptr);
+                _state_current = next_state;
+            }
+            _fcf_item_reached = true;
         }
-
-        if (_target_local_pos.position_valid) {
-            /* get current item */
-            transit_next_state(&_state_current);
-            set_item(&_item_current, _target_local_pos, _state_current);
-
-            /* get next item */
-            enum fcf_state_e next_state = _state_current;
-            transit_next_state(&next_state);
-            set_item(&_item_next, _target_local_pos, next_state);
-            update_item_to_mission(&_item_current, &_item_next, nullptr);
-            _state_current = next_state;
-        }
+    }
+    else
+    {
+        _fcf_item_reached = false;
     }
 }
 
