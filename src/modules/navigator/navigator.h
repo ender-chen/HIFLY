@@ -68,6 +68,7 @@
 #include "gpsfailure.h"
 #include "rcloss.h"
 #include "geofence.h"
+#include "idle.h"
 #include "takeoff.h"
 #include "land.h"
 #include "follow_loiter.h"
@@ -78,7 +79,7 @@
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 12
+#define NAVIGATOR_MODE_ARRAY_SIZE 13
 
 class Navigator : public control::SuperBlock
 {
@@ -241,6 +242,7 @@ private:
 	RTL 		_rtl;				/**< class that handles RTL */
 	RCLoss 		_rcLoss;				/**< class that handles RTL according to
 							  OBC rules (rc loss mode) */
+	IDLE _idle;
 	TAKEOFF	_takeoff;
 	LAND  		_land;
     FollowLoiter _follow_loiter;

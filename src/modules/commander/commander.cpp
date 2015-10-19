@@ -3101,6 +3101,7 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 	case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
+	case vehicle_status_s::NAVIGATION_STATE_IDLE:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;
@@ -3223,7 +3224,6 @@ set_control_mode()
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
-	case vehicle_status_s::NAVIGATION_STATE_IDLE:
 		/* disable all controllers on termination */
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;

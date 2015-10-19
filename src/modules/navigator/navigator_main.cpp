@@ -143,6 +143,7 @@ Navigator::Navigator() :
 	_loiter(this, "LOI"),
 	_rtl(this, "RTL"),
 	_rcLoss(this, "RCL"),
+	_idle(this, "IDLE"),
 	_takeoff(this, "TAKEOFF"),
 	_land(this, "LAND"),
     _follow_loiter(this, "FOLLOI"),
@@ -174,6 +175,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[9] = &_follow_loiter;
 	_navigation_mode_array[10] = &_follow_camera;
 	_navigation_mode_array[11] = &_follow_circle;
+	_navigation_mode_array[12] = &_idle;
 
 	updateParams();
 }
@@ -517,7 +519,6 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_CIRCLE:
 			case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
 			case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
-			case vehicle_status_s::NAVIGATION_STATE_IDLE:
 				_navigation_mode = nullptr;
 				_can_loiter_at_sp = false;
 				break;
@@ -558,6 +559,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_gpsFailure;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_IDLE:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_idle;
 				break;
 			case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
 				_pos_sp_triplet_published_invalid_once = false;

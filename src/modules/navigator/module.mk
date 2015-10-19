@@ -56,6 +56,7 @@ SRCS		= navigator_main.cpp \
 		  enginefailure.cpp \
 		  gpsfailure.cpp \
 		  gpsfailure_params.c \
+		  idle.cpp \
 		  takeoff.cpp \
 		  takeoff_params.c \
 		  land.cpp \
