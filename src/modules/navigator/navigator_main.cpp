@@ -427,7 +427,7 @@ Navigator::task_main()
 			local_position_update();
 		}
 
-		if (fds[10].revents & POLLIN) {
+		if (fds[9].revents & POLLIN) {
 			waypoint_update();
 		}
 
