@@ -1267,10 +1267,17 @@ void MulticopterPositionControl::control_follow_camera(float dt)
             return;
         }
 
-        /* just update yaw setpoint if needed */
-        if (isfinite(_pos_sp_triplet.current.yaw)) {
-            _att_sp.yaw_body = _pos_sp_triplet.current.yaw;
-        }
+	float dx = curr_sp(0) - _pos(0);
+	float dy = curr_sp(1) - _pos(1);
+	/* calculate distance */
+	float dist = sqrtf(dx * dx + dy * dy);
+
+	if (dist > _params.follow_yaw) {
+		/* update yaw setpoint if needed */
+		if (isfinite(_pos_sp_triplet.current.yaw)) {
+			_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+		}
+	}
     }
 }
 
