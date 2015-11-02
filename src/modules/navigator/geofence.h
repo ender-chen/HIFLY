@@ -129,8 +129,8 @@ private:
 	control::BlockParamInt _param_altitude_mode;
 	control::BlockParamInt _param_source;
 	control::BlockParamInt _param_counter_threshold;
-	control::BlockParamInt _param_max_hor_distance;
-	control::BlockParamInt _param_max_ver_distance;
+	control::BlockParamFloat _param_max_hor_distance;
+	control::BlockParamFloat _param_max_ver_distance;
 	control::BlockParamInt _param_safe_distance;
 
 	uint8_t			_outside_counter;
