@@ -27,7 +27,7 @@ fi
 #then
 #fi
 
-if lsm303d start
+if lsm303d -R 8 start
 then
 fi
 

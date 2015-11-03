@@ -3,9 +3,9 @@
 #
 
 MODULE_COMMAND	 = mtd
-SRCS		 = mtd.c 24xxxx_mtd.c
+SRCS		 = mtd.c q25.c
 
 MAXOPTIMIZATION	 = -Os
 
-EXTRACFLAGS	= -Wno-error
+EXTRACFLAGS	= -Wno-error -Wno-unused-but-set-variable
 

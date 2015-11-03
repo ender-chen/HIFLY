@@ -15,36 +15,36 @@ sercon
 #
 set MODE autostart
 
-set FRC /fs/microsd/etc/rc.txt
-set FCONFIG /fs/microsd/etc/config.txt
+#set FRC /fs/microsd/etc/rc.txt
+#set FCONFIG /fs/microsd/etc/config.txt
 set TUNE_ERR ML<<CP4CP4CP4CP4CP4
-set LOG_FILE /fs/microsd/bootlog.txt
+#set LOG_FILE /fs/microsd/bootlog.txt
 
 #
 # Try to mount the microSD card.
 #
 # REBOOTWORK this needs to start after the flight control loop
-if mount -t vfat /dev/mmcsd0 /fs/microsd
-then
-	echo "[i] microSD mounted: /fs/microsd" >> $LOG_FILE
+#if mount -t vfat /dev/mmcsd0 /fs/microsd
+#then
+#	echo "[i] microSD mounted: /fs/microsd" >> $LOG_FILE
 	# Start playing the startup tune
 	#tone_alarm start
-else
+#else
 	#tone_alarm MBAGP
-	if mkfatfs /dev/mmcsd0
-	then
-		if mount -t vfat /dev/mmcsd0 /fs/microsd
-		then
-			echo "[i] microSD card formatted"
-		else
-			echo "[i] format failed"
+#	if mkfatfs /dev/mmcsd0
+#	then
+#		if mount -t vfat /dev/mmcsd0 /fs/microsd
+#		then
+#			echo "[i] microSD card formatted"
+#		else
+#			echo "[i] format failed"
 			#tone_alarm MNBG
-			set LOG_FILE /dev/null
-		fi
-	else
-		set LOG_FILE /dev/null
-	fi
-fi
+#			set LOG_FILE /dev/null
+#		fi
+#	else
+#		set LOG_FILE /dev/null
+#	fi
+#fi
 
 #
 # Look for an init script on the microSD card.
@@ -72,11 +72,11 @@ then
 	#
 	# Load parameters
 	#
-	set PARAM_FILE /fs/microsd/params
-	#if mtd start
-	#then
-	#	set PARAM_FILE /fs/mtd_params
-	#fi
+#	set PARAM_FILE /fs/microsd/params
+	if mtd start
+	then
+		set PARAM_FILE /fs/mtd_params
+	fi
 
 	param select $PARAM_FILE
 	if param load
@@ -84,9 +84,9 @@ then
 		echo "[param] Loaded: $PARAM_FILE"
 	else
 		echo "[param] FAILED loading $PARAM_FILE"
-		if param reset
-		then
-		fi
+#		if param reset
+#		then
+#		fi
 	fi
 
 	#
@@ -471,6 +471,7 @@ then
 
     set MAVLINK_F "-d /dev/ttyS1 -b 19200"
 	mavlink start $MAVLINK_F
+	mavlink start -d /dev/ttyS6 -b 19200
 	unset MAVLINK_F
 
 	#
