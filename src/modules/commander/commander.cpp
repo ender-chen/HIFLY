@@ -979,6 +979,7 @@ int commander_thread_main(int argc, char *argv[])
 	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_LOITER]		= "FOLLOW_LOITER";
 	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE]		= "FOLLOW_CIRCLE";
 	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_FC]		    = "FOLLOW_FC";
+	main_states_str[vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC]		    = "FOLLOW_FC_ARC";
 
 	const char *arming_states_str[vehicle_status_s::ARMING_STATE_MAX];
 	arming_states_str[vehicle_status_s::ARMING_STATE_INIT]			= "INIT";
@@ -1013,6 +1014,7 @@ int commander_thread_main(int argc, char *argv[])
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER]		= "FOLLOW_LOITER";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE]		= "FOLLOW_CIRCLE";
 	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC]		    = "FOLLOW_FC";
+	nav_states_str[vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC]		= "FOLLOW_FC_ARC";
 
 	const char *control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_MAX];
 	control_source_str[manual_control_setpoint_s::CONTROL_SOURCE_RC]				= "CONTROL_SOURCE_RC";
@@ -2721,11 +2723,21 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
             {
                 switch (sp_man->follow_switch) {
                     case manual_control_setpoint_s::SWITCH_POS_ON:
-                        res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_CIRCLE);
-                        if (res == TRANSITION_DENIED) {
-                            print_reject_mode(status_local, "CIRCLE");
+                       	if (sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
+	                        res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_CIRCLE);
+	                        if (res == TRANSITION_DENIED) {
+	                            print_reject_mode(status_local, "CIRCLE");
+	                        }
+	                        break;
+	                    }
+                       	else if(sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_OFF) {
+                            res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC);
+                            if (res == TRANSITION_DENIED) {
+                                print_reject_mode(status_local, "FOLLOW_FC_ARC");
+                            }
+                            break;
                         }
-                        break;
+
                     case manual_control_setpoint_s::SWITCH_POS_MIDDLE:
                         if (sp_man->follow_sub_switch == manual_control_setpoint_s::SWITCH_POS_ON) {
                             res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA);
@@ -3171,6 +3183,18 @@ set_control_mode()
 		control_mode.flag_control_altitude_enabled = true;
 		control_mode.flag_control_termination_enabled = false;
 		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC;
+        break;
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC_ARC;
         break;
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
 		control_mode.flag_control_manual_enabled = false;
