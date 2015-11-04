@@ -74,6 +74,8 @@
 #include <uORB/topics/vehicle_global_velocity_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/geofence_result.h>
+#include <uORB/topics/waypoint.h>
+
 
 #include <systemlib/systemlib.h>
 #include <mathlib/mathlib.h>
@@ -135,6 +137,7 @@ private:
 	int		_local_pos_sp_sub;		/**< offboard local position setpoint */
 	int		_global_vel_sp_sub;		/**< offboard global velocity setpoint */
 	int		_geofence_result_sub;	/**< geofence result*/
+	int 	_waypoint_sub;			/**< waypoint */
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -151,6 +154,8 @@ private:
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
 	struct vehicle_global_velocity_setpoint_s	_global_vel_sp;		/**< vehicle global velocity setpoint */
 	struct geofence_result_s			_geofence_result;	/**< geofence result */
+	struct waypoint_s _waypoint_sp;							/**<waypoint stash */
+
 
 	control::BlockParamFloat _manual_thr_min;
 	control::BlockParamFloat _manual_thr_max;
@@ -187,6 +192,10 @@ private:
 		param_t fol_vel_p;
 		param_t fol_vel_dv;
 		param_t fol_acc_max;
+		param_t follow_fc_horizon_distance;
+		param_t follow_fc_circle_angle_limit;
+		param_t follow_fc_circle_accelerate;
+		param_t follow_fc_direction;
 	}		_params_handles;		/**< handles for interesting parameters */
 
 	struct {
@@ -209,6 +218,10 @@ private:
 		float fol_vel_p;
 		float fol_vel_dv;
 		float fol_acc_max;
+		float follow_fc_horizon_distance;
+		float follow_fc_circle_angle_limit;
+		float follow_fc_circle_accelerate;
+		float follow_fc_direction;
 
 		math::Vector<3> pos_p;
 		math::Vector<3> vel_p;
@@ -242,6 +255,17 @@ private:
 
 	float _fol_vel_xy;
 
+	/*far close follow circle parameter */
+	float _follow_fc_circle_angle;
+	float _follow_fc_circle_angle_vel_max;
+	bool _follow_fc_circle_init;
+	float _follow_fc_circle_radius;
+	float _follow_fc_angle_vel_old;
+	float _follow_fc_angle_vel_new;
+	float _follow_fc_start_angle;
+	float _follow_fc_angle_vel_accelearate;
+
+
 	math::Vector<3> _pos;
 	math::Vector<3> _pos_sp;
 	math::Vector<3> _vel;
@@ -252,6 +276,8 @@ private:
 
 	math::Vector<3> _circle_center;
 	math::Vector<3> _circle_edge;
+
+	math::Vector<3> _follow_fc_circle_center;
 
 	/**
 	 * Update our local parameter cache.
@@ -301,6 +327,12 @@ private:
 
 	bool		cross_sphere_line(const math::Vector<3>& sphere_c, float sphere_r,
 					const math::Vector<3> line_a, const math::Vector<3> line_b, math::Vector<3>& res);
+
+	void 		follow_fc_init();
+
+	void 		follow_fc_update(float dt);
+
+	void 		control_follow_fc(float dt);
 	/**
 	 * Move to sp position setpotion
 	**/
@@ -416,6 +448,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_pos_sp_triplet_sub(-1),
 	_global_vel_sp_sub(-1),
 	_geofence_result_sub(-1),
+	_waypoint_sub(-1),
 
 /* publications */
 	_att_sp_pub(-1),
@@ -439,7 +472,15 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_circle_angle_total(0.0f),
 	_circle_angular_vel(0.0f),
 	_circle_angular_vel_max(0.0f),
-	_fol_vel_xy(0.0f)
+	_fol_vel_xy(0.0f),
+	_follow_fc_circle_angle(0.0f),
+	_follow_fc_circle_angle_vel_max(0.0f),
+	_follow_fc_circle_init(false),
+	_follow_fc_circle_radius(0.0f),
+	_follow_fc_angle_vel_old(0.0f),
+	_follow_fc_angle_vel_new(0.0f),
+	_follow_fc_start_angle(0.0f),
+	_follow_fc_angle_vel_accelearate(0.0f)
 {
 	memset(&_vehicle_status, 0, sizeof(_vehicle_status));
 	memset(&_att, 0, sizeof(_att));
@@ -454,6 +495,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 
 	memset(&_ref_pos, 0, sizeof(_ref_pos));
 	memset(&_geofence_result, 0, sizeof(_geofence_result));
+	memset(&_waypoint_sp, 0, sizeof(_waypoint_sp));
 
 	_params.pos_p.zero();
 	_params.vel_p.zero();
@@ -473,6 +515,8 @@ MulticopterPositionControl::MulticopterPositionControl() :
 
 	_circle_center.zero();
 	_circle_edge.zero();
+
+	_follow_fc_circle_center.zero();
 
 	_params_handles.thr_min		= param_find("MPC_THR_MIN");
 	_params_handles.thr_max		= param_find("MPC_THR_MAX");
@@ -506,6 +550,12 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.fol_vel_p = param_find("MPC_FOL_VEL_P");
 	_params_handles.fol_vel_dv = param_find("MPC_FOL_VEL_DV");
 	_params_handles.fol_acc_max = param_find("MPC_FOL_ACC_MAX");
+
+	_params_handles.follow_fc_horizon_distance = param_find("MPC_FCF_HORI");
+	_params_handles.follow_fc_circle_angle_limit = param_find("MPC_FCF_RL");
+	_params_handles.follow_fc_circle_accelerate = param_find("MPC_FCF_ACC");
+	_params_handles.follow_fc_direction = param_find("MPC_FCF_DIR");
+
 
 	/* fetch initial parameter values */
 	parameters_update(true);
@@ -570,6 +620,13 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.fol_vel_p, &_params.fol_vel_p);
 		param_get(_params_handles.fol_vel_dv, &_params.fol_vel_dv);
 		param_get(_params_handles.fol_acc_max, &_params.fol_acc_max);
+		param_get(_params_handles.follow_fc_horizon_distance, &_params.follow_fc_horizon_distance);
+		param_get(_params_handles.follow_fc_circle_angle_limit, &_params.follow_fc_circle_angle_limit);
+		param_get(_params_handles.follow_fc_circle_accelerate, &_params.follow_fc_circle_accelerate);
+		_params.follow_fc_circle_angle_limit = math::radians(_params.follow_fc_circle_angle_limit);
+		param_get(_params_handles.follow_fc_direction, &_params.follow_fc_direction);
+		_params.follow_fc_direction = math::radians(_params.follow_fc_direction);
+
 
 		float v;
 		param_get(_params_handles.xy_p, &v);
@@ -673,6 +730,12 @@ MulticopterPositionControl::poll_subscriptions()
 
 	if (updated) {
 		orb_copy(ORB_ID(geofence_result), _geofence_result_sub, &_geofence_result);
+	}
+
+	orb_check(_waypoint_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(waypoint), _waypoint_sub, &_waypoint_sp);
 	}
 }
 
@@ -998,6 +1061,79 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3>& sphere_c, f
 }
 
 void
+MulticopterPositionControl::control_follow_fc(float dt)
+{
+	if (!_mode_auto) {
+	    /* reset position setpoint on AUTO mode activation */
+	    _mode_auto = true;
+	    reset_pos_sp();
+	    reset_alt_sp();
+    }
+
+	follow_fc_init();
+
+	follow_fc_update(dt);
+}
+
+void
+MulticopterPositionControl::follow_fc_init()
+{
+	if (_follow_fc_circle_init) {
+		return;
+	}
+	_follow_fc_circle_init = true;
+
+	/* set circle center to circle_radius ahead of pos_sp point */
+	mavlink_log_info(_mavlink_fd, "limit is %.2lf", (double)_params.follow_fc_circle_angle_limit);
+
+	float limit_angel = _wrap_pi(_params.follow_fc_circle_angle_limit / 2);
+	mavlink_log_info(_mavlink_fd, "limit angel is %.2lf", (double)limit_angel);
+	mavlink_log_info(_mavlink_fd, "limit horizon is  %.2lf", (double)_params.follow_fc_horizon_distance);
+	_follow_fc_circle_radius = _params.follow_fc_horizon_distance  / fabsf(sinf(limit_angel));
+	float vertical_distance;
+	vertical_distance = _params.follow_fc_horizon_distance  / fabsf(tanf(limit_angel));
+	_follow_fc_circle_center(0) = _pos_sp(0) - _params.follow_fc_horizon_distance;
+	_follow_fc_circle_center(1) = _pos_sp(1);
+	_follow_fc_circle_center(2) = _pos_sp(2) - vertical_distance;
+	mavlink_log_info(_mavlink_fd, "raidus is %.2lf, center(0) is %.2lf, center(2) is %.2f", (double)_follow_fc_circle_radius, (double)_follow_fc_circle_center(0), (double)_follow_fc_circle_center(2));
+	mavlink_log_info(_mavlink_fd, "_pos_sp(0) is %.2lf, _pos_sp(2) is %.2lf", (int)_pos_sp(0), (int)_pos_sp(1));
+	// calculate velocities
+    _follow_fc_circle_angle_vel_max = _wrap_pi(_params.vel_max(0) / _follow_fc_circle_radius);
+	mavlink_log_info(_mavlink_fd, "angel_vel_max %.2lf", (double)_follow_fc_circle_angle_vel_max);
+    _follow_fc_start_angle = (M_PI_F / 2 - limit_angel);
+    _follow_fc_circle_angle = _follow_fc_start_angle;
+    _follow_fc_angle_vel_accelearate = _wrap_pi(_params.follow_fc_circle_accelerate / _follow_fc_circle_radius);
+}
+void
+MulticopterPositionControl::follow_fc_update(float dt)
+{
+	float follow_fc_angle_vel_change;
+    // update the target angle and total angle traveled
+	follow_fc_angle_vel_change = _follow_fc_angle_vel_accelearate * dt;
+	if(_follow_fc_circle_angle <= M_PI_F / 2)
+	{
+		_follow_fc_angle_vel_old += follow_fc_angle_vel_change;
+	}
+	else
+	{
+		_follow_fc_angle_vel_old -= follow_fc_angle_vel_change;
+	}
+	_follow_fc_angle_vel_new = math::constrain(_follow_fc_angle_vel_old, -_follow_fc_circle_angle_vel_max, _follow_fc_circle_angle_vel_max);
+    float angle_change = _follow_fc_angle_vel_new * dt;
+    _follow_fc_circle_angle += angle_change;
+    // if the circle_radius is zero we are doing panorama so no need to update loiter target
+    if (fabsf(_follow_fc_circle_radius) > FLT_EPSILON) {
+            // calculate target position
+            _pos_sp(1) = _follow_fc_circle_center(1) + _follow_fc_circle_radius * cosf(_follow_fc_circle_angle) * fabsf(sinf(_wrap_pi(_params.follow_fc_direction)));
+            _pos_sp(0) = _follow_fc_circle_center(0) + _follow_fc_circle_radius * cosf(_follow_fc_circle_angle) * fabsf(cosf(_wrap_pi(_params.follow_fc_direction)));
+            _pos_sp(2) = _follow_fc_circle_center(2) + _follow_fc_circle_radius * sinf(_follow_fc_circle_angle);
+           	// mavlink_log_info(_mavlink_fd, "_pos_sp(2) is %.2lf", (double)_pos_sp(2));
+    }
+		_att_sp.yaw_body = get_bearing_to_next_waypoint(
+			        _pos(0), _pos(1), _waypoint_sp.lat, _waypoint_sp.lon);
+}
+
+void
 MulticopterPositionControl::move_to_sp(const math::Vector<3>& sp, float dt)
 {
 	/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
@@ -1130,6 +1266,8 @@ void MulticopterPositionControl::control_circle_fixed(float dt)
 
 	circle_update(dt);
 }
+
+
 
 void MulticopterPositionControl::control_follow_loiter(float dt)
 {
@@ -1595,6 +1733,7 @@ MulticopterPositionControl::task_main()
 	_local_pos_sp_sub = orb_subscribe(ORB_ID(vehicle_local_position_setpoint));
 	_global_vel_sp_sub = orb_subscribe(ORB_ID(vehicle_global_velocity_setpoint));
 	_geofence_result_sub = orb_subscribe(ORB_ID(geofence_result));
+	_waypoint_sub = orb_subscribe(ORB_ID(waypoint));
 
 	parameters_update(true);
 
@@ -1685,6 +1824,10 @@ MulticopterPositionControl::task_main()
 				_circle_follow_init = false;
 			}
 
+			if (_control_mode.flag_control_custom_mode != vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC_ARC) {
+				_follow_fc_circle_init = false;
+			}
+
 			if (_control_mode.flag_control_custom_mode != vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
 				_fol_vel_xy = 0.0f;
 			}
@@ -1709,6 +1852,9 @@ MulticopterPositionControl::task_main()
 				control_follow_circle(dt);
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC) {
 				control_auto(dt);
+			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC_ARC) {
+				control_follow_fc(dt);
+			}
 			} else {
 				/* AUTO */
 				control_auto(dt);
