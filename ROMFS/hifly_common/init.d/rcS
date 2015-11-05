@@ -75,7 +75,14 @@ then
 #	set PARAM_FILE /fs/microsd/params
 	if mtd start
 	then
-		set PARAM_FILE /fs/mtd_params
+		set PARAM_FILE /fs/mtd/params
+	fi
+
+	if mount -t vfat /dev/mtdblock0 /fs/mtd
+	then
+	else
+		mkfatfs /dev/mtdblock0
+		mount -t vfat /dev/mtdblock0 /fs/mtd
 	fi
 
 	param select $PARAM_FILE
