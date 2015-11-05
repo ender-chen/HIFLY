@@ -332,6 +332,8 @@ private:
 
 		float baro_qnh;
 
+		int32_t rc_ctl_src;
+
 	}		_parameters;			/**< local copies of interesting parameters */
 
 	struct {
@@ -398,6 +400,8 @@ private:
 		param_t board_offset[3];
 
 		param_t baro_qnh;
+
+		param_t rc_ctl_src;
 
 	}		_parameter_handles;		/**< handles for interesting parameters */
 
@@ -657,6 +661,9 @@ Sensors::Sensors() :
 
 	/* Barometer QNH */
 	_parameter_handles.baro_qnh = param_find("SENS_BARO_QNH");
+
+	/* control source */
+	_parameter_handles.rc_ctl_src = param_find("RC_CTL_SRC");
 
 	// These are parameters for which QGroundControl always expects to be returned in a list request.
 	// We do a param_find here to force them into the list.
@@ -1953,7 +1960,8 @@ Sensors::rc_poll()
 	orb_check(_rc_sub, &rc_updated);
 	bool app_updated;
 	orb_check(_app_sub, &app_updated);
-	if (rc_updated) {
+	param_get(_parameter_handles.rc_ctl_src, &(_parameters.rc_ctl_src));
+	if (_parameters.rc_ctl_src == 0 && rc_updated) {
 		/* read low-level values from FMU or IO RC inputs (PPM, Spektrum, S.Bus) */
 		struct rc_input_values rc_input;
 
@@ -2130,7 +2138,7 @@ Sensors::rc_poll()
 	}
 	else
 	{
-		if (_rc.signal_lost && app_updated)
+		if ((_parameters.rc_ctl_src == 1 || _rc.signal_lost) && app_updated)
 		{
 			struct app_control_setpoint_s app_control;
 			orb_copy(ORB_ID(app_control_setpoint), _app_sub, &app_control);

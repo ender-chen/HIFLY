@@ -2453,3 +2453,19 @@ PARAM_DEFINE_INT32(PWM_AUX_MAX, 2000);
 PARAM_DEFINE_INT32(PWM_AUX_DISARMED, 1000);
 
 
+/**
+ * Set control source
+ *
+ * IMPORTANT: CHANGING THIS PARAMETER REQUIRES A COMPLETE SYSTEM
+ * REBOOT IN ORDER TO APPLY THE CHANGES. COMPLETELY POWER-CYCLE
+ * THE SYSTEM TO PUT CHANGES INTO EFFECT.
+ *
+ * This is the PWM pulse the autopilot is outputting if not armed.
+ * The main use of this parameter is to silence ESCs when they are disarmed.
+ *
+ * @min 0 mandatory: RC; secondary: app
+ * @max 1 mandatory: app
+ * @unit microseconds
+ * @group PWM Outputs
+ */
+PARAM_DEFINE_INT32(RC_CTL_SRC, 0);
