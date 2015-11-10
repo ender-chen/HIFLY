@@ -78,9 +78,12 @@ then
 		set PARAM_FILE /fs/mtd/params
 	fi
 
-	if mount -t vfat /dev/mtdblock0 /fs/mtd
+	mount -t vfat /dev/mtdblock0 /fs/mtd
+	if ls /fs/mtd
 	then
+		echo "mount success"
 	else
+		echo "mkfatfs start"
 		mkfatfs /dev/mtdblock0
 		mount -t vfat /dev/mtdblock0 /fs/mtd
 	fi
