@@ -85,6 +85,7 @@ then
 	else
 		echo "mkfatfs start"
 		mkfatfs /dev/mtdblock0
+		umount /fs/mtd
 		mount -t vfat /dev/mtdblock0 /fs/mtd
 	fi
 
