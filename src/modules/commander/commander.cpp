@@ -1756,7 +1756,6 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_log_critical(mavlink_fd, "LANDING DETECTED");
-					mission_result.rcloss_finished = false;
 					mission_result.takeoff_finished = false;
 					status.takeoff_finished = false;
 				} else {
@@ -2424,6 +2423,7 @@ int commander_thread_main(int argc, char *argv[])
 
 			if (status.arming_state == vehicle_status_s::ARMING_STATE_STANDBY) {
 				status.had_in_air = false;
+				mission_result.rcloss_finished = false;
 			}
 		}
 
