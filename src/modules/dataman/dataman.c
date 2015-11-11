@@ -134,7 +134,7 @@ static sem_t g_sys_state_mutex;
 
 /* The data manager store file handle and file name */
 static int g_fd = -1, g_task_fd = -1;
-static const char *k_data_manager_device_path = "/fs/microsd/dataman";
+#define DATA_MANAGER_DEVICE_PATH "/fs/microsd/dataman"
 
 /* The data manager work queues */
 
@@ -632,6 +632,8 @@ dm_restart(dm_reset_reason reason)
 static int
 task_main(int argc, char *argv[])
 {
+	const char *k_data_manager_device_path = argv[1];
+
 	work_q_item_t *work;
 
 	/* Initialize global variables */
@@ -792,14 +794,14 @@ task_main(int argc, char *argv[])
 }
 
 static int
-start(void)
+start(const char *path)
 {
 	int task;
 
 	sem_init(&g_init_sema, 1, 0);
 
 	/* start the worker thread */
-	if ((task = task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT, 1500, task_main, NULL)) <= 0) {
+	if ((task = task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_DEFAULT, 1500, task_main, (char * const *)&path)) <= 0) {
 		warn("task start failed");
 		return -1;
 	}
@@ -839,6 +841,8 @@ usage(void)
 int
 dataman_main(int argc, char *argv[])
 {
+	const char *device_path = DATA_MANAGER_DEVICE_PATH;
+
 	if (argc < 2)
 		usage();
 
@@ -846,8 +850,12 @@ dataman_main(int argc, char *argv[])
 
 		if (g_fd >= 0)
 			errx(1, "already running");
+		if (argc > 3) {
+			if (!strcmp(argv[2], "-d"))
+				device_path = argv[3];
+		}
 
-		start();
+		start(device_path);
 
 		if (g_fd < 0)
 			errx(1, "start failed");
