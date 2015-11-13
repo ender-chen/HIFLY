@@ -483,6 +483,7 @@ then
 	set MAVLINK_F "-d /dev/ttyS1 -b 115200"
 	mavlink start $MAVLINK_F
 	unset MAVLINK_F
+	mavlink start -d /dev/ttyS5 -b 115200
 
 	#
 	# MAVLink onboard / TELEM2
