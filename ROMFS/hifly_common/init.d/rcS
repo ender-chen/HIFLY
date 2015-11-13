@@ -315,9 +315,9 @@ then
 
 	# waypoint storage
 	# REBOOTWORK this needs to start in parallel
-	if dataman start -d /fs/mtd/dataman
-	then
-	fi
+	#if dataman start -d /fs/mtd/dataman
+	#then
+	#fi
 
 	#
 	# UAVCAN
