@@ -76,7 +76,7 @@ int mtd_main(int argc, char *argv[])
 
 #else
 
-#ifdef CONFIG_MTD_RAMTRON
+#if (defined CONFIG_MTD_RAMTRON) || (defined CONFIG_MTD_W25)
 static void	ramtron_attach(void);
 #else
 
@@ -101,7 +101,11 @@ static struct mtd_dev_s *mtd_dev;
 static unsigned n_partitions_current = 0;
 
 /* note, these will be equally sized */
+#ifdef CONFIG_ARCH_BOARD_HIFLY
 static char *partition_names_default[] = {"/dev/mtd"};
+#else
+static char *partition_names_default[] = {"/fs/mtd_params", "/fs/mtd_waypoints"};
+#endif
 static const int n_partitions_default = sizeof(partition_names_default) / sizeof(partition_names_default[0]);
 
 static void
@@ -166,7 +170,7 @@ struct mtd_dev_s *q25_initialize(FAR struct spi_dev_s *spi);
 struct mtd_dev_s *mtd_partition(FAR struct mtd_dev_s *mtd,
                                     off_t firstblock, off_t nblocks);
 
-#ifdef CONFIG_MTD_RAMTRON
+#if (defined CONFIG_MTD_RAMTRON) || (defined CONFIG_MTD_W25)
 static void
 ramtron_attach(void)
 {
@@ -187,7 +191,11 @@ ramtron_attach(void)
 
 	/* start the RAMTRON driver, attempt 5 times */
 	for (int i = 0; i < 5; i++) {
+#ifdef CONFIG_ARCH_BOARD_HIFLY
 		mtd_dev = q25_initialize(spi);
+#else
+		mtd_dev = ramtron_initialize(spi);
+#endif
 
 		if (mtd_dev) {
 			/* abort on first valid result */
@@ -203,14 +211,15 @@ ramtron_attach(void)
 	if (mtd_dev == NULL)
 		errx(1, "failed to initialize mtd driver");
 
-//	int ret = mtd_dev->ioctl(mtd_dev, MTDIOC_SETSPEED, (unsigned long)10*1000*1000);
-//	if (ret != OK) {
-//		// FIXME: From the previous warnx call, it looked like this should have been an errx instead. Tried
-//		// that but setting the bug speed does fail all the time. Which was then exiting and the board would
-//		// not run correctly. So changed to warnx.
-//		warnx("failed to set bus speed");
-//	}
-
+#ifndef CONFIG_ARCH_BOARD_HIFLY
+	int ret = mtd_dev->ioctl(mtd_dev, MTDIOC_SETSPEED, (unsigned long)10*1000*1000);
+	if (ret != OK) {
+		// FIXME: From the previous warnx call, it looked like this should have been an errx instead. Tried
+		// that but setting the bug speed does fail all the time. Which was then exiting and the board would
+		// not run correctly. So changed to warnx.
+		warnx("failed to set bus speed");
+	}
+#endif
 	attached = true;
 }
 #else
