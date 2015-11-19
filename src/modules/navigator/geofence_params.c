@@ -48,17 +48,6 @@
  */
 
 /**
- * Geofence mode.
- *
- * 0 = disabled, 1 = geofence file only, 2 = max horizontal (GF_MAX_HOR_DIST) and vertical (GF_MAX_VER_DIST) distances, 3 = both
- *
- * @min 0
- * @max 3
- * @group Geofence
- */
-PARAM_DEFINE_INT32(GF_MODE, 0);
-
-/**
  * Geofence altitude mode
  *
  * Select which altitude reference should be used

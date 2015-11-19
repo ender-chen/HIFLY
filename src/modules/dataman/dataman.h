@@ -50,11 +50,6 @@ extern "C" {
 	typedef enum {
 		DM_KEY_SAFE_POINTS = 0,		/* Safe points coordinates, safe point 0 is home point */
 		DM_KEY_FENCE_POINTS,		/* Fence vertex coordinates */
-		DM_KEY_RESTRICTED_AREA_VERSION, /* Restricted area dateabase version */
-		DM_KEY_RESTRICTED_AREA_0,	/* Restricted area 0 coordinates */
-		DM_KEY_RESTRICTED_AREA_1,	/* Restricted area 1 coordinates */
-		DM_KEY_RESTRICTED_AREA_2,	/* Restricted area 2 coordinates */
-		DM_KEY_RESTRICTED_AREA_NUM, /* Restricted area coordinates number */
 		DM_KEY_WAYPOINTS_OFFBOARD_0,	/* Mission way point coordinates sent over mavlink */
 		DM_KEY_WAYPOINTS_OFFBOARD_1,	/* (alernate between 0 and 1) */
 		DM_KEY_WAYPOINTS_ONBOARD,	/* Mission way point coordinates generated onboard */
@@ -69,17 +64,9 @@ extern "C" {
 		DM_KEY_SAFE_POINTS_MAX = 8,
 		#ifdef __cplusplus
 		DM_KEY_FENCE_POINTS_MAX = fence_s::GEOFENCE_MAX_VERTICES,
-		DM_KEY_RESTRICTED_AREA_0_MAX = fence_s::RESTRICTED_AREA_MAX,
-		DM_KEY_RESTRICTED_AREA_1_MAX = fence_s::RESTRICTED_AREA_MAX,
-		DM_KEY_RESTRICTED_AREA_2_MAX = fence_s::RESTRICTED_AREA_MAX,
 		#else
 		DM_KEY_FENCE_POINTS_MAX = GEOFENCE_MAX_VERTICES,
-		DM_KEY_RESTRICTED_AREA_0_MAX = RESTRICTED_AREA_MAX,
-		DM_KEY_RESTRICTED_AREA_1_MAX = RESTRICTED_AREA_MAX,
-		DM_KEY_RESTRICTED_AREA_2_MAX = RESTRICTED_AREA_MAX,
 		#endif
-		DM_KEY_RESTRICTED_AREA_VERSION_MAX = 1,
-		DM_KEY_RESTRICTED_AREA_NUM_MAX = 1,
 		DM_KEY_WAYPOINTS_OFFBOARD_0_MAX = NUM_MISSIONS_SUPPORTED,
 		DM_KEY_WAYPOINTS_OFFBOARD_1_MAX = NUM_MISSIONS_SUPPORTED,
 		DM_KEY_WAYPOINTS_ONBOARD_MAX = NUM_MISSIONS_SUPPORTED,

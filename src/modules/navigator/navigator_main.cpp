@@ -324,15 +324,12 @@ Navigator::task_main()
 	 * else clear geofence data in datamanager */
 	struct stat buffer;
 
-	if (stat(GEOFENCE_FILENAME, &buffer) == 0) {
-		warnx("Try to load geofence.txt");
-		_geofence.loadFromFile(GEOFENCE_FILENAME);
+	if (stat(RESTRICTED_AREA_FILENAME, &buffer) == 0) {
+		mavlink_and_console_log_info(_mavlink_fd, "Try to load restricted area database");
+		_geofence.load_resetricted_area(RESTRICTED_AREA_FILENAME);
 
 	} else {
-		mavlink_log_info(_mavlink_fd, "No geofence set");
-		if (_geofence.clearDm() != OK) {
-			warnx("Could not clear geofence");
-		}
+		mavlink_and_console_log_info(_mavlink_fd, "No restricted area database found");
 	}
 
 	/* do subscriptions */

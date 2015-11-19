@@ -51,7 +51,8 @@
 #include <controllib/block/BlockParam.hpp>
 #include <drivers/drv_hrt.h>
 
-#define GEOFENCE_FILENAME "/etc/geofence/geofence.txt"
+#define GEOFENCE_FILENAME "/fs/microsd/etc/geofence.txt"
+#define RESTRICTED_AREA_FILENAME "/etc/geofence/database.txt"
 
 class Geofence : public control::SuperBlock
 {
@@ -86,8 +87,6 @@ public:
 
 	bool inside_restricted_area(double lat, double lon, float altitude);
 
-	bool checkDm(int newVersion);
-
 	int clearDm();
 
 	bool valid();
@@ -99,9 +98,11 @@ public:
 
 	void publishFence(unsigned vertices);
 
+	int load_resetricted_area(const char *filename);
+
 	int loadFromFile(const char *filename);
 
-	bool isEmpty() {return _verticesCount == 0;}
+	bool isEmpty() {return _vertices_count == 0;}
 
 	int getAltitudeMode() { return _param_altitude_mode.get(); }
 
@@ -119,13 +120,12 @@ private:
 	hrt_abstime _last_vertical_range_warning;
 	hrt_abstime _last_restricted_area_warning;
 
-	float			_altitude_min;
-	float			_altitude_max;
+	float _altitude_min;
+	float _altitude_max;
 
-	unsigned 			_verticesCount;
-
+	unsigned _vertices_count;
+	unsigned int _restricted_area_count;
 	/* Params */
-	control::BlockParamInt _param_geofence_mode;
 	control::BlockParamInt _param_altitude_mode;
 	control::BlockParamInt _param_source;
 	control::BlockParamInt _param_counter_threshold;
@@ -133,7 +133,7 @@ private:
 	control::BlockParamFloat _param_max_ver_distance;
 	control::BlockParamInt _param_safe_distance;
 
-	uint8_t			_outside_counter;
+	uint8_t	_outside_counter;
 
 	int _mavlinkFd;
 
