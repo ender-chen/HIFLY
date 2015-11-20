@@ -58,7 +58,7 @@ KNOWN_CONFIGS		:= $(subst config_,,$(basename $(notdir $(wildcard $(PX4_MK_DIR)c
 ifeq ($(BUILD_FULL), true)
 CONFIGS			?= $(KNOWN_CONFIGS)
 else
-SIMPLIFY_CONFIGS := px4fmu-v2_default hifly%
+SIMPLIFY_CONFIGS := px4fmu-v2% hifly%
 CONFIGS			?= $(filter $(SIMPLIFY_CONFIGS), $(KNOWN_CONFIGS))
 endif
 
@@ -69,7 +69,7 @@ KNOWN_BOARDS		:= $(subst board_,,$(basename $(notdir $(wildcard $(PX4_MK_DIR)boa
 ifeq ($(BUILD_FULL), true)
 BOARDS			?= $(KNOWN_BOARDS)
 else
-SIMPLIFY_BOARDS := px4fmu-v2_default hifly%
+SIMPLIFY_BOARDS := px4fmu-v2% hifly%
 BOARDS			?= $(filter $(SIMPLIFY_BOARDS), $(KNOWN_BOARDS))
 endif
 
