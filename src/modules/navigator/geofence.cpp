@@ -83,6 +83,10 @@ Geofence::Geofence() :
 	_param_max_hor_distance(this, "MAX_HOR_DIST"),
 	_param_max_ver_distance(this, "MAX_VER_DIST"),
 	_param_safe_distance(this, "SAFE_DIST"),
+	_param_origin_en(this, "ORIGIN_EN"),
+	_param_origin_dist(this, "ORIGIN_DIST"),
+	_param_origin_lat(this, "ORIGIN_LAT"),
+	_param_origin_lon(this, "ORIGIN_LON"),
 	_outside_counter(0),
 	_mavlinkFd(-1)
 {
@@ -142,13 +146,21 @@ bool Geofence::inside(double lat, double lon, float altitude, struct geofence_re
 	result.geofence_hor_violated = false;
 	float max_horizontal_distance = _param_max_hor_distance.get();
 	float max_vertical_distance = _param_max_ver_distance.get();
+	double ref_lat = _home_pos.lat;
+	double ref_lon = _home_pos.lon;
+
+	if (_param_origin_en.get()) {
+		max_horizontal_distance = _param_origin_dist.get();
+		ref_lat = (double)_param_origin_lat.get() * 1.0e-7;
+		ref_lon = (double)_param_origin_lon.get() * 1.0e-7;
+	}
 
 	if (max_horizontal_distance > 0 || max_vertical_distance > 0) {
 		if (_home_pos_set) {
 			float dist_xy = -1.0f;
 			float dist_z = -1.0f;
 			get_distance_to_point_global_wgs84(lat, lon, altitude,
-					_home_pos.lat, _home_pos.lon, _home_pos.alt,
+					ref_lat, ref_lon, _home_pos.alt,
 					&dist_xy, &dist_z);
 
 			if (max_vertical_distance > 0 && (dist_z > max_vertical_distance)) {

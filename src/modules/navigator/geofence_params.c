@@ -110,3 +110,34 @@ PARAM_DEFINE_FLOAT(GF_MAX_VER_DIST, -1);
  * @group Geofence
  */
 PARAM_DEFINE_INT32(GF_SAFE_DIST, 4000);
+
+/**
+ * manual geofence enable.
+ *
+ * Set to > 0 to enable
+ *
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_ORIGIN_EN, 0);
+
+/**
+ * manual geofence horizontal distance.
+ *
+ * @default value 5
+ * @group Geofence
+ */
+PARAM_DEFINE_FLOAT(GF_ORIGIN_DIST, 5.0f);
+
+/**
+ * manual geofence origin latitude.
+ *
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_ORIGIN_LAT, 0);
+
+/**
+ * manual geofence origin longitude.
+ *
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_ORIGIN_LON, 0);

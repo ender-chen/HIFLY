@@ -133,6 +133,11 @@ private:
 	control::BlockParamFloat _param_max_ver_distance;
 	control::BlockParamInt _param_safe_distance;
 
+	control::BlockParamInt _param_origin_en;;
+	control::BlockParamFloat _param_origin_dist;
+	control::BlockParamInt _param_origin_lat;
+	control::BlockParamInt _param_origin_lon;
+
 	uint8_t	_outside_counter;
 
 	int _mavlinkFd;
