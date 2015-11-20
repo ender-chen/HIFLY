@@ -33,7 +33,8 @@ SRCS			 = test_adc.c \
 			   test_rc.c \
 			   test_conv.cpp \
 			   test_mount.c \
-			   test_eigen.cpp
+			   test_eigen.cpp \
+			   test_dataman.c
 
 EXTRACXXFLAGS = -Wframe-larger-than=2500 -Wno-float-equal -Wno-double-promotion -Wno-error=logical-op
 

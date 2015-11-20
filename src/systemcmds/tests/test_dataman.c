@@ -46,6 +46,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <debug.h>
+#include <string.h>
 
 #include <arch/board/board.h>
 
@@ -53,6 +54,7 @@
 #include <systemlib/systemlib.h>
 #include <drivers/drv_hrt.h>
 #include <semaphore.h>
+#include <systemlib/err.h>
 
 
 #include "tests.h"
@@ -60,6 +62,7 @@
 #include "dataman/dataman.h"
 
 static sem_t *sems;
+int test_dataman(int argc, char *argv[]);
 
 static int
 task_main(int argc, char *argv[])
@@ -94,9 +97,9 @@ task_main(int argc, char *argv[])
 		unsigned len = (hash & 63) + 2;
 
 		int ret = dm_write(DM_KEY_WAYPOINTS_OFFBOARD_1, hash, DM_PERSIST_IN_FLIGHT_RESET, buffer, len);
-		warnx("ret: %d", ret);
+		warnx("write ret: %d", ret);
 
-		if (ret != len) {
+		if (ret < 0 || (unsigned)ret < len) {
 			warnx("%d write failed, index %d, length %d", my_id, hash, len);
 			goto fail;
 		}
@@ -168,7 +171,7 @@ int test_dataman(int argc, char *argv[])
 		sem_init(sems + i, 1, 0);
 
 		/* start the task */
-		if ((task = task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_MAX - 5, 2048, task_main, av)) <= 0) {
+		if ((task = task_spawn_cmd("dataman", SCHED_DEFAULT, SCHED_PRIORITY_MAX - 5, 2048, task_main, (char**)av)) <= 0) {
 			warn("task start failed");
 		}
 	}

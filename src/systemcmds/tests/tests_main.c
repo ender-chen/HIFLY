@@ -113,6 +113,7 @@ const struct {
 	{"mathlib",		test_mathlib,	0},
 #endif
 	{"eigen",		test_eigen,	OPT_NOALLTEST | OPT_NOJIGTEST},
+	{"dataman",		test_dataman,	OPT_NOALLTEST | OPT_NOJIGTEST},
 	{"help",		test_help,	OPT_NOALLTEST | OPT_NOHELP | OPT_NOJIGTEST},
 	{NULL,			NULL, 		0}
 };
