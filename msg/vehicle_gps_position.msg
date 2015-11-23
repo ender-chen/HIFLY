@@ -14,6 +14,7 @@ float32 epv			# GPS VDOP horizontal dilution of position in m
 
 int32 noise_per_ms		# GPS noise per millisecond
 int32 jamming_indicator		# indicates jamming is occurring
+uint16 hdop			# Horizontal dilution of position in cm;
 
 uint64 timestamp_velocity	# Timestamp for velocity informations 
 float32 vel_m_s			# GPS ground speed (m/s) 

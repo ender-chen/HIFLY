@@ -67,6 +67,7 @@
 #define UBX_ID_NAV_VELNED	0x12
 #define UBX_ID_NAV_TIMEUTC	0x21
 #define UBX_ID_NAV_SVINFO	0x30
+#define UBX_ID_NAV_DOP		0x04
 #define UBX_ID_ACK_NAK		0x00
 #define UBX_ID_ACK_ACK		0x01
 #define UBX_ID_CFG_PRT		0x00
@@ -84,6 +85,7 @@
 #define UBX_MSG_NAV_VELNED	((UBX_CLASS_NAV) | UBX_ID_NAV_VELNED << 8)
 #define UBX_MSG_NAV_TIMEUTC	((UBX_CLASS_NAV) | UBX_ID_NAV_TIMEUTC << 8)
 #define UBX_MSG_NAV_SVINFO	((UBX_CLASS_NAV) | UBX_ID_NAV_SVINFO << 8)
+#define UBX_MSG_NAV_DOP		((UBX_CLASS_NAV) | UBX_ID_NAV_DOP << 8)
 #define UBX_MSG_ACK_NAK		((UBX_CLASS_ACK) | UBX_ID_ACK_NAK << 8)
 #define UBX_MSG_ACK_ACK		((UBX_CLASS_ACK) | UBX_ID_ACK_ACK << 8)
 #define UBX_MSG_CFG_PRT		((UBX_CLASS_CFG) | UBX_ID_CFG_PRT << 8)
@@ -126,7 +128,7 @@
 #define UBX_TX_CFG_RATE_TIMEREF		0		/**< 0: UTC, 1: GPS time */
 
 /* TX CFG-NAV5 message contents */
-#define UBX_TX_CFG_NAV5_MASK		0x0005		/**< Only update dynamic model and fix mode */
+#define UBX_TX_CFG_NAV5_MASK		0x0045		/**< Only update dynamic model and fix mode and StaticHoldVelocity*/
 #define UBX_TX_CFG_NAV5_DYNMODEL	7		/**< 0 Portable, 2 Stationary, 3 Pedestrian, 4 Automotive, 5 Sea, 6 Airborne <1g, 7 Airborne <2g, 8 Airborne <4g */
 #define UBX_TX_CFG_NAV5_FIXMODE		2		/**< 1 2D only, 2 3D only, 3 Auto 2D/3D */
 
@@ -189,6 +191,18 @@ typedef struct {
 	uint8_t		numSV;		/**< Number of SVs used in Nav Solution */
 	uint32_t	reserved2;
 } ubx_payload_rx_nav_sol_t;
+
+/* Rx NAV-DOP */
+typedef struct {
+	uint32_t	iTOW;		/**< GPS Time of Week [ms] */
+	uint16_t	gDOP;		/**< Geometric DOP */
+	uint16_t	pDOP;		/**< Position DOP */
+	uint16_t	tDOP;		/**< Time DOP */
+	uint16_t	vDOP;		/**< Vertical DOP */
+	uint16_t	hDOP;		/**< Horizontal DOP */
+	uint16_t	nDOP;		/**< Northing DOP */
+	uint16_t	eDOP;		/**< Easting DOP */
+}  ubx_payload_rx_nav_dop_t;
 
 /* Rx NAV-PVT (ubx8) */
 typedef struct {
@@ -379,7 +393,7 @@ typedef struct {
 	uint16_t	tDop;
 	uint16_t	pAcc;
 	uint16_t	tAcc;
-	uint8_t		staticHoldThresh;
+	uint8_t		staticHoldThresh;   /**cm/s*/
 	uint8_t		dgpsTimeOut;
 	uint8_t		cnoThreshNumSVs;	/**< (ubx7+ only, else 0) */
 	uint8_t		cnoThresh;		/**< (ubx7+ only, else 0) */
@@ -416,6 +430,7 @@ typedef union {
 	ubx_payload_rx_nav_pvt_t		payload_rx_nav_pvt;
 	ubx_payload_rx_nav_posllh_t		payload_rx_nav_posllh;
 	ubx_payload_rx_nav_sol_t		payload_rx_nav_sol;
+	ubx_payload_rx_nav_dop_t		payload_rx_nav_dop;
 	ubx_payload_rx_nav_timeutc_t		payload_rx_nav_timeutc;
 	ubx_payload_rx_nav_svinfo_part1_t	payload_rx_nav_svinfo_part1;
 	ubx_payload_rx_nav_svinfo_part2_t	payload_rx_nav_svinfo_part2;
@@ -470,7 +485,7 @@ typedef enum {
 class UBX : public GPS_Helper
 {
 public:
-	UBX(const int &fd, struct vehicle_gps_position_s *gps_position, struct satellite_info_s *satellite_info);
+	UBX(const int &fd, struct vehicle_gps_position_s *gps_position, struct satellite_info_s *satellite_info, bool enable_sbas, uint8_t static_hold_velocity);
 	~UBX();
 	int			receive(const unsigned timeout);
 	int			configure(unsigned &baudrate);
@@ -554,6 +569,8 @@ private:
 	ubx_buf_t		_buf;
 	uint32_t		_ubx_version;
 	bool			_use_nav_pvt;
+	bool 			_enable_sbas;
+	uint8_t			_static_hold_velocity;
 };
 
 #endif /* UBX_H_ */

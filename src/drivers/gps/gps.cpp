@@ -92,7 +92,7 @@ public:
 class GPS : public device::CDev
 {
 public:
-	GPS(const char *uart_path, bool fake_gps, bool enable_sat_info);
+	GPS(const char *uart_path, bool fake_gps, bool enable_sat_info, bool enable_sbas, uint8_t static_hold_velocity);
 	virtual ~GPS();
 
 	virtual int			init();
@@ -123,6 +123,8 @@ private:
 	orb_advert_t			_report_sat_info_pub;				///< uORB pub for satellite info
 	float				_rate;						///< position update rate
 	bool				_fake_gps;					///< fake gps output
+	bool				_enable_sbas;
+	uint8_t 			_StaticHoldVelocity;
 
 
 	/**
@@ -167,7 +169,7 @@ GPS	*g_dev = nullptr;
 }
 
 
-GPS::GPS(const char *uart_path, bool fake_gps, bool enable_sat_info) :
+GPS::GPS(const char *uart_path, bool fake_gps, bool enable_sat_info, bool enable_sbas, uint8_t static_hold_velocity) :
 	CDev("gps", GPS0_DEVICE_PATH),
 	_task_should_exit(false),
 	_healthy(false),
@@ -179,7 +181,9 @@ GPS::GPS(const char *uart_path, bool fake_gps, bool enable_sat_info) :
 	_p_report_sat_info(nullptr),
 	_report_sat_info_pub(-1),
 	_rate(0.0f),
-	_fake_gps(fake_gps)
+	_fake_gps(fake_gps),
+	_enable_sbas(enable_sbas),
+	_StaticHoldVelocity(static_hold_velocity)
 {
 	/* store port name */
 	strncpy(_port, uart_path, sizeof(_port));
@@ -334,7 +338,7 @@ GPS::task_main()
 
 			switch (_mode) {
 			case GPS_DRIVER_MODE_UBX:
-				_Helper = new UBX(_serial_fd, &_report_gps_pos, _p_report_sat_info);
+				_Helper = new UBX(_serial_fd, &_report_gps_pos, _p_report_sat_info, _enable_sbas, _StaticHoldVelocity);
 				break;
 
 			case GPS_DRIVER_MODE_MTK:
@@ -533,10 +537,10 @@ GPS::print_info()
 	}
 
 	warnx("port: %s, baudrate: %d, status: %s", _port, _baudrate, (_healthy) ? "OK" : "NOT OK");
-	warnx("sat info: %s, noise: %d, jamming detected: %s", 
+	warnx("sat info: %s, noise: %d, jamming detected: %d", 
 		(_p_report_sat_info != nullptr) ? "enabled" : "disabled", 
 		_report_gps_pos.noise_per_ms, 
-		_report_gps_pos.jamming_indicator == 255 ? "YES" : "NO");
+		_report_gps_pos.jamming_indicator);
 
 	if (_report_gps_pos.timestamp_position != 0) {
 		warnx("position lock: %dD, satellites: %d, last update: %8.4fms ago", (int)_report_gps_pos.fix_type,
@@ -562,7 +566,7 @@ namespace gps
 
 GPS	*g_dev = nullptr;
 
-void	start(const char *uart_path, bool fake_gps, bool enable_sat_info);
+void	start(const char *uart_path, bool fake_gps, bool enable_sat_info, bool enable_sbas, uint8_t static_hold_velocity);
 void	stop();
 void	test();
 void	reset();
@@ -572,7 +576,7 @@ void	info();
  * Start the driver.
  */
 void
-start(const char *uart_path, bool fake_gps, bool enable_sat_info)
+start(const char *uart_path, bool fake_gps, bool enable_sat_info, bool enable_sbas, uint8_t static_hold_velocity)
 {
 	int fd;
 
@@ -580,7 +584,7 @@ start(const char *uart_path, bool fake_gps, bool enable_sat_info)
 		errx(1, "already started");
 
 	/* create the driver */
-	g_dev = new GPS(uart_path, fake_gps, enable_sat_info);
+	g_dev = new GPS(uart_path, fake_gps, enable_sat_info, enable_sbas, static_hold_velocity);
 
 	if (g_dev == nullptr)
 		goto fail;
@@ -674,34 +678,83 @@ gps_main(int argc, char *argv[])
 	const char *device_name = GPS_DEFAULT_UART_PORT;
 	bool fake_gps = false;
 	bool enable_sat_info = false;
-
+	uint8_t static_hold_velocity = 0;
+	bool enable_sbas = true;
 	/*
 	 * Start/load the driver.
 	 */
+	// if (!strcmp(argv[1], "start")) {
+	// 	/* work around getopt unreliability */
+	// 	if (argc > 3) {
+	// 		if (!strcmp(argv[2], "-d")) {
+	// 			device_name = argv[3];
+
+	// 		} else {
+	// 			goto out;
+	// 		}
+	// 	}
+
+	// 	/* Detect fake gps option */
+	// 	for (int i = 2; i < argc; i++) {
+	// 		if (!strcmp(argv[i], "-f"))
+	// 			fake_gps = true;
+	// 	}
+
+	// 	/* Detect sat info option */
+	// 	for (int i = 2; i < argc; i++) {
+	// 		if (!strcmp(argv[i], "-s"))
+	// 			enable_sat_info = true;
+	// 	}
+
+	// 	gps::start(device_name, fake_gps, enable_sat_info);
+	// }
 	if (!strcmp(argv[1], "start")) {
-		/* work around getopt unreliability */
-		if (argc > 3) {
-			if (!strcmp(argv[2], "-d")) {
-				device_name = argv[3];
+		int i = 2;
+		while (i < argc)
+		{
+			if (!strcmp(argv[i], "-d")) {
+				if (i+1 < argc)
+				{
+					device_name = argv[i+1];
+					i++;
+				}
+				else
+				{
+					goto out;
+				}
 
-			} else {
-				goto out;
 			}
-		}
-
-		/* Detect fake gps option */
-		for (int i = 2; i < argc; i++) {
-			if (!strcmp(argv[i], "-f"))
+			else if (!strcmp(argv[i], "-f"))
+			{
 				fake_gps = true;
-		}
-
-		/* Detect sat info option */
-		for (int i = 2; i < argc; i++) {
-			if (!strcmp(argv[i], "-s"))
+			}
+			else if (!strcmp(argv[i], "-s"))
+			{
 				enable_sat_info = true;
+			}
+			else if (!strcmp(argv[i], "-sh"))
+			{
+				if (i+1 < argc)
+				{
+					static_hold_velocity = atoi(argv[i+1]);
+					i++;
+				}
+				else
+				{
+					goto out;
+				}
+			}
+			else if (!strcmp(argv[i], "-SB"))
+			{
+				enable_sbas = true;
+			}
+			else
+			{
+			}
+			i++;
 		}
+		gps::start(device_name, fake_gps, enable_sat_info, static_hold_velocity, enable_sbas);
 
-		gps::start(device_name, fake_gps, enable_sat_info);
 	}
 
 	if (!strcmp(argv[1], "stop"))
