@@ -85,7 +85,7 @@
 #define UBX_WARN(s, ...)		{warnx(s, ## __VA_ARGS__);}
 #define UBX_DEBUG(s, ...)		{/*warnx(s, ## __VA_ARGS__);*/}
 
-UBX::UBX(const int &fd, struct vehicle_gps_position_s *gps_position, struct satellite_info_s *satellite_info) :
+UBX::UBX(const int &fd, struct vehicle_gps_position_s *gps_position, struct satellite_info_s *satellite_info, bool enable_sbas, uint8_t static_hold_velocity) :
 	_fd(fd),
 	_gps_position(gps_position),
 	_satellite_info(satellite_info),
@@ -96,7 +96,9 @@ UBX::UBX(const int &fd, struct vehicle_gps_position_s *gps_position, struct sate
 	_disable_cmd_last(0),
 	_ack_waiting_msg(0),
 	_ubx_version(0),
-	_use_nav_pvt(false)
+	_use_nav_pvt(false),
+	_enable_sbas(enable_sbas),
+	_static_hold_velocity(static_hold_velocity)
 {
 	decode_init();
 }
@@ -182,6 +184,7 @@ UBX::configure(unsigned &baudrate)
 	_buf.payload_tx_cfg_nav5.mask		= UBX_TX_CFG_NAV5_MASK;
 	_buf.payload_tx_cfg_nav5.dynModel	= UBX_TX_CFG_NAV5_DYNMODEL;
 	_buf.payload_tx_cfg_nav5.fixMode	= UBX_TX_CFG_NAV5_FIXMODE;
+	_buf.payload_tx_cfg_nav5.staticHoldThresh	= _static_hold_velocity;
 
 	send_message(UBX_MSG_CFG_NAV5, _buf.raw, sizeof(_buf.payload_tx_cfg_nav5));
 
@@ -189,17 +192,23 @@ UBX::configure(unsigned &baudrate)
 		return 1;
 	}
 
-#ifdef UBX_CONFIGURE_SBAS
 	/* send a SBAS message to set the SBAS options */
 	memset(&_buf.payload_tx_cfg_sbas, 0, sizeof(_buf.payload_tx_cfg_sbas));
-	_buf.payload_tx_cfg_sbas.mode		= UBX_TX_CFG_SBAS_MODE;
+	if (_enable_sbas)
+	{
+		_buf.payload_tx_cfg_sbas.mode		= UBX_TX_CFG_SBAS_MODE_ENABLED;
+	}
+	else
+	{
+		_buf.payload_tx_cfg_sbas.mode		= UBX_TX_CFG_SBAS_MODE_DISABLED;
+	}
 
 	send_message(UBX_MSG_CFG_SBAS, _buf.raw, sizeof(_buf.payload_tx_cfg_sbas));
 
 	if (wait_for_ack(UBX_MSG_CFG_SBAS, UBX_CONFIG_TIMEOUT, true) < 0) {
 		return 1;
 	}
-#endif
+
 
 	/* configure message rates */
 	/* the last argument is divisor for measurement rate (set by CFG RATE), i.e. 1 means 5Hz */
@@ -237,6 +246,11 @@ UBX::configure(unsigned &baudrate)
 	}
 
 	configure_message_rate(UBX_MSG_NAV_SVINFO, (_satellite_info != nullptr) ? 5 : 0);
+	if (wait_for_ack(UBX_MSG_CFG_MSG, UBX_CONFIG_TIMEOUT, true) < 0) {
+		return 1;
+	}
+
+	configure_message_rate(UBX_MSG_NAV_DOP, 1);
 	if (wait_for_ack(UBX_MSG_CFG_MSG, UBX_CONFIG_TIMEOUT, true) < 0) {
 		return 1;
 	}
@@ -519,7 +533,12 @@ UBX::payload_rx_init()
 		else
 			memset(_satellite_info, 0, sizeof(*_satellite_info));	// initialize sat info
 		break;
-
+	case UBX_MSG_NAV_DOP:
+		if (_rx_payload_length != sizeof(ubx_payload_rx_nav_dop_t))
+			_rx_state = UBX_RXMSG_ERROR_LENGTH;
+		else if (!_configured)
+			_rx_state = UBX_RXMSG_IGNORE;
+		break;
 	case UBX_MSG_NAV_VELNED:
 		if (_rx_payload_length != sizeof(ubx_payload_rx_nav_velned_t))
 			_rx_state = UBX_RXMSG_ERROR_LENGTH;
@@ -898,7 +917,10 @@ UBX::payload_rx_done(void)
 
 		ret = 1;
 		break;
+	case UBX_MSG_NAV_DOP:
+		UBX_TRACE_RXMSG("Rx NAV-DOP\n");
 
+		_gps_position->hdop = _buf.payload_rx_nav_dop.hDOP;
 	case UBX_MSG_MON_HW:
 		UBX_TRACE_RXMSG("Rx MON-HW\n");
 
