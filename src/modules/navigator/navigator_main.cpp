@@ -560,7 +560,8 @@ Navigator::task_main()
 				break;
 			case vehicle_status_s::NAVIGATION_STATE_IDLE:
 				_pos_sp_triplet_published_invalid_once = false;
-				_navigation_mode = &_idle;
+				//_navigation_mode = &_idle;
+				_navigation_mode = nullptr;
 				break;
 			case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
 				_pos_sp_triplet_published_invalid_once = false;

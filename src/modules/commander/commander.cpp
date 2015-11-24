@@ -3113,7 +3113,6 @@ set_control_mode()
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER:
 	case vehicle_status_s::NAVIGATION_STATE_TAKEOFF_SHORTCUT:
-	case vehicle_status_s::NAVIGATION_STATE_IDLE:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;
@@ -3245,6 +3244,19 @@ set_control_mode()
 		control_mode.flag_control_altitude_enabled = false;
 		control_mode.flag_control_climb_rate_enabled = true;
 		control_mode.flag_control_termination_enabled = false;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_IDLE:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = false;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_position_enabled = true;
+		control_mode.flag_control_velocity_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_IDLE;
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_TERMINATION:

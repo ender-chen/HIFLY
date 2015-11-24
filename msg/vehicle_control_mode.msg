@@ -5,7 +5,8 @@ uint8 CUSTOM_MODE_FOLLOW_LOITER = 3
 uint8 CUSTOM_MODE_FOLLOW_CIRCLE = 4
 uint8 CUSTOM_MODE_FOLLOW_FC = 5
 uint8 CUSTOM_MODE_FOLLOW_FC_ARC = 6
-uint8 CUSTOM_MODE_MAX = 7
+uint8 CUSTOM_MODE_IDLE = 7
+uint8 CUSTOM_MODE_MAX = 8
 
 uint64 timestamp				# in microseconds since system start
 						# is set whenever the writing thread stores new data

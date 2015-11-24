@@ -1861,12 +1861,15 @@ MulticopterPositionControl::task_main()
 				control_auto(dt);
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_FC_ARC) {
 				control_follow_fc(dt);
+			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_IDLE) {
+				/* IDLE */
+				_mode_auto = false;
 			} else {
 				/* AUTO */
 				control_auto(dt);
 			}
 
-			if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
+			if ((_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_IDLE) || (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE)) {
 				/* idle state, don't run controller and set zero thrust */
 				R.identity();
 				memcpy(&_att_sp.R_body[0], R.data, sizeof(_att_sp.R_body));
