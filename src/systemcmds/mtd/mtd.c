@@ -66,6 +66,8 @@
 
 __EXPORT int mtd_main(int argc, char *argv[]);
 
+#define CONFIG_MTD_Q25
+
 #ifndef CONFIG_MTD
 
 /* create a fake command with decent warnx to not confuse users */
@@ -76,8 +78,12 @@ int mtd_main(int argc, char *argv[])
 
 #else
 
-#if (defined CONFIG_MTD_RAMTRON) || (defined CONFIG_MTD_W25)
+#if (defined CONFIG_MTD_RAMTRO)
 static void	ramtron_attach(void);
+
+#elif (defined CONFIG_MTD_Q25)
+static void	q25_attach(void);
+
 #else
 
 #ifndef PX4_I2C_BUS_ONBOARD
@@ -170,7 +176,7 @@ struct mtd_dev_s *q25_initialize(FAR struct spi_dev_s *spi);
 struct mtd_dev_s *mtd_partition(FAR struct mtd_dev_s *mtd,
                                     off_t firstblock, off_t nblocks);
 
-#if (defined CONFIG_MTD_RAMTRON) || (defined CONFIG_MTD_W25)
+#if (defined CONFIG_MTD_RAMTRON)
 static void
 ramtron_attach(void)
 {
@@ -191,11 +197,7 @@ ramtron_attach(void)
 
 	/* start the RAMTRON driver, attempt 5 times */
 	for (int i = 0; i < 5; i++) {
-#ifdef CONFIG_ARCH_BOARD_HIFLY
-		mtd_dev = q25_initialize(spi);
-#else
 		mtd_dev = ramtron_initialize(spi);
-#endif
 
 		if (mtd_dev) {
 			/* abort on first valid result */
@@ -211,7 +213,6 @@ ramtron_attach(void)
 	if (mtd_dev == NULL)
 		errx(1, "failed to initialize mtd driver");
 
-#ifndef CONFIG_ARCH_BOARD_HIFLY
 	int ret = mtd_dev->ioctl(mtd_dev, MTDIOC_SETSPEED, (unsigned long)10*1000*1000);
 	if (ret != OK) {
 		// FIXME: From the previous warnx call, it looked like this should have been an errx instead. Tried
@@ -219,9 +220,49 @@ ramtron_attach(void)
 		// not run correctly. So changed to warnx.
 		warnx("failed to set bus speed");
 	}
-#endif
 	attached = true;
 }
+
+#elif (defined CONFIG_MTD_Q25)
+static void
+q25_attach(void)
+{
+	/* find the right spi */
+#ifdef CONFIG_ARCH_BOARD_AEROCORE
+	struct spi_dev_s *spi = up_spiinitialize(4);
+#else
+	struct spi_dev_s *spi = up_spiinitialize(2);
+#endif
+	/* this resets the spi bus, set correct bus speed again */
+	SPI_SETFREQUENCY(spi, 10 * 1000 * 1000);
+	SPI_SETBITS(spi, 8);
+	SPI_SETMODE(spi, SPIDEV_MODE3);
+	SPI_SELECT(spi, SPIDEV_FLASH, false);
+
+	if (spi == NULL)
+		errx(1, "failed to locate spi bus");
+
+	/* start the RAMTRON driver, attempt 5 times */
+	for (int i = 0; i < 5; i++) {
+		mtd_dev = q25_initialize(spi);
+
+		if (mtd_dev) {
+			/* abort on first valid result */
+			if (i > 0) {
+				warnx("warning: mtd needed %d attempts to attach", i + 1);
+			}
+
+			break;
+		}
+	}
+
+	/* if last attempt is still unsuccessful, abort */
+	if (mtd_dev == NULL)
+		errx(1, "failed to initialize mtd driver");
+
+	attached = true;
+}
+
 #else
 
 static void
@@ -266,8 +307,10 @@ mtd_start(char *partition_names[], unsigned n_partitions)
 	if (!attached) {
 		#ifdef CONFIG_ARCH_BOARD_PX4FMU_V1
 		at24xxx_attach();
-		#else
+		#elif (defined CONFIG_MTD_RAMTRON)
 		ramtron_attach();
+		#elif (defined CONFIG_MTD_Q25)
+		q25_attach();
 		#endif
 	}
 
