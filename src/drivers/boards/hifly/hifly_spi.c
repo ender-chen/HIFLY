@@ -76,6 +76,7 @@ __EXPORT void weak_function stm32_spiinitialize(void)
 	stm32_configgpio(GPIO_SPI_CS_ACCEL_MAG);
 	stm32_configgpio(GPIO_SPI_CS_BARO);
 	stm32_configgpio(GPIO_SPI_CS_MPU);
+	stm32_configgpio(GPIO_WP);
 
 	/* De-activate all peripherals,
 	 * required for some peripheral
@@ -87,6 +88,7 @@ __EXPORT void weak_function stm32_spiinitialize(void)
 	stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_MPU, 1);
+	stm32_gpiowrite(GPIO_WP, 1);
 
 	stm32_configgpio(GPIO_EXTI_GYRO_DRDY);
 	stm32_configgpio(GPIO_EXTI_MAG_DRDY);
