@@ -1595,7 +1595,6 @@ void MulticopterPositionControl::control_auto(float dt)
 				       _pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,
 				       &curr_sp.data[0], &curr_sp.data[1]);
 		curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
-
 		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
 		math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
 
@@ -1704,6 +1703,10 @@ void MulticopterPositionControl::control_auto(float dt)
 		float d_pos_m_len = d_pos_m.length();
 		if (d_pos_m_len > dt) {
 			pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+		}
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND)
+		{
+			pos_sp_s(2) = pos_sp_old_s(2) + _params.land_speed * dt * scale(2);
 		}
 
 		/* scale result back to normal space */
@@ -1923,9 +1926,9 @@ MulticopterPositionControl::task_main()
 				}
 
 				/* use constant descend rate when landing, ignore altitude setpoint */
-				if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
-					_vel_sp(2) = _params.land_speed;
-				}
+				// if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
+				// 	_vel_sp(2) = _params.land_speed;
+				// }
 
 				if (!_control_mode.flag_control_manual_enabled && _control_mode.flag_control_climb_rate_enabled && !_control_mode.flag_control_altitude_enabled && _control_mode.flag_control_auto_enabled) {
 					_vel_sp(2) = _params.land_speed;
