@@ -1316,48 +1316,48 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 
 
 		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+			/* Rapid Deceleration */
+			if ((vel_xy - _fol_vel_xy) / dt < -_params.fol_acc_max) {
+				/* smooth velocity */
+				_fol_vel_xy = _fol_vel_xy * (1 - _params.fol_vel_p) + vel_xy * _params.fol_vel_p;
+			} else {
+				_fol_vel_xy = vel_xy;
+			}
+
+			math::Vector<3> follow_vel;
+			follow_vel(0) = math::constrain(_fol_vel_xy, _params.fol_vel_min, _params.vel_max(0));
+			follow_vel(1) = math::constrain(_fol_vel_xy, _params.fol_vel_min, _params.vel_max(1));
+			follow_vel(2) = _params.vel_max(2);
+
+			/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+			math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
+
+			/* move setpoint not faster than max allowed speed */
+			math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+
+			/* convert current setpoint to scaled space */
+			math::Vector<3> pos_sp_s = curr_sp.emult(scale);
+
+			/* difference between current and desired position setpoints, 1 = max speed */
+			math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+			float d_pos_m_len = d_pos_m.length();
+
+			if (d_pos_m_len > dt) {
+				pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+			}
+
 			float dx = curr_sp(0) - _pos(0);
 			float dy = curr_sp(1) - _pos(1);
 			/* calculate distance */
 			float dist = sqrtf(dx * dx + dy * dy);
 
 			if (dist > _params.follow_dist) {
-				/* Rapid Deceleration */
-				if ((vel_xy - _fol_vel_xy) / dt < -_params.fol_acc_max) {
-					/* smooth velocity */
-					_fol_vel_xy = _fol_vel_xy * (1 - _params.fol_vel_p) + vel_xy * _params.fol_vel_p;
-				} else {
-					_fol_vel_xy = vel_xy;
-				}
-
-				/* velocity compensation according to distance, not recommended */
-				float dv = (dist - _params.follow_dist) * _params.fol_vel_dv;
-
-				math::Vector<3> follow_vel;
-				follow_vel(0) = math::constrain(_fol_vel_xy + dv, _params.fol_vel_min, _params.vel_max(0));
-				follow_vel(1) = math::constrain(_fol_vel_xy + dv, _params.fol_vel_min, _params.vel_max(1));
-				follow_vel(2) = _params.vel_max(2);
-
-				/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-				math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
-
-				/* move setpoint not faster than max allowed speed */
-				math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
-
-				/* convert current setpoint to scaled space */
-				math::Vector<3> pos_sp_s = curr_sp.emult(scale);
-
-				/* difference between current and desired position setpoints, 1 = max speed */
-				math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
-				float d_pos_m_len = d_pos_m.length();
-
-				if (d_pos_m_len > dt) {
-					pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
-				}
-
 				/* scale result back to normal space */
-				_pos_sp = pos_sp_s.edivide(scale);
+				_pos_sp(0) = pos_sp_s(0) / scale(0);
+				_pos_sp(1) = pos_sp_s(1) / scale(1);
 			}
+
+			_pos_sp(2) = pos_sp_s(2) / scale(2);
 
 			if (dist > _params.follow_yaw) {
 				/* update yaw setpoint if needed */
@@ -1409,19 +1409,23 @@ void MulticopterPositionControl::control_follow_camera(float dt)
 
         if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
             move_to_sp(curr_sp, dt);
-            return;
-        }
 
-	float dx = curr_sp(0) - _pos(0);
-	float dy = curr_sp(1) - _pos(1);
-	/* calculate distance */
-	float dist = sqrtf(dx * dx + dy * dy);
+        } else {
+	    float dx = curr_sp(0) - _pos(0);
+	    float dy = curr_sp(1) - _pos(1);
+	    /* calculate distance */
+	    float dist = sqrtf(dx * dx + dy * dy);
 
-	if (dist > _params.follow_yaw) {
-		/* update yaw setpoint if needed */
-		if (isfinite(_pos_sp_triplet.current.yaw)) {
-			_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
-		}
+	    if (dist > _params.follow_yaw) {
+		    /* update yaw setpoint if needed */
+		    if (isfinite(_pos_sp_triplet.current.yaw)) {
+			    _att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+		    }
+	    }
+
+	    curr_sp(0) = _pos_sp(0);
+	    curr_sp(1) = _pos_sp(1);
+	    move_to_sp(curr_sp, dt);
 	}
     }
 }

@@ -53,7 +53,8 @@ Follow::Follow(Navigator *navigator, const char *name) :
     MissionBlock(navigator, name),
     _param_rel_alt(this, "FOL_RELATIVE_ALT",false),
     _inited(false),
-    _follow_state(FOLLOW_STATE_FOLLOW),
+    _ref_alt(0.0f),
+    _follow_state(FOLLOW_STATE_NONE),
     _waypoint_sp({})
 {
     updateParams();
@@ -76,13 +77,7 @@ Follow::on_inactive() {
 
 void
 Follow::on_activation() {
-
     reset_follow_item();
-    advance_follow();
-
-    /* climb state, waypoint is unnecessary */
-    set_follow_item(NULL);
-
     _inited = true;
 }
 
@@ -90,13 +85,12 @@ void
 Follow::on_active() {
     if (!_navigator->get_vstatus()->condition_landed) {
 
-        if (_follow_state == FOLLOW_STATE_FOLLOW || is_alt_reached()) {
-            advance_follow();
-
-            struct waypoint_s* waypoint_sp = _navigator->get_waypoint_sp();
-            if (is_valid_follow_item(waypoint_sp)) {
-                memcpy(&_waypoint_sp, waypoint_sp, sizeof(_waypoint_sp));
-                set_follow_item(waypoint_sp);
+	struct waypoint_s* waypoint_sp = _navigator->get_waypoint_sp();
+	if (is_valid_follow_item(waypoint_sp)) {
+		if (_follow_state != FOLLOW_STATE_CLIMB || (_follow_state == FOLLOW_STATE_CLIMB && is_alt_reached())) {
+			advance_follow();
+			memcpy(&_waypoint_sp, waypoint_sp, sizeof(_waypoint_sp));
+			set_follow_item(waypoint_sp);
             }
         }
     }
@@ -134,6 +128,7 @@ Follow::set_follow_item(const struct waypoint_s *waypoint) {
     switch (_follow_state) {
         case FOLLOW_STATE_CLIMB:
             {
+		_ref_alt = waypoint->alt;
                 float climb_alt = _navigator->get_home_position()->alt + _param_rel_alt.get();
 
                 pos_sp_triplet->current.valid = true;
@@ -156,10 +151,12 @@ Follow::set_follow_item(const struct waypoint_s *waypoint) {
             }
         case FOLLOW_STATE_FOLLOW:
             {
+		float alt = _navigator->get_home_position()->alt + _param_rel_alt.get() + waypoint->alt - _ref_alt;
 
                 pos_sp_triplet->current.valid = true;
                 pos_sp_triplet->current.lat = waypoint->lat;
                 pos_sp_triplet->current.lon = waypoint->lon;
+                pos_sp_triplet->current.alt = alt;
                 pos_sp_triplet->current.yaw = get_bearing_to_next_waypoint(
                         _navigator->get_global_position()->lat,
                         _navigator->get_global_position()->lon,

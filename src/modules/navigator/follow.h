@@ -73,6 +73,7 @@ protected:
 	control::BlockParamFloat _param_rel_alt;
 
 	bool _inited;
+	float _ref_alt;
 
 private:
 	enum FollowState {
