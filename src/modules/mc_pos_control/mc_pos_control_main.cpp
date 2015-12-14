@@ -960,7 +960,24 @@ MulticopterPositionControl::control_manual(float dt)
 
 	/* move position setpoint */
 	_pos_sp += _sp_move_rate * dt;
-
+	if (_manual.z > 0.7f)
+	{
+		if (fabsf(_pos_sp(2) - _pos(2)) < 0.2f)
+		{
+			mavlink_log_info(_mavlink_fd, "Add 1 meter");
+			_pos_sp(2) -= 1;
+		}
+	}
+	else if (_manual.z < 0.3f)
+	{
+		if (fabsf(_pos_sp(2) - _pos(2)) < 0.2f)
+		{
+			mavlink_log_info(_mavlink_fd, "Decrease 1 meter");
+			_pos_sp(2) += 1;
+		}
+	}
+	else
+	{}
 	/* check if position setpoint is too far from actual position */
 	math::Vector<3> pos_sp_offs;
 	pos_sp_offs.zero();
@@ -980,6 +997,7 @@ MulticopterPositionControl::control_manual(float dt)
 		pos_sp_offs /= pos_sp_offs_norm;
 		_pos_sp = _pos + pos_sp_offs.emult(_params.sp_offs_max);
 	}
+
 }
 
 void
