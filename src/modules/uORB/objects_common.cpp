@@ -274,5 +274,8 @@ ORB_DEFINE(camera_trigger, struct camera_trigger_s);
 #include "topics/vehicle_command_ack.h"
 ORB_DEFINE(vehicle_command_ack, struct vehicle_command_ack_s);
 
+#include "topics/ekf2_innovations.h"
+ORB_DEFINE(ekf2_innovations, struct ekf2_innovations_s);
+
 #include "topics/app_control_setpoint.h"
 ORB_DEFINE(app_control_setpoint, struct app_control_setpoint_s);
