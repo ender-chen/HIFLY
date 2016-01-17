@@ -183,6 +183,9 @@ qurt_eagle_default:
 
 posix_eagle_default:
 	$(call cmake-build,$@)
+	
+posix_rpi2_default:
+	$(call cmake-build,$@)
 
 posix: posix_sitl_default
 
