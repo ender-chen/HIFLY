@@ -170,7 +170,9 @@ int ver_main(int argc, char *argv[])
 		}
 
 	} else {
-		usage("Error, not enough parameters.");
+		//usage("Error, not enough parameters.");
+		printf("build version: %s\n", __BUILD_VER__);
+		ret = 0;
 	}
 
 	return ret;

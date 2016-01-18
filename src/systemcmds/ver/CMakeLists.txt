@@ -36,6 +36,7 @@ px4_add_module(
 	STACK 1024
 	COMPILE_FLAGS
 		-Os
+		-D__BUILD_VER__=\\"${BUILD_VERSION}\\"
 	SRCS
 		ver.c
 	DEPENDS

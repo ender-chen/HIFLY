@@ -104,6 +104,15 @@ endif
     PX4_MAKE_ARGS = -j$(j) --no-print-directory
 endif
 
+TARGET_NAME := $(wordlist 1,1,$(MAKECMDGOALS))
+BUILD_SN := 100
+BUILD_GIT_HASH := $(shell git log -1 --pretty=format:%H | cut -c1-6)
+BUILD_DATE := $(shell date '+%y%m%d')
+ifeq ($(TARGET_NAME), hifly)
+TARGET_ALIAS := HiFly-F-S00A_CKT_L1EN_$(BUILD_SN)_$(BUILD_DATE)_$(BUILD_GIT_HASH)-Firmware.bin
+BUILD_VERSION := HiFly-F-S00A_CKT_L1EN_$(BUILD_SN)_$(BUILD_DATE)_$(BUILD_GIT_HASH)
+endif
+
 # Functions
 # --------------------------------------------------------------------
 # describe how to build a cmake config
@@ -111,7 +120,7 @@ define cmake-build
 +@if [ $(PX4_CMAKE_GENERATOR) = "Ninja" ] && [ -e $(PWD)/build_$@/Makefile ]; then rm -rf $(PWD)/build_$@; fi
 +git submodule init
 +Tools/check_submodules.sh 
-+@if [ ! -e $(PWD)/build_$@/CMakeCache.txt ]; then git submodule sync && git submodule init && mkdir -p $(PWD)/build_$@ && cd $(PWD)/build_$@ && cmake .. -G$(PX4_CMAKE_GENERATOR) -DCONFIG=$(1); fi
++@if [ ! -e $(PWD)/build_$@/CMakeCache.txt ]; then git submodule sync && git submodule init && mkdir -p $(PWD)/build_$@ && cd $(PWD)/build_$@ && cmake .. -G$(PX4_CMAKE_GENERATOR) -DCONFIG=$(1) -DBUILD_VERSION=$(2); fi
 +$(PX4_MAKE) -C $(PWD)/build_$@ $(PX4_MAKE_ARGS) $(ARGS)
 endef
 
@@ -145,7 +154,8 @@ px4fmu-v2_lpe:
 	$(call cmake-build,nuttx_px4fmu-v2_lpe)
 
 hifly:
-	$(call cmake-build,nuttx_hifly_default)
+	$(call cmake-build,nuttx_hifly_default,$(BUILD_VERSION))
+	cp $(PWD)/build_hifly/src/firmware/nuttx/nuttx-hifly-default.px4 $(PWD)/build_hifly/src/firmware/nuttx/$(TARGET_ALIAS)
 
 posix_sitl_default:
 	$(call cmake-build,$@)
