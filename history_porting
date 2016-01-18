@@ -1,0 +1,9 @@
+20160121: porting on px4 release v1.1.1.x from stable branch
+
+   last commit infomation:
+
+	commit cb14e8589d10e44bd4b203509a8fc90a5d113cfd
+	Author: Lorenz Meier <lm@inf.ethz.ch>
+	Date:   Mon Jan 18 10:23:23 2016 +0100
+
+		Sensors: Fix FMUv4 voltage
