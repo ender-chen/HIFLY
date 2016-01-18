@@ -418,6 +418,7 @@ function(px4_add_upload)
 		list(APPEND serial_ports
 			/dev/serial/by-id/usb-3D_Robotics*
 			/dev/serial/by-id/pci-3D_Robotics*
+			/dev/ttyACM*
 			)
 	elseif(${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Darwin")
 		list(APPEND serial_ports
