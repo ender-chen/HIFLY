@@ -148,7 +148,12 @@
 #define BIT_I2C_IF_DIS			0x10
 #define BIT_INT_STATUS_DATA		0x01
 
+#ifdef MPU_6000
 #define MPU_WHOAMI_6000			0x68
+#else
+#define MPU_WHOAMI_6500			0x70
+#define MPU_WHOAMI_6000			MPU_WHOAMI_6500
+#endif
 #define ICM_WHOAMI_20608		0xaf
 
 // ICM2608 specific registers
@@ -818,12 +823,16 @@ MPU6000::probe()
 		DEVICE_DEBUG("unexpected WHOAMI 0x%02x", whoami);
 		return -EIO;
 	}
-
+#ifdef MPU_6000
 	/* look for a product ID we recognize */
 	_product = read_reg(MPUREG_PRODUCT_ID);
+#else
+	_product = whoami;
+#endif
 
 	// verify product revision
 	switch (_product) {
+#ifdef MPU_6000
 	case MPU6000ES_REV_C4:
 	case MPU6000ES_REV_C5:
 	case MPU6000_REV_C4:
@@ -837,6 +846,9 @@ MPU6000::probe()
 	case MPU6000_REV_D9:
 	case MPU6000_REV_D10:
 	case ICM20608_REV_00:
+#else
+	case MPU_WHOAMI_6000:
+#endif
 		DEVICE_DEBUG("ID 0x%02x", _product);
 		_checked_values[0] = _product;
 		return OK;
@@ -1584,6 +1596,7 @@ MPU6000::write_checked_reg(unsigned reg, uint8_t value)
 int
 MPU6000::set_accel_range(unsigned max_g_in)
 {
+#ifdef MPU_6000
 	// workaround for bugged versions of MPU6k (rev C)
 	switch (_product) {
 	case MPU6000ES_REV_C4:
@@ -1595,6 +1608,7 @@ MPU6000::set_accel_range(unsigned max_g_in)
 		_accel_range_m_s2 = 8.0f * MPU6000_ONE_G;
 		return OK;
 	}
+#endif
 
 	uint8_t afs_sel;
 	float lsb_per_g;
@@ -1767,8 +1781,9 @@ MPU6000::measure()
 	if (OK != transfer((uint8_t *)&mpu_report, ((uint8_t *)&mpu_report), sizeof(mpu_report))) {
 		return;
 	}
-
+#ifdef MPU_6000
 	check_registers();
+#endif
 
 	/*
 	   see if this is duplicate accelerometer data. Note that we
@@ -1821,7 +1836,7 @@ MPU6000::measure()
 	}
 
 	perf_count(_good_transfers);
-
+#ifdef MPU_6000
 	if (_register_wait != 0) {
 		// we are waiting for some good transfers before using
 		// the sensor again. We still increment
@@ -1829,6 +1844,7 @@ MPU6000::measure()
 		_register_wait--;
 		return;
 	}
+#endif
 
 
 	/*
