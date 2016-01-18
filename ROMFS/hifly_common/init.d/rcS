@@ -202,6 +202,7 @@ then
 
 	param set SYS_AUTOSTART 4021
 	param set SYS_USE_IO 0
+	param set SENS_BOARD_ROT 4
 	param save
 	#
 	# Set AUTOCNF flag to use it in AUTOSTART scripts
