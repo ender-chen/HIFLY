@@ -54,6 +54,11 @@ if(NOT ${BOARD} STREQUAL "hifly")
 	    add_dependencies(romfs fw_io)
     endif()
 else()
+	if (config_rc_local)
+		set(extras)
+		list(APPEND extras "${CMAKE_SOURCE_DIR}/ROMFS/extras/${BOARD}_${LABEL}/rc.local")
+	endif()
+
 	px4_nuttx_add_romfs(OUT romfs
 		ROOT ROMFS/hifly_common
 		EXTRAS ${extras}
