@@ -144,6 +144,9 @@ px4fmu-v2_ekf2:
 px4fmu-v2_lpe:
 	$(call cmake-build,nuttx_px4fmu-v2_lpe)
 
+hifly:
+	$(call cmake-build,nuttx_hifly_default)
+
 posix_sitl_default:
 	$(call cmake-build,$@)
 
