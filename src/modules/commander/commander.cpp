@@ -159,6 +159,8 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define HIL_ID_MIN 1000
 #define HIL_ID_MAX 1999
 
+#define PERIOD_CLOSE_MOTOR_TAKEOFF (10 *1000 * 1000)
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -190,6 +192,7 @@ static unsigned int leds_counter;
 /* To remember when last notification was sent */
 static uint64_t last_print_mode_reject_time = 0;
 static uint64_t _inair_last_time = 0;
+static uint64_t _time_on_off_before_takeoff = 0;
 
 static float eph_threshold = 5.0f;
 static float epv_threshold = 10.0f;
@@ -229,7 +232,7 @@ void usage(const char *reason);
 bool handle_command(struct vehicle_status_s *status, const struct safety_s *safety, struct vehicle_command_s *cmd,
 		    struct actuator_armed_s *armed, struct home_position_s *home, struct vehicle_global_position_s *global_pos,
 		    struct vehicle_local_position_s *local_pos, struct vehicle_attitude_s *attitude, orb_advert_t *home_pub,
-		    orb_advert_t *command_ack_pub, struct vehicle_command_ack_s *command_ack);
+		    orb_advert_t *command_ack_pub, struct vehicle_command_ack_s *command_ack, bool *arming_state_changed);
 
 /**
  * Mainloop of commander.
@@ -569,7 +572,7 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 		    struct vehicle_command_s *cmd, struct actuator_armed_s *armed_local,
 		    struct home_position_s *home, struct vehicle_global_position_s *global_pos,
 		    struct vehicle_local_position_s *local_pos, struct vehicle_attitude_s *attitude, orb_advert_t *home_pub,
-		    orb_advert_t *command_ack_pub, struct vehicle_command_ack_s *command_ack)
+		    orb_advert_t *command_ack_pub, struct vehicle_command_ack_s *command_ack, bool *arming_state_changed)
 {
 	/* only handle commands that are meant to be handled by this system and component */
 	if (cmd->target_system != status_local->system_id || ((cmd->target_component != status_local->component_id)
@@ -736,7 +739,7 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 
 				} else {
 					cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
-
+					*arming_state_changed = true;
 					/* update home position on arming if at least 500 ms from commander start spent to avoid setting home on in-air restart */
 					if (cmd_arms && (arming_res == TRANSITION_CHANGED) &&
 						(hrt_absolute_time() > (commander_boot_timestamp + INAIR_RESTART_HOLDOFF_INTERVAL))) {
@@ -1118,9 +1121,9 @@ int commander_thread_main(int argc, char *argv[])
 	// We want to accept RC inputs as default
 	status.rc_input_blocked = false;
 	status.rc_input_mode = vehicle_status_s::RC_IN_MODE_DEFAULT;
-	status.main_state =vehicle_status_s::MAIN_STATE_MANUAL;
-	status.main_state_prev = vehicle_status_s::MAIN_STATE_MAX;
-	status.nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
+	status.main_state =vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+	status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+	status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE;
 	status.arming_state = vehicle_status_s::ARMING_STATE_INIT;
 
 	if(startup_in_hil) {
@@ -1816,7 +1819,8 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_and_console_log_info(mavlink_fd, "LANDING DETECTED");
-
+					main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
+					status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
 				} else {
 					mavlink_and_console_log_info(mavlink_fd, "TAKEOFF DETECTED");
 				}
@@ -2401,6 +2405,25 @@ int commander_thread_main(int argc, char *argv[])
 			}
 		}
 
+		if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+            //before takeoff
+            if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE &&
+                            status.condition_landed) {
+                if (_time_on_off_before_takeoff == 0) {
+					_time_on_off_before_takeoff = hrt_absolute_time();
+				} else {
+					if (hrt_elapsed_time(&_time_on_off_before_takeoff) > PERIOD_CLOSE_MOTOR_TAKEOFF) {
+	 					arming_ret = arm_disarm(false, mavlink_fd, "auto disarm for idle");
+						if (arming_ret == TRANSITION_CHANGED) {
+                            arming_state_changed = true;
+                        }
+                    }
+                }
+            } else {
+                _time_on_off_before_takeoff = 0;
+            }
+        }
+
 		/* handle commands last, as the system needs to be updated to handle them */
 		orb_check(cmd_sub, &updated);
 
@@ -2410,7 +2433,7 @@ int commander_thread_main(int argc, char *argv[])
 
 			/* handle it */
 			if (handle_command(&status, &safety, &cmd, &armed, &_home, &global_position, &local_position,
-					&attitude, &home_pub, &command_ack_pub, &command_ack)) {
+					&attitude, &home_pub, &command_ack_pub, &command_ack, &arming_state_changed)) {
 				status_changed = true;
 			}
 		}
@@ -2490,6 +2513,7 @@ int commander_thread_main(int argc, char *argv[])
 		if (arming_state_changed) {
 			status_changed = true;
 			arming_state_changed = false;
+			_time_on_off_before_takeoff = 0;
 		}
 
 		/* now set navigation state according to failsafe and main state */
@@ -3051,6 +3075,7 @@ set_control_mode()
 
 
 	case vehicle_status_s::NAVIGATION_STATE_LAND:
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;

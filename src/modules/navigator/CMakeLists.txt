@@ -52,6 +52,7 @@ px4_add_module(
 		rcloss.cpp
 		enginefailure.cpp
 		gpsfailure.cpp
+		idle.cpp
 	DEPENDS
 		platforms__common
 	)
