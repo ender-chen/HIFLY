@@ -69,11 +69,12 @@
 #include "gpsfailure.h"
 #include "rcloss.h"
 #include "geofence.h"
+#include "idle.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 9
+#define NAVIGATOR_MODE_ARRAY_SIZE 10
 
 class Navigator : public control::SuperBlock
 {
@@ -235,6 +236,7 @@ private:
 	EngineFailure	_engineFailure;			/**< class that handles the engine failure mode
 							  (FW only!) */
 	GpsFailure	_gpsFailure;			/**< class that handles the OBC gpsfailure loss mode */
+	Idle		_idle;					/**< class that handles the idle mode */
 
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 

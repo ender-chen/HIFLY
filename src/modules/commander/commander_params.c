@@ -357,3 +357,11 @@ PARAM_DEFINE_FLOAT(COM_BAT_LOW, 11.0f);
  *
  */
 PARAM_DEFINE_FLOAT(COM_BAT_EMER, 10.8f);
+
+/**
+ * IDLE Time
+ *
+ * Defines the time for idle to close motor before takeoff.
+ *
+ */
+PARAM_DEFINE_INT32(COM_IDLE_TIME, 10);
