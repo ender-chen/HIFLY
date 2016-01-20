@@ -11,7 +11,8 @@ uint8 MAIN_STATE_STAB = 8
 uint8 MAIN_STATE_RATTITUDE = 9
 uint8 MAIN_STATE_AUTO_TAKEOFF = 10
 uint8 MAIN_STATE_AUTO_LAND = 11
-uint8 MAIN_STATE_MAX = 12
+uint8 MAIN_STATE_AUTO_IDLE = 12
+uint8 MAIN_STATE_MAX = 13
 
 # If you change the order, add or remove arming_state_t states make sure to update the arrays
 # in state_machine_helper.cpp as well.
@@ -46,7 +47,8 @@ uint8 NAVIGATION_STATE_OFFBOARD = 14
 uint8 NAVIGATION_STATE_STAB = 15		# Stabilized mode
 uint8 NAVIGATION_STATE_RATTITUDE = 16		# Rattitude (aka "flip") mode
 uint8 NAVIGATION_STATE_AUTO_TAKEOFF = 17	# Takeoff
-uint8 NAVIGATION_STATE_MAX = 18
+uint8 NAVIGATION_STATE_AUTO_IDLE = 18		# Idle
+uint8 NAVIGATION_STATE_MAX = 19
 
 # VEHICLE_MODE_FLAG, same as MAV_MODE_FLAG of MAVLink 1.0 protocol
 uint8 VEHICLE_MODE_FLAG_SAFETY_ARMED = 128

@@ -159,6 +159,8 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define HIL_ID_MIN 1000
 #define HIL_ID_MAX 1999
 
+#define PERIOD_CLOSE_MOTOR_TAKEOFF (10 *1000 * 1000)
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -190,6 +192,7 @@ static unsigned int leds_counter;
 /* To remember when last notification was sent */
 static uint64_t last_print_mode_reject_time = 0;
 static uint64_t _inair_last_time = 0;
+static uint64_t _time_on_off_before_takeoff = 0;
 
 static float eph_threshold = 5.0f;
 static float epv_threshold = 10.0f;
@@ -1118,9 +1121,15 @@ int commander_thread_main(int argc, char *argv[])
 	// We want to accept RC inputs as default
 	status.rc_input_blocked = false;
 	status.rc_input_mode = vehicle_status_s::RC_IN_MODE_DEFAULT;
+<<<<<<< Updated upstream
 	status.main_state =vehicle_status_s::MAIN_STATE_MANUAL;
 	status.main_state_prev = vehicle_status_s::MAIN_STATE_MAX;
 	status.nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
+=======
+	status.main_state =vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+	status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+	status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE;
+>>>>>>> Stashed changes
 	status.arming_state = vehicle_status_s::ARMING_STATE_INIT;
 
 	if(startup_in_hil) {
@@ -1816,7 +1825,12 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_and_console_log_info(mavlink_fd, "LANDING DETECTED");
+<<<<<<< Updated upstream
 
+=======
+					main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
+					status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+>>>>>>> Stashed changes
 				} else {
 					mavlink_and_console_log_info(mavlink_fd, "TAKEOFF DETECTED");
 				}
@@ -2400,6 +2414,24 @@ int commander_thread_main(int argc, char *argv[])
 				main_state_transition(&status, status.main_state_prev);
 			}
 		}
+
+		if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
+            //before takeoff
+            if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE &&
+                            status.condition_landed) {
+                if (_time_on_off_before_takeoff == 0) {
+					_time_on_off_before_takeoff = hrt_absolute_time();
+				} else {
+					if (hrt_elapsed_time(&_time_on_off_before_takeoff) > PERIOD_CLOSE_MOTOR_TAKEOFF) {
+						if (arming_ret == TRANSITION_CHANGED) {
+                             arming_state_changed = true;
+                        }
+                    }
+                }
+            } else {
+                _time_on_off_before_takeoff = 0;
+            }
+        }
 
 		/* handle commands last, as the system needs to be updated to handle them */
 		orb_check(cmd_sub, &updated);
@@ -3051,6 +3083,7 @@ set_control_mode()
 
 
 	case vehicle_status_s::NAVIGATION_STATE_LAND:
+	case vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = true;
 		control_mode.flag_control_rates_enabled = true;

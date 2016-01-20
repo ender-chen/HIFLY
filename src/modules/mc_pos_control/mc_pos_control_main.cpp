@@ -1255,6 +1255,12 @@ MulticopterPositionControl::task_main()
 			if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
 			    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 				/* idle state, don't run controller and set zero thrust */
+				_reset_pos_sp = true;
+				_reset_alt_sp = true;
+				_mode_auto = false;
+				reset_int_z = true;
+				reset_int_xy = true;
+
 				R.identity();
 				memcpy(&_att_sp.R_body[0], R.data, sizeof(_att_sp.R_body));
 				_att_sp.R_valid = true;
