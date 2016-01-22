@@ -136,6 +136,7 @@ bool condition_local_altitude_valid
 bool condition_airspeed_valid			# set to true by the commander app if there is a valid airspeed measurement available
 bool condition_landed				# true if vehicle is landed, always true if disarmed
 bool condition_power_input_valid		# set if input power is valid
+bool condition_takeoff_attitude_valid	# set if takeoff attitude is ok
 float32 avionics_power_rail_voltage		# voltage of the avionics power rail
 bool usb_connected				# status of the USB power supply
 
@@ -186,4 +187,5 @@ bool circuit_breaker_engaged_power_check
 bool circuit_breaker_engaged_airspd_check
 bool circuit_breaker_engaged_enginefailure_check
 bool circuit_breaker_engaged_gpsfailure_check
+bool circuit_breaker_engaged_takeoff_att_check
 bool cb_usb

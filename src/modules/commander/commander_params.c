@@ -318,3 +318,12 @@ PARAM_DEFINE_INT32(COM_DISARM_LAND, 0);
  * @min
  */
  PARAM_DEFINE_FLOAT(COM_OOC_ANGLE, 60.0f);
+
+ /**
+ *Diable takeoff angle
+ *
+ * If it tile larger than the set angle it will refuse to takeoff.
+ *@group Commander
+ *
+ */
+ PARAM_DEFINE_FLOAT(COM_DIS_TF_ANG, 30.0f);

@@ -217,6 +217,12 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 						}
 					}
 
+					if (!status->condition_takeoff_attitude_valid) {
+						mavlink_and_console_log_critical(mavlink_fd, "ATTITUDE FAIL, REFUSE ARMING");
+						feedback_provided = true;
+						valid_transition = false;
+					}
+
 				}
 
 			} else if (new_arming_state == vehicle_status_s::ARMING_STATE_STANDBY && status->arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR) {

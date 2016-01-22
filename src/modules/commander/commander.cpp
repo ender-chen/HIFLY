@@ -1055,6 +1055,7 @@ int commander_thread_main(int argc, char *argv[])
 	//auto disarm out of control in air
 	param_t _param_disarm_ooc = param_find("COM_DISARM_OOC");
 	param_t _param_ooc_angle = param_find("COM_OOC_ANGLE");
+	param_t _param_disable_takeoff_angle = param_find("COM_DIS_TF_ANG");
 
 	// These are too verbose, but we will retain them a little longer
 	// until we are sure we really don't need them.
@@ -1165,6 +1166,7 @@ int commander_thread_main(int argc, char *argv[])
 	status.circuit_breaker_engaged_airspd_check = false;
 	status.circuit_breaker_engaged_enginefailure_check = false;
 	status.circuit_breaker_engaged_gpsfailure_check = false;
+	status.circuit_breaker_engaged_takeoff_att_check = false;
 	get_circuit_breaker_params();
 
 	/* publish initial state */
@@ -1419,6 +1421,7 @@ int commander_thread_main(int argc, char *argv[])
 	int32_t disarm_when_ooc = 0;
 	int32_t ooc_counter = 0;
 	float ooc_angle = 60.0f;
+	float disable_takeoff_angle = 30.0f;
 
 	/* check which state machines for changes, clear "changed" flag */
 	bool arming_state_changed = false;
@@ -1521,6 +1524,7 @@ int commander_thread_main(int argc, char *argv[])
 
 			param_get(_param_disarm_ooc, &disarm_when_ooc);
 			param_get(_param_ooc_angle, &ooc_angle);
+			param_get(_param_disable_takeoff_angle, &disable_takeoff_angle);
 		}
 
 		/* Set flag to autosave parameters if necessary */
@@ -1779,6 +1783,15 @@ int commander_thread_main(int argc, char *argv[])
 			else
 			{
 				ooc_counter = 0;
+			}
+
+			if (status.condition_landed
+				&& PX4_R(attitude.R, 2, 2) < fabsf(cosf(_wrap_pi(disable_takeoff_angle * M_DEG_TO_RAD_F)))
+				&& !status.circuit_breaker_engaged_takeoff_att_check) {
+				status.condition_takeoff_attitude_valid = false;
+			}
+			else {
+				status.condition_takeoff_attitude_valid = true;
 			}
 		}
 
