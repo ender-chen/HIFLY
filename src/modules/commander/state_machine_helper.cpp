@@ -270,6 +270,10 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 			armed->armed = new_arming_state == vehicle_status_s::ARMING_STATE_ARMED || new_arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR;
 			armed->ready_to_arm = new_arming_state == vehicle_status_s::ARMING_STATE_ARMED || new_arming_state == vehicle_status_s::ARMING_STATE_STANDBY;
 			ret = TRANSITION_CHANGED;
+			if (new_arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR)
+			{
+				armed->lockdown = true;
+			}
 			status->arming_state = new_arming_state;
 		}
 

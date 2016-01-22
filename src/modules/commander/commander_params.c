@@ -301,3 +301,20 @@ PARAM_DEFINE_INT32(COM_RC_IN_MODE, 2);
  */
 PARAM_DEFINE_INT32(COM_DISARM_LAND, 0);
 
+ /**
+ * Out of control, disarmed
+ *
+ *
+ * @group Commander
+ * @min 0
+ */
+ PARAM_DEFINE_INT32(COM_DISARM_OOC, 0);
+
+ /**
+ * Out of control angle
+ *
+ * If it tilt larger than the set angel it will shutdown the motor.
+ * @group Commander
+ * @min
+ */
+ PARAM_DEFINE_FLOAT(COM_OOC_ANGLE, 60.0f);

@@ -1052,6 +1052,10 @@ int commander_thread_main(int argc, char *argv[])
 	param_t _param_disarm_land = param_find("COM_DISARM_LAND");
 	param_t _param_map_mode_sw = param_find("RC_MAP_MODE_SW");
 
+	//auto disarm out of control in air
+	param_t _param_disarm_ooc = param_find("COM_DISARM_OOC");
+	param_t _param_ooc_angle = param_find("COM_OOC_ANGLE");
+
 	// These are too verbose, but we will retain them a little longer
 	// until we are sure we really don't need them.
 
@@ -1411,6 +1415,11 @@ int commander_thread_main(int argc, char *argv[])
 	int32_t disarm_when_landed = 0;
 	int32_t map_mode_sw = 0;
 
+	//auto disarm when out of control
+	int32_t disarm_when_ooc = 0;
+	int32_t ooc_counter = 0;
+	float ooc_angle = 60.0f;
+
 	/* check which state machines for changes, clear "changed" flag */
 	bool arming_state_changed = false;
 	bool main_state_changed = false;
@@ -1509,6 +1518,9 @@ int commander_thread_main(int argc, char *argv[])
 			/* EPH / EPV */
 			param_get(_param_eph, &eph_threshold);
 			param_get(_param_epv, &epv_threshold);
+
+			param_get(_param_disarm_ooc, &disarm_when_ooc);
+			param_get(_param_ooc_angle, &ooc_angle);
 		}
 
 		/* Set flag to autosave parameters if necessary */
@@ -1757,6 +1769,17 @@ int commander_thread_main(int argc, char *argv[])
 		if (updated) {
 			/* position changed */
 			orb_copy(ORB_ID(vehicle_attitude), attitude_sub, &attitude);
+
+			if(!status.condition_landed
+				&& disarm_when_ooc > 0
+				&& PX4_R(attitude.R, 2, 2) < fabsf(cosf(_wrap_pi(ooc_angle * M_DEG_TO_RAD_F))))
+			{
+				 ooc_counter++;
+			}
+			else
+			{
+				ooc_counter = 0;
+			}
 		}
 
 		//update condition_global_position_valid
@@ -1951,6 +1974,20 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		/* End battery voltage check */
+
+		/* if tilt large angle, out of control, it will switch to armed_error*/
+		if (disarm_when_ooc > 0 && ooc_counter > disarm_when_ooc && armed.armed)
+		{
+			mavlink_log_emergency(mavlink_fd, "Large angle, armed error");
+			arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_ARMED_ERROR, &armed, true /* fRunPreArmChecks */,
+								     mavlink_fd);
+
+			if (arming_ret == TRANSITION_CHANGED) {
+				arming_state_changed = true;
+			}
+			ooc_counter = 0;
+		}
+		/* End attitiude failure */
 
 		/* If in INIT state, try to proceed to STANDBY state */
 		if (!status.calibration_enabled && status.arming_state == vehicle_status_s::ARMING_STATE_INIT) {
