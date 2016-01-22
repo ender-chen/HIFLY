@@ -1538,12 +1538,12 @@ int commander_thread_main(int argc, char *argv[])
 			param_get(_param_bat_warning_low, &bat_warning_low);
 			param_get(_param_bat_warning_critical, &bat_warning_critical);
 			param_get(_param_bat_warning_emergency, &bat_warning_emergency);
-		}
 
-		/* Set flag to autosave parameters if necessary */
-		if (updated && autosave_params != 0) {
-			/* trigger an autosave */
-			need_param_autosave = true;
+			/* Set flag to autosave parameters if necessary */
+			if (updated && autosave_params != 0 && param_changed.saved == false) {
+				/* trigger an autosave */
+				need_param_autosave = true;
+			}
 		}
 
 		orb_check(sp_man_sub, &updated);
@@ -1599,11 +1599,12 @@ int commander_thread_main(int argc, char *argv[])
 				    /* and the system is not already armed (and potentially flying) */
 				    !armed.armed) {
 
-				    	bool chAirspeed = false;
-				    	bool hotplug_timeout = hrt_elapsed_time(&commander_boot_timestamp) > HOTPLUG_SENS_TIMEOUT;
-				    	
+					bool chAirspeed = false;
+					bool hotplug_timeout = hrt_elapsed_time(&commander_boot_timestamp) > HOTPLUG_SENS_TIMEOUT;
+
 					/* Perform airspeed check only if circuit breaker is not
-					 * engaged and it's not a rotary wing */
+					 * engaged and it's not a rotary wing
+					 */
 					if (!status.circuit_breaker_engaged_airspd_check && !status.is_rotary_wing) {
 						chAirspeed = true;
 					}
