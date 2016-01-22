@@ -827,6 +827,52 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		break;
 	}
 
+	//Low battery check
+	if (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL) {
+		if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
+			status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD) {
+
+			status->failsafe = true;
+			if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
+				status->nav_state == vehicle_status_s::NAVIGATION_STATE_DESCEND ||
+				status->nav_state == vehicle_status_s::NAVIGATION_STATE_TERMINATION)) {
+
+				if (status->condition_global_position_valid && status->condition_home_position_valid) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+				} else if (status->condition_local_position_valid) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+				} else if (status->condition_local_altitude_valid) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+				} else {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+				}
+			}
+		}
+	}
+	else if (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY) {
+		if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_RTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD) {
+
+			status->failsafe = true;
+			if (status->condition_local_position_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+			} else if (status->condition_local_altitude_valid) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+			}
+		}
+		else {
+		}
+	}
+
 	return status->nav_state != nav_state_old;
 }
 

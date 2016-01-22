@@ -1057,6 +1057,10 @@ int commander_thread_main(int argc, char *argv[])
 	param_t _param_ooc_angle = param_find("COM_OOC_ANGLE");
 	param_t _param_disable_takeoff_angle = param_find("COM_DIS_TF_ANG");
 
+	param_t _param_bat_warning_low = param_find("COM_BAT_LOW");
+	param_t _param_bat_warning_critical = param_find("COM_BAT_CRIT");
+	param_t _param_bat_warning_emergency = param_find("COM_BAT_EMER");
+
 	// These are too verbose, but we will retain them a little longer
 	// until we are sure we really don't need them.
 
@@ -1232,6 +1236,7 @@ int commander_thread_main(int argc, char *argv[])
 
 	bool low_battery_voltage_actions_done = false;
 	bool critical_battery_voltage_actions_done = false;
+	bool emergency_battery_voltage_action_done = false;
 
 	hrt_abstime last_idle_time = 0;
 
@@ -1423,6 +1428,10 @@ int commander_thread_main(int argc, char *argv[])
 	float ooc_angle = 60.0f;
 	float disable_takeoff_angle = 30.0f;
 
+	float bat_warning_low = 0.2f;
+	float bat_warning_critical = 0.1f;
+	float bat_warning_emergency = 0.05f;
+
 	/* check which state machines for changes, clear "changed" flag */
 	bool arming_state_changed = false;
 	bool main_state_changed = false;
@@ -1525,6 +1534,10 @@ int commander_thread_main(int argc, char *argv[])
 			param_get(_param_disarm_ooc, &disarm_when_ooc);
 			param_get(_param_ooc_angle, &ooc_angle);
 			param_get(_param_disable_takeoff_angle, &disable_takeoff_angle);
+
+			param_get(_param_bat_warning_low, &bat_warning_low);
+			param_get(_param_bat_warning_critical, &bat_warning_critical);
+			param_get(_param_bat_warning_emergency, &bat_warning_emergency);
 		}
 
 		/* Set flag to autosave parameters if necessary */
@@ -1893,9 +1906,12 @@ int commander_thread_main(int argc, char *argv[])
 				status.battery_cell_count = battery_get_n_cells();
 
 				/* get throttle (if armed), as we only care about energy negative throttle also counts */
+				/*
 				float throttle = (armed.armed) ? fabsf(actuator_controls.control[3]) : 0.0f;
 				status.battery_remaining = battery_remaining_estimate_voltage(battery.voltage_filtered_v, battery.discharged_mah,
 							   throttle);
+				*/
+				status.battery_remaining = status.battery_voltage;
 			}
 		}
 
@@ -1953,7 +1969,7 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		/* if battery voltage is getting lower, warn using buzzer, etc. */
-		if (status.condition_battery_voltage_valid && status.battery_remaining < 0.18f && !low_battery_voltage_actions_done) {
+		if (status.condition_battery_voltage_valid && status.battery_remaining < bat_warning_low && !low_battery_voltage_actions_done) {
 			low_battery_voltage_actions_done = true;
 			if (armed.armed) {
 				mavlink_log_critical(mavlink_fd, "LOW BATTERY, RETURN TO LAND ADVISED");
@@ -1963,7 +1979,7 @@ int commander_thread_main(int argc, char *argv[])
 			status.battery_warning = vehicle_status_s::VEHICLE_BATTERY_WARNING_LOW;
 			status_changed = true;
 
-		} else if (!status.usb_connected && status.condition_battery_voltage_valid && status.battery_remaining < 0.09f
+		} else if (status.condition_battery_voltage_valid && status.battery_remaining < bat_warning_critical
 			   && !critical_battery_voltage_actions_done && low_battery_voltage_actions_done) {
 			/* critical battery voltage, this is rather an emergency, change state machine */
 			critical_battery_voltage_actions_done = true;
@@ -1983,6 +1999,13 @@ int commander_thread_main(int argc, char *argv[])
 				mavlink_and_console_log_emergency(mavlink_fd, "CRITICAL BATTERY, LAND IMMEDIATELY");
 			}
 
+			status_changed = true;
+		} else if(status.condition_battery_voltage_valid && status.battery_remaining < bat_warning_emergency &&
+			  !emergency_battery_voltage_action_done && critical_battery_voltage_actions_done && low_battery_voltage_actions_done)
+		{
+			emergency_battery_voltage_action_done = true;
+			mavlink_log_emergency(mavlink_fd,"EMERGENCY BATTERY");
+			status.battery_warning = vehicle_status_s::VEHICLE_BATTERY_WARNING_EMERGENCY;
 			status_changed = true;
 		}
 

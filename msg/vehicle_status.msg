@@ -94,6 +94,7 @@ uint8 VEHICLE_VTOL_STATE_FW = 4
 uint8 VEHICLE_BATTERY_WARNING_NONE = 0	    # no battery low voltage warning active
 uint8 VEHICLE_BATTERY_WARNING_LOW = 1	    # warning of low voltage
 uint8 VEHICLE_BATTERY_WARNING_CRITICAL = 2  # alerting of critical voltage
+uint8 VEHICLE_BATTERY_WARNING_EMERGENCY = 3
 
 uint8 RC_IN_MODE_DEFAULT = 0
 uint8 RC_IN_MODE_OFF = 1

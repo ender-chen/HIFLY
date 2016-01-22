@@ -327,3 +327,33 @@ PARAM_DEFINE_INT32(COM_DISARM_LAND, 0);
  *
  */
  PARAM_DEFINE_FLOAT(COM_DIS_TF_ANG, 30.0f);
+
+/**
+ * Battery warning capacity
+ *
+ * Defines the low warning capacity of the attached battery.
+ * @group Battery Calibration
+ * @unit V
+ *
+ */
+PARAM_DEFINE_FLOAT(COM_BAT_LOW, 11.0f);
+
+/**
+ * Battery warning capacity
+ *
+ * Defines the critical warning capacity of the attached battery.
+ * @group Battery Calibration
+ * @unit V
+ *
+ */
+ PARAM_DEFINE_FLOAT(COM_BAT_CRIT, 10.9f);
+
+/**
+ * Battery warning capacity
+ *
+ * Defines the emergency warning capacity of the attached battery.
+ * @group Battery Calibration
+ * @unit V
+ *
+ */
+PARAM_DEFINE_FLOAT(COM_BAT_EMER, 10.8f);
