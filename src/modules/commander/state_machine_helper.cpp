@@ -352,6 +352,10 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 	case vehicle_status_s::MAIN_STATE_AUTO_MISSION:
 	case vehicle_status_s::MAIN_STATE_AUTO_RTL:
 	case vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF:
+		if (!(status->main_state_prev == vehicle_status_s::MAIN_STATE_AUTO_IDLE))
+		{
+			break;
+		}
 	case vehicle_status_s::MAIN_STATE_AUTO_LAND:
 		/* need global position and home position */
 		if (status->condition_global_position_valid && status->condition_home_position_valid) {

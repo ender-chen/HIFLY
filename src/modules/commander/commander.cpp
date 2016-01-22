@@ -1121,6 +1121,7 @@ int commander_thread_main(int argc, char *argv[])
 	// We want to accept RC inputs as default
 	status.rc_input_blocked = false;
 	status.rc_input_mode = vehicle_status_s::RC_IN_MODE_DEFAULT;
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 	status.main_state =vehicle_status_s::MAIN_STATE_MANUAL;
 	status.main_state_prev = vehicle_status_s::MAIN_STATE_MAX;
@@ -1130,6 +1131,11 @@ int commander_thread_main(int argc, char *argv[])
 	status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
 	status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE;
 >>>>>>> Stashed changes
+=======
+	status.main_state =vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+	status.main_state_prev = vehicle_status_s::MAIN_STATE_MAX;
+	status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE;
+>>>>>>> eae123d... [Feature] Auto go to IDLE state, when landed.
 	status.arming_state = vehicle_status_s::ARMING_STATE_INIT;
 
 	if(startup_in_hil) {
@@ -1825,7 +1831,11 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_and_console_log_info(mavlink_fd, "LANDING DETECTED");
+<<<<<<< HEAD
 <<<<<<< Updated upstream
+=======
+					main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
+>>>>>>> eae123d... [Feature] Auto go to IDLE state, when landed.
 
 =======
 					main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
@@ -2401,20 +2411,16 @@ int commander_thread_main(int argc, char *argv[])
 			}
 		}
 
-		/* reset main state after takeoff or land has been completed */
-		/* only switch back to at least altitude controlled modes */
-		if (status.main_state_prev == vehicle_status_s::MAIN_STATE_POSCTL ||
-			status.main_state_prev == vehicle_status_s::MAIN_STATE_ALTCTL) {
+		/* reset main state after takeoff has been completed */
+		/* HiFly_code */
+		if (status.main_state_prev == vehicle_status_s::MAIN_STATE_AUTO_IDLE) {
 
-			if ((status.main_state == vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF
-					&& mission_result.finished) ||
-				(status.main_state == vehicle_status_s::MAIN_STATE_AUTO_LAND
-					&& status.condition_landed)) {
+			if (status.main_state == vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF
+					&& mission_result.finished) {
 
-				main_state_transition(&status, status.main_state_prev);
+				main_state_transition(&status, vehicle_status_s::MAIN_STATE_POSCTL);
 			}
 		}
-
 		if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
             //before takeoff
             if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE &&
@@ -2432,6 +2438,7 @@ int commander_thread_main(int argc, char *argv[])
                 _time_on_off_before_takeoff = 0;
             }
         }
+
 
 		/* handle commands last, as the system needs to be updated to handle them */
 		orb_check(cmd_sub, &updated);
