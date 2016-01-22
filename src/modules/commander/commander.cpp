@@ -2479,7 +2479,7 @@ int commander_thread_main(int argc, char *argv[])
 				status_changed = true;
 			}
 		}
-
+#if 0
 		/* reset main state after takeoff or land has been completed */
 		/* only switch back to at least altitude controlled modes */
 		if (status.main_state_prev == vehicle_status_s::MAIN_STATE_POSCTL ||
@@ -2493,7 +2493,15 @@ int commander_thread_main(int argc, char *argv[])
 				main_state_transition(&status, status.main_state_prev);
 			}
 		}
-
+#endif
+		/* reset main state after takeoff has been completed */
+		/* HiFly_code */
+		if (status.main_state_prev == vehicle_status_s::MAIN_STATE_AUTO_IDLE) {
+			if (status.main_state == vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF
+					&& mission_result.finished) {
+				main_state_transition(&status, vehicle_status_s::MAIN_STATE_POSCTL);
+			}
+		}
 		if (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 			//before takeoff
 			if (status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE &&
