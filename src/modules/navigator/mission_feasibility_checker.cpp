@@ -64,7 +64,9 @@ MissionFeasibilityChecker::MissionFeasibilityChecker() :
 
 bool MissionFeasibilityChecker::checkMissionFeasible(int mavlink_fd, bool isRotarywing,
 	dm_item_t dm_current, size_t nMissionItems, Geofence &geofence,
-	float home_alt, bool home_valid, double curr_lat, double curr_lon, float max_waypoint_distance, bool &warning_issued)
+	float home_alt, bool home_valid, double curr_lat, double curr_lon, float max_waypoint_distance, bool &warning_issued,
+	float default_acceptance_rad,
+	bool condition_landed)
 {
 	bool failed = false;
 	bool warned = false;
@@ -83,7 +85,7 @@ bool MissionFeasibilityChecker::checkMissionFeasible(int mavlink_fd, bool isRota
 	}
 
 	// check if all mission item commands are supported
-	failed = failed || !checkMissionItemValidity(dm_current, nMissionItems);
+	failed = failed || !checkMissionItemValidity(dm_current, nMissionItems, condition_landed);
 	failed = failed || !checkGeofence(dm_current, nMissionItems, geofence);
 	failed = failed || !checkHomePositionAltitude(dm_current, nMissionItems, home_alt, home_valid, warned);
 
@@ -178,7 +180,7 @@ bool MissionFeasibilityChecker::checkHomePositionAltitude(dm_item_t dm_current, 
 	return true;
 }
 
-bool MissionFeasibilityChecker::checkMissionItemValidity(dm_item_t dm_current, size_t nMissionItems) {
+bool MissionFeasibilityChecker::checkMissionItemValidity(dm_item_t dm_current, size_t nMissionItems, bool condition_landed) {
 	// do not allow mission if we find unsupported item
 	for (size_t i = 0; i < nMissionItems; i++) {
 		struct mission_item_s missionitem;
@@ -190,7 +192,7 @@ bool MissionFeasibilityChecker::checkMissionItemValidity(dm_item_t dm_current, s
 			return false;
 		}
 
-		// check if we find unsupported item and reject mission if so
+		// check if we find unsupported items and reject mission if so
 		if (missionitem.nav_cmd != NAV_CMD_IDLE &&
 			missionitem.nav_cmd != NAV_CMD_WAYPOINT &&
 			missionitem.nav_cmd != NAV_CMD_LOITER_UNLIMITED &&
@@ -207,6 +209,17 @@ bool MissionFeasibilityChecker::checkMissionItemValidity(dm_item_t dm_current, s
 			mavlink_log_critical(_mavlink_fd, "Rejecting mission item %i: unsupported action.", (int)(i+1));
 			return false;
 		}
+
+		// check if the mission starts with a land command while the vehicle is landed
+		if (missionitem.nav_cmd == NAV_CMD_LAND &&
+			i == 0 &&
+			condition_landed) {
+
+			mavlink_log_critical(_mavlink_fd, "Rejecting mission that starts with LAND command while vehicle is landed.");
+			return false;
+		}
+
+
 	}
 	return true;
 }
