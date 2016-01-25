@@ -211,8 +211,10 @@
  */
 #define GPIO_USART2_RX	GPIO_USART2_RX_2
 #define GPIO_USART2_TX	GPIO_USART2_TX_2
+/*
 #define GPIO_USART2_RTS	GPIO_USART2_RTS_2
 #define GPIO_USART2_CTS	GPIO_USART2_CTS_2
+*/
 
 
 /*
@@ -220,16 +222,20 @@
  * used by MCU_SMART_CONTROL and LED now, it can't be used as USART3.
  * Originally in PixHawk it is used by autopilot<->OSD communication
  */
+#define GPIO_USART3_RX	GPIO_USART3_RX_1
+#define GPIO_USART3_TX	GPIO_USART3_TX_1
 /*
 #define GPIO_USART3_RX	GPIO_USART3_RX_3
 #define GPIO_USART3_TX	GPIO_USART3_TX_3
 #define GPIO_USART3_RTS	GPIO_USART3_RTS_2
 #define GPIO_USART3_CTS	GPIO_USART3_CTS_2
 */
+/*
 #define GPIO_USART3_RX	0
 #define GPIO_USART3_TX	0
 #define GPIO_USART3_RTS	0
 #define GPIO_USART3_CTS	0
+*/
 
 /*
  * Hawk:Below four lines are for autopilot<->GPS communication
