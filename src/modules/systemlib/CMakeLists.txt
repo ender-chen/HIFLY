@@ -49,6 +49,7 @@ set(SRCS
 	mcu_version.c
 	bson/tinybson.c
 	circuit_breaker.cpp
+	led_ctl.c
 	)
 
 if(${OS} STREQUAL "nuttx")
