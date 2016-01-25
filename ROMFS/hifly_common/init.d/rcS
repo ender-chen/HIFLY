@@ -383,7 +383,7 @@ then
 
 	# waypoint storage
 	# REBOOTWORK this needs to start in parallel
-	if dataman start
+	if dataman start -f /fs/mtd_waypoints
 	then
 	fi
 
