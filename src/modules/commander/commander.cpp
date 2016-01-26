@@ -2270,18 +2270,20 @@ int commander_thread_main(int argc, char *argv[])
 				 */
 				tune_negative(true);
 			}
+			if (sp_man.control_source == manual_control_setpoint_s::CONTROL_SOURCE_RC)
+			{
+				/* evaluate the main state machine according to mode switches */
+				transition_result_t main_res = set_main_state_rc(&status, &sp_man);
 
-			/* evaluate the main state machine according to mode switches */
-			transition_result_t main_res = set_main_state_rc(&status, &sp_man);
+				/* play tune on mode change only if armed, blink LED always */
+				if (main_res == TRANSITION_CHANGED) {
+					tune_positive(armed.armed);
+					main_state_changed = true;
 
-			/* play tune on mode change only if armed, blink LED always */
-			if (main_res == TRANSITION_CHANGED) {
-				tune_positive(armed.armed);
-				main_state_changed = true;
-
-			} else if (main_res == TRANSITION_DENIED) {
-				/* DENIED here indicates bug in the commander */
-				mavlink_log_critical(mavlink_fd, "main state transition denied");
+				} else if (main_res == TRANSITION_DENIED) {
+					/* DENIED here indicates bug in the commander */
+					mavlink_log_critical(mavlink_fd, "main state transition denied");
+				}
 			}
 
 		} else {
