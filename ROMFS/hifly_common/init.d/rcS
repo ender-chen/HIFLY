@@ -200,6 +200,8 @@ then
 	set GPS_FAKE no
 	set FAILSAFE none
 
+	param set MAV_SYS_ID 1
+	param set MAV_COMP_ID 50
 	param set SYS_AUTOSTART 4021
 	param set SYS_USE_IO 0
 	param set SENS_BOARD_ROT 4
