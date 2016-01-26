@@ -2400,3 +2400,11 @@ PARAM_DEFINE_INT32(PWM_AUX_MAX, 2000);
  * @group PWM Outputs
  */
 PARAM_DEFINE_INT32(PWM_AUX_DISARMED, 1000);
+
+/**
+ * Select the control source;
+ * 0 ONLY RC
+ * 1 ONLY APP
+ * 2 both RC and APP, but RC has a prioty
+ */
+PARAM_DEFINE_INT32(SENS_RC_SELECT, 2);

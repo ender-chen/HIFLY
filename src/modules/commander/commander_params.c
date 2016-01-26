@@ -287,7 +287,7 @@ PARAM_DEFINE_INT32(COM_AUTOS_PAR, 1);
  * @min 0
  * @max 2
  */
-PARAM_DEFINE_INT32(COM_RC_IN_MODE, 0);
+PARAM_DEFINE_INT32(COM_RC_IN_MODE, 2);
 
 /**
  * Time-out for auto disarm after landing

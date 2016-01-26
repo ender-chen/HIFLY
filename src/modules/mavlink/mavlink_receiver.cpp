@@ -122,6 +122,7 @@ MavlinkReceiver::MavlinkReceiver(Mavlink *parent) :
 	_vision_position_pub(nullptr),
 	_telemetry_status_pub(nullptr),
 	_rc_pub(nullptr),
+	_app_pub(nullptr),
 	_manual_pub(nullptr),
 	_land_detector_pub(nullptr),
 	_time_offset_pub(nullptr),
@@ -1097,7 +1098,7 @@ MavlinkReceiver::handle_message_manual_control(mavlink_message_t *msg)
 	}
 
 	if (_mavlink->get_manual_input_mode_generation()) {
-
+#if 0
 		struct rc_input_values rc = {};
 		rc.timestamp_publication = hrt_absolute_time();
 		rc.timestamp_last_signal = rc.timestamp_publication;
@@ -1139,7 +1140,21 @@ MavlinkReceiver::handle_message_manual_control(mavlink_message_t *msg)
 		} else {
 			orb_publish(ORB_ID(input_rc), _rc_pub, &rc);
 		}
+#endif
+		struct app_control_setpoint_s app = {};
 
+		app.timestamp = hrt_absolute_time();
+		app.x = man.x / 1000.0f;
+		app.y = man.y / 1000.0f;
+		app.r = man.r / 1000.0f;
+		app.z = man.z / 1000.0f;
+
+		if (_app_pub == nullptr) {
+			_app_pub = orb_advertise(ORB_ID(app_control_setpoint), &app);
+
+		} else {
+			orb_publish(ORB_ID(app_control_setpoint), _app_pub, &app);
+		}
 	} else {
 		struct manual_control_setpoint_s manual = {};
 

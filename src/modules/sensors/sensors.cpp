@@ -88,6 +88,7 @@
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/rc_channels.h>
 #include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/topics/app_control_setpoint.h>
 #include <uORB/topics/actuator_controls.h>
 #include <uORB/topics/vehicle_control_mode.h>
 #include <uORB/topics/parameter_update.h>
@@ -217,7 +218,8 @@ private:
 	unsigned	_mag_count;			/**< raw mag data count */
 	unsigned	_baro_count;			/**< raw baro data count */
 
-	int 		_rc_sub;			/**< raw rc channels data subscription */
+	int 	_rc_sub;			/**< raw rc channels data subscription */
+	int		_app_sub;			/**< raw app channels data subscription */
 	int		_diff_pres_sub;			/**< raw differential pressure subscription */
 	int		_vcontrol_mode_sub;		/**< vehicle control mode subscription */
 	int 		_params_sub;			/**< notification of parameter updates */
@@ -247,7 +249,13 @@ private:
 
 	uint64_t _battery_discharged;			/**< battery discharged current in mA*ms */
 	hrt_abstime _battery_current_timestamp;		/**< timestamp of last battery current reading */
-
+	bool _rc_signal_lost;
+	enum control_source_select
+	{
+		ONLY_RC,
+		ONLY_APP,
+		RC_AND_APP
+	} _control_source_select;
 	struct {
 		float min[_rc_max_chan_count];
 		float trim[_rc_max_chan_count];
@@ -310,6 +318,7 @@ private:
 		float battery_current_scaling;
 
 		float baro_qnh;
+		int32_t rc_select;
 
 	}		_parameters;			/**< local copies of interesting parameters */
 
@@ -370,8 +379,10 @@ private:
 		param_t board_offset[3];
 
 		param_t baro_qnh;
+		param_t rc_select;
 
 	}		_parameter_handles;		/**< handles for interesting parameters */
+
 
 
 	int		init_sensor_class(const struct orb_metadata *meta, int *subs,
@@ -529,7 +540,8 @@ Sensors::Sensors() :
 	_mag_rotation{},
 
 	_battery_discharged(0),
-	_battery_current_timestamp(0)
+	_battery_current_timestamp(0),
+	_rc_signal_lost(true)
 {
 	/* initialize subscriptions */
 	for (unsigned i = 0; i < SENSOR_COUNT_MAX; i++) {
@@ -633,6 +645,9 @@ Sensors::Sensors() :
 
 	/* Barometer QNH */
 	_parameter_handles.baro_qnh = param_find("SENS_BARO_QNH");
+
+	/* RC_SELECT */
+	_parameter_handles.rc_select = param_find("SENS_RC_SELECT");
 
 	// These are parameters for which QGroundControl always expects to be returned in a list request.
 	// We do a param_find here to force them into the list.
@@ -919,6 +934,9 @@ Sensors::parameters_update()
 			return ERROR;
 		}
 	}
+	/* update rc input mode */
+	param_get(_parameter_handles.rc_select, &(_parameters.rc_select));
+	_control_source_select = (enum control_source_select)_parameter_handles.rc_select;
 
 	return OK;
 }
@@ -1811,26 +1829,25 @@ Sensors::set_params_from_rc()
 void
 Sensors::rc_poll()
 {
-	bool rc_updated;
+	bool rc_updated = false;
 	orb_check(_rc_sub, &rc_updated);
-
-	if (rc_updated) {
+	bool app_updated = false;
+	orb_check(_app_sub, &app_updated);
+	if (rc_updated && (_control_source_select == ONLY_RC || _control_source_select == RC_AND_APP)) {
 		/* read low-level values from FMU or IO RC inputs (PPM, Spektrum, S.Bus) */
 		struct rc_input_values rc_input;
 
 		orb_copy(ORB_ID(input_rc), _rc_sub, &rc_input);
 
-		/* detect RC signal loss */
-		bool signal_lost;
 
 		/* check flags and require at least four channels to consider the signal valid */
 		if (rc_input.rc_lost || rc_input.rc_failsafe || rc_input.channel_count < 4) {
 			/* signal is lost or no enough channels */
-			signal_lost = true;
+			_rc_signal_lost = true;
 
 		} else {
 			/* signal looks good */
-			signal_lost = false;
+			_rc_signal_lost = false;
 
 			/* check failsafe */
 			int8_t fs_ch = _rc.function[_parameters.rc_map_failsafe]; // get channel mapped to throttle
@@ -1844,7 +1861,7 @@ Sensors::rc_poll()
 				if ((_parameters.rc_fails_thr < _parameters.min[fs_ch] && rc_input.values[fs_ch] < _parameters.rc_fails_thr) ||
 				    (_parameters.rc_fails_thr > _parameters.max[fs_ch] && rc_input.values[fs_ch] > _parameters.rc_fails_thr)) {
 					/* failsafe triggered, signal is lost by receiver */
-					signal_lost = true;
+					_rc_signal_lost = true;
 				}
 			}
 		}
@@ -1908,7 +1925,7 @@ Sensors::rc_poll()
 
 		_rc.channel_count = rc_input.channel_count;
 		_rc.rssi = rc_input.rssi;
-		_rc.signal_lost = signal_lost;
+		_rc.signal_lost = _rc_signal_lost;
 		_rc.timestamp = rc_input.timestamp_last_signal;
 		_rc.frame_drop_count = rc_input.rc_lost_frame_count;
 
@@ -1919,8 +1936,8 @@ Sensors::rc_poll()
 		} else {
 			_rc_pub = orb_advertise(ORB_ID(rc_channels), &_rc);
 		}
-
-		if (!signal_lost) {
+		/* If it is not the only app control source choice */
+		if (!_rc_signal_lost) {
 			struct manual_control_setpoint_s manual;
 			memset(&manual, 0 , sizeof(manual));
 
@@ -1955,7 +1972,7 @@ Sensors::rc_poll()
 					     _parameters.rc_acro_inv);
 			manual.offboard_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_OFFBOARD,
 						 _parameters.rc_offboard_th, _parameters.rc_offboard_inv);
-
+			manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_RC;
 			/* publish manual_control_setpoint topic */
 			if (_manual_control_pub != nullptr) {
 				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
@@ -1994,6 +2011,26 @@ Sensors::rc_poll()
 				set_params_from_rc();
 				last_rc_to_param_map_time = hrt_absolute_time();
 			}
+		}
+	}
+	/* If it is not the only rc source control choice*/
+	if (app_updated && ((_control_source_select == RC_AND_APP && _rc_signal_lost) || _control_source_select == ONLY_APP))
+	{
+		struct app_control_setpoint_s app_control;
+		orb_copy(ORB_ID(app_control_setpoint), _app_sub, &app_control);
+		struct manual_control_setpoint_s manual;
+		memset(&manual, 0 , sizeof(manual));
+		manual.timestamp = hrt_absolute_time();
+		manual.y = app_control.y;
+		manual.x = app_control.x;
+		manual.r = app_control.r;
+		manual.z = app_control.z;
+		manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_APP;
+		if (_manual_control_pub != nullptr) {
+			orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
+
+		} else {
+			_manual_control_pub = orb_advertise(ORB_ID(manual_control_setpoint), &manual);
 		}
 	}
 }
@@ -2104,6 +2141,7 @@ Sensors::task_main()
 	}
 
 	_rc_sub = orb_subscribe(ORB_ID(input_rc));
+	_app_sub = orb_subscribe(ORB_ID(app_control_setpoint));
 	_diff_pres_sub = orb_subscribe(ORB_ID(differential_pressure));
 	_vcontrol_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));

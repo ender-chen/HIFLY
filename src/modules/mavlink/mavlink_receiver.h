@@ -74,6 +74,7 @@
 #include <uORB/topics/vehicle_force_setpoint.h>
 #include <uORB/topics/time_offset.h>
 #include <uORB/topics/distance_sensor.h>
+#include <uORB/topics/app_control_setpoint.h>
 
 #include "mavlink_ftp.h"
 
@@ -190,6 +191,7 @@ private:
 	orb_advert_t _vision_position_pub;
 	orb_advert_t _telemetry_status_pub;
 	orb_advert_t _rc_pub;
+	orb_advert_t _app_pub;
 	orb_advert_t _manual_pub;
 	orb_advert_t _land_detector_pub;
 	orb_advert_t _time_offset_pub;

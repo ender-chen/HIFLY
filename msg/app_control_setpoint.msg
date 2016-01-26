@@ -1,14 +1,3 @@
-
-uint8 SWITCH_POS_NONE = 0		# switch is not mapped
-uint8 SWITCH_POS_ON = 1			# switch activated (value = 1)
-uint8 SWITCH_POS_MIDDLE = 2		# middle position (value = 0)
-uint8 SWITCH_POS_OFF = 3		# switch not activated (value = -1)
-uint64 timestamp
-
-uint8 CONTROL_SOURCE_NONE = 0
-uint8 CONTROL_SOURCE_RC = 1
-uint8 CONTROL_SOURCE_APP = 2
-
 # Any of the channels may not be available and be set to NaN
 # to indicate that it does not contain valid data.
 # The variable names follow the definition of the
@@ -16,6 +5,7 @@ uint8 CONTROL_SOURCE_APP = 2
 # The default range is from -1 to 1 (mavlink message -1000 to 1000)
 # The range for the z variable is defined from 0 to 1. (The z field of
 # the MANUAL_CONTROL mavlink message is defined from -1000 to 1000)
+uint64 timestamp
 
 float32 x			 # stick position in x direction -1..1
 				 # in general corresponds to forward/back motion or pitch of vehicle,
@@ -33,19 +23,4 @@ float32 z			 # throttle stick position 0..1
 float32 r			 # yaw stick/twist position, -1..1
 				 # in general corresponds to the righthand rotation around the vertical
 				 # (downwards) axis of the vehicle
-float32 flaps			 # flap position
-float32 aux1			 # default function: camera yaw / azimuth
-float32 aux2			 # default function: camera pitch / tilt
-float32 aux3			 # default function: camera trigger
-float32 aux4			 # default function: camera roll
-float32 aux5			 # default function: payload drop
 
-uint8 mode_switch		 # main mode 3 position switch (mandatory): _MANUAL_, ASSIST, AUTO
-uint8 return_switch		 # return to launch 2 position switch (mandatory): _NORMAL_, RTL
-uint8 rattitude_switch		 # rattitude control 2 position switch (optional): _MANUAL, RATTITUDE
-uint8 posctl_switch		 # position control 2 position switch (optional): _ALTCTL_, POSCTL
-uint8 loiter_switch		 # loiter 2 position switch (optional): _MISSION_, LOITER
-uint8 acro_switch		 # acro 2 position switch (optional): _MANUAL_, ACRO
-uint8 offboard_switch		 # offboard 2 position switch (optional): _NORMAL_, OFFBOARD
-
-uint8 control_source     #control source select
