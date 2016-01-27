@@ -936,7 +936,7 @@ Sensors::parameters_update()
 	}
 	/* update rc input mode */
 	param_get(_parameter_handles.rc_select, &(_parameters.rc_select));
-	_control_source_select = (enum control_source_select)_parameter_handles.rc_select;
+	_control_source_select = (enum control_source_select)_parameters.rc_select;
 
 	return OK;
 }
