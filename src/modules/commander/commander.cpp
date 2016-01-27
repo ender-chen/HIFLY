@@ -1121,21 +1121,9 @@ int commander_thread_main(int argc, char *argv[])
 	// We want to accept RC inputs as default
 	status.rc_input_blocked = false;
 	status.rc_input_mode = vehicle_status_s::RC_IN_MODE_DEFAULT;
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-	status.main_state =vehicle_status_s::MAIN_STATE_MANUAL;
-	status.main_state_prev = vehicle_status_s::MAIN_STATE_MAX;
-	status.nav_state = vehicle_status_s::NAVIGATION_STATE_MANUAL;
-=======
 	status.main_state =vehicle_status_s::MAIN_STATE_AUTO_IDLE;
 	status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
 	status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE;
->>>>>>> Stashed changes
-=======
-	status.main_state =vehicle_status_s::MAIN_STATE_AUTO_IDLE;
-	status.main_state_prev = vehicle_status_s::MAIN_STATE_MAX;
-	status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE;
->>>>>>> eae123d... [Feature] Auto go to IDLE state, when landed.
 	status.arming_state = vehicle_status_s::ARMING_STATE_INIT;
 
 	if(startup_in_hil) {
@@ -1831,16 +1819,8 @@ int commander_thread_main(int argc, char *argv[])
 
 				if (status.condition_landed) {
 					mavlink_and_console_log_info(mavlink_fd, "LANDING DETECTED");
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-					main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
->>>>>>> eae123d... [Feature] Auto go to IDLE state, when landed.
-
-=======
 					main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
 					status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
->>>>>>> Stashed changes
 				} else {
 					mavlink_and_console_log_info(mavlink_fd, "TAKEOFF DETECTED");
 				}
