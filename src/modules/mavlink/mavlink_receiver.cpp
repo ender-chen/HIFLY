@@ -1210,9 +1210,14 @@ MavlinkReceiver::handle_message_ping(mavlink_message_t *msg)
 	mavlink_msg_ping_decode( msg, &ping);
 	if ((mavlink_system.sysid == ping.target_system) &&
 		(mavlink_system.compid == ping.target_component)) {
+#if 0
 		mavlink_message_t msg_out;
 		mavlink_msg_ping_encode(_mavlink->get_system_id(), _mavlink->get_component_id(), &msg_out, &ping);
 		_mavlink->send_message(MAVLINK_MSG_ID_PING, &msg_out);
+#endif
+		ping.target_system = msg->sysid;
+		ping.target_component = msg->compid;
+		_mavlink->send_message(MAVLINK_MSG_ID_PING, &ping);
 	}
 }
 
