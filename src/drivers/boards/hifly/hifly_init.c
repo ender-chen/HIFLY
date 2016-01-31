@@ -208,7 +208,9 @@ stm32_boardinitialize(void)
 static struct spi_dev_s *spi1;
 static struct spi_dev_s *spi2;
 static struct spi_dev_s *spi4;
+#ifdef CONFIG_MMCSD
 static struct sdio_dev_s *sdio;
+#endif
 
 #include <math.h>
 
