@@ -70,7 +70,9 @@
 __EXPORT void stm32_spiinitialize(void)
 {
 #ifdef CONFIG_STM32_SPI1
-//	stm32_configgpio(GPIO_SPI_CS_GYRO);
+	stm32_configgpio(GPIO_SPI_CS_GYRO);
+	//Hawk: we don't use lsm303d so disable it
+	//pengyin.huang: our hifly_v1 have lsm303d
 	stm32_configgpio(GPIO_SPI_CS_ACCEL_MAG);
 	stm32_configgpio(GPIO_SPI_CS_BARO);
 //	stm32_configgpio(GPIO_SPI_CS_HMC);
@@ -82,6 +84,8 @@ __EXPORT void stm32_spiinitialize(void)
 	 * state machines
 	 */
 	stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+	//Hawk: we don't use lsm303d so disable it
+	//pengyin.huang: our hifly_v1 have lsm303d
 	stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 	stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 //	stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -90,6 +94,7 @@ __EXPORT void stm32_spiinitialize(void)
 
 	stm32_configgpio(GPIO_EXTI_GYRO_DRDY);
 	stm32_configgpio(GPIO_EXTI_MAG_DRDY);
+	//Hawk: we don't use lsm303d so disable it
 //	stm32_configgpio(GPIO_EXTI_ACCEL_DRDY);
 	stm32_configgpio(GPIO_EXTI_MPU_DRDY);
 #endif
@@ -126,6 +131,8 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 	case PX4_SPIDEV_GYRO:
 		/* Making sure the other peripherals are not selected */
 		stm32_gpiowrite(GPIO_SPI_CS_GYRO, !selected);
+	    //Hawk: we don't use lsm303d so disable it
+		//pengyin.huang: our hifly_v1 have lsm303d
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 //		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -144,6 +151,8 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 	case PX4_SPIDEV_BARO:
 		/* Making sure the other peripherals are not selected */
 		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+	    //Hawk: we don't use lsm303d so disable it
+		//pengyin.huang: our hifly_v1 have lsm303d
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, !selected);
 //		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -162,6 +171,8 @@ __EXPORT void stm32_spi1select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 	case PX4_SPIDEV_MPU:
 		/* Making sure the other peripherals are not selected */
 		stm32_gpiowrite(GPIO_SPI_CS_GYRO, 1);
+	    //Hawk: we don't use lsm303d so disable it
+		//pengyin.huang: our hifly_v1 have lsm303d
 		stm32_gpiowrite(GPIO_SPI_CS_ACCEL_MAG, 1);
 		stm32_gpiowrite(GPIO_SPI_CS_BARO, 1);
 //		stm32_gpiowrite(GPIO_SPI_CS_HMC, 1);
@@ -208,6 +219,7 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 		stm32_gpiowrite(GPIO_SPI_CS_EXT3, 1);
 #endif
 		break;
+
 //Hawk: we don't use external SPI 1,2,3 so disable them now
 #if 0
 	case PX4_SPIDEV_EXT1:
@@ -234,6 +246,7 @@ __EXPORT void stm32_spi4select(FAR struct spi_dev_s *dev, enum spi_dev_e devid, 
 		stm32_gpiowrite(GPIO_SPI_CS_EXT3, !selected);
 		break;
 #endif
+
 	default:
 		break;
 
