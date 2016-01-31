@@ -45,6 +45,7 @@
 #include "board_config.h"
 
 #include <arch/board/board.h>
+#include <drivers/drv_led.h>
 
 /*
  * Ideally we'd be able to get these from up_internal.h,
@@ -72,18 +73,18 @@ __EXPORT void led_init()
 
 __EXPORT void led_on(int led)
 {
-	if (led == 3)
+	if (led == LED_GREEN)
 	{
 		/* Pull down to switch on */
 		stm32_gpiowrite(GPIO_LED1, true);
 		stm32_gpiowrite(GPIO_LED2, false);
 	}
-	else if(led == 1)
+	else if(led == LED_AMBER)
 	{
 		stm32_gpiowrite(GPIO_LED2, true);
 		stm32_gpiowrite(GPIO_LED1, false);
 	}
-	else if(led == 5)
+	else if(led == LED_YELLOW)
 	{
 		stm32_gpiowrite(GPIO_LED1, true);
 		stm32_gpiowrite(GPIO_LED2, true);
@@ -92,18 +93,18 @@ __EXPORT void led_on(int led)
 
 __EXPORT void led_off(int led)
 {
-	if (led == 3)
+	if (led == LED_GREEN)
 	{
 		/* Pull down to switch on */
 		stm32_gpiowrite(GPIO_LED1, false);
 		stm32_gpiowrite(GPIO_LED2, false);
 	}
-	else if(led == 1)
+	else if(led == LED_AMBER)
 	{
 		stm32_gpiowrite(GPIO_LED2, false);
 		stm32_gpiowrite(GPIO_LED1, false);
 	}
-	else if(led == 5)
+	else if(led == LED_YELLOW)
 	{
 		stm32_gpiowrite(GPIO_LED1, false);
 		stm32_gpiowrite(GPIO_LED2, false);
@@ -112,7 +113,7 @@ __EXPORT void led_off(int led)
 
 __EXPORT void led_toggle(int led)
 {
-	if (led == 3)
+	if (led == LED_GREEN)
 	{
 		if(stm32_gpioread(GPIO_LED1))
 		{
@@ -125,7 +126,7 @@ __EXPORT void led_toggle(int led)
 			stm32_gpiowrite(GPIO_LED2, false);
 		}
 	}
-	else if(led == 1)
+	else if(led == LED_AMBER)
 	{
 		if(stm32_gpioread(GPIO_LED2))
 		{
@@ -138,7 +139,7 @@ __EXPORT void led_toggle(int led)
 			stm32_gpiowrite(GPIO_LED2, true);
 		}
 	}
-	else if(led == 5)
+	else if(led == LED_YELLOW)
 	{
 		if(stm32_gpioread(GPIO_LED1) || stm32_gpioread(GPIO_LED2))
 		{

@@ -35,7 +35,7 @@
 /****************************************************************************
  * Included Files
  ****************************************************************************/
-
+#include <px4_posix.h>
 #include <nuttx/config.h>
 
 #include <sys/types.h>
@@ -85,7 +85,7 @@
 int led_ctl_open(void)
 {
 	int		fd = -1;
-	fd = open(LED0_DEVICE_PATH, 0);
+	fd = px4_open(LED0_DEVICE_PATH, 0);
 	if (fd < 0) {
 		printf("\tLED: open fail\n");
 		return ERROR;

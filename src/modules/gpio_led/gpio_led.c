@@ -154,7 +154,7 @@ int gpio_led_main(int argc, char *argv[])
 					}
 
 #endif
-#if defined(CONFIG_ARCH_BOARD_PX4FMU_V2) || defined(CONFIG_ARCH_BOARD_PX4FMU_V4) || defined(CONFIG_ARCH_BOARD_HIFLY)
+#if defined(CONFIG_ARCH_BOARD_PX4FMU_V2) || defined(CONFIG_ARCH_BOARD_PX4FMU_V4)
 					unsigned int n = strtoul(argv[3], NULL, 10);
 
 					if (n >= 1 && n <= 6) {

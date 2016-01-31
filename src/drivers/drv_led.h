@@ -54,6 +54,7 @@
 #define LED_BLUE		0
 #define LED_SAFETY		2
 #define LED_GREEN		3
+#define LED_YELLOW		5
 
 
 #define LED_ON			_PX4_IOC(_LED_BASE, 0)
