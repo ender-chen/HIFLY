@@ -1439,6 +1439,8 @@ int commander_thread_main(int argc, char *argv[])
 	/* check which state machines for changes, clear "changed" flag */
 	bool arming_state_changed = false;
 	bool main_state_changed = false;
+	bool control_source_changed = false;
+	uint8_t previous_control_source = 0;
 	bool failsafe_old = false;
 
 	uint32_t period_closed_motor_takeoff = 10 * 1000 * 1000;
@@ -2510,6 +2512,24 @@ int commander_thread_main(int argc, char *argv[])
 				_time_on_off_before_takeoff = 0;
 			}
 		}
+		if (sp_man.control_source != previous_control_source)
+		{
+			control_source_changed = true;
+			warnx("control_source changed");
+		}
+		previous_control_source = sp_man.control_source;
+		if (control_source_changed)
+		{
+			if (status.condition_landed)
+			{
+				main_state_transition(&status, vehicle_status_s::MAIN_STATE_AUTO_IDLE);
+				status.main_state_prev = vehicle_status_s::MAIN_STATE_AUTO_IDLE;
+				mavlink_log_info(mavlink_fd,"control_source changed reset to idle.");
+			}
+			control_source_changed = false;
+			memset(&_last_sp_man, 0, sizeof(_last_sp_man));
+		}
+
 
 		/* handle commands last, as the system needs to be updated to handle them */
 		orb_check(cmd_sub, &updated);
