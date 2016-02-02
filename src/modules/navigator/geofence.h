@@ -46,12 +46,17 @@
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/home_position.h>
+#include <uORB/topics/geofence_result.h>
 #include <controllib/blocks.hpp>
 #include <controllib/block/BlockParam.hpp>
 #include <drivers/drv_hrt.h>
 #include <px4_defines.h>
 
 #define GEOFENCE_FILENAME PX4_ROOTFSDIR"/fs/microsd/etc/geofence.txt"
+#define RESTRICTED_AREA_FILENAME PX4_ROOTFSDIR"/etc/geofence/database.txt"
+
+#define RESTRICTED_AREA_VIOLATED "[geofence] restricted area violated"
+#define RESTRICTED_AREA_APPROACH "[geofence] restricted area approach"
 
 class Geofence : public control::SuperBlock
 {
@@ -84,6 +89,8 @@ public:
 
 	bool inside_polygon(double lat, double lon, float altitude);
 
+	int inside_restricted_area(double lat, double lon);
+
 	int clearDm();
 
 	bool valid();
@@ -94,6 +101,8 @@ public:
 	void addPoint(int argc, char *argv[]);
 
 	void publishFence(unsigned vertices);
+
+	int load_restricted_area(const char *filename);
 
 	int loadFromFile(const char *filename);
 
@@ -115,11 +124,14 @@ private:
 
 	hrt_abstime _last_horizontal_range_warning;
 	hrt_abstime _last_vertical_range_warning;
+	hrt_abstime _last_restricted_area_violated_warning;
+	hrt_abstime _last_restricted_area_approach_warning;
 
 	float _altitude_min;
 	float _altitude_max;
 
 	unsigned _vertices_count;
+	unsigned int _restricted_area_count;
 
 	/* Params */
 	control::BlockParamInt _param_action;
@@ -128,6 +140,8 @@ private:
 	control::BlockParamInt _param_counter_threshold;
 	control::BlockParamInt _param_max_hor_distance;
 	control::BlockParamInt _param_max_ver_distance;
+	control::BlockParamInt _param_safe_distance;
+	control::BlockParamInt _param_warn_distance;
 
 	unsigned _outside_counter;
 

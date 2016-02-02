@@ -159,6 +159,8 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define HIL_ID_MIN 1000
 #define HIL_ID_MAX 1999
 
+#define RESTRICTED_AREA_BIT_MASK 0xffcf
+#define RESTRICTED_AREA_BIT_SHIFT 4
 
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
@@ -1169,6 +1171,7 @@ int commander_thread_main(int argc, char *argv[])
 	status.condition_power_input_valid = true;
 	status.avionics_power_rail_voltage = -1.0f;
 	status.usb_connected = false;
+	status.restricted_area_violated_once = false;
 
 	// CIRCUIT BREAKERS
 	status.circuit_breaker_engaged_power_check = false;
@@ -2120,6 +2123,15 @@ int commander_thread_main(int argc, char *argv[])
 
 		if (updated) {
 			orb_copy(ORB_ID(geofence_result), geofence_result_sub, &geofence_result);
+
+			if (geofence_result.restricted_area_warning == geofence_result_s::RESTRICTED_AREA_WARNING_VIOLATED) {
+				status.restricted_area_violated_once = true;
+
+			} else {
+				if (status.condition_landed) {
+					status.restricted_area_violated_once = false;
+				}
+			}
 		}
 
 		// Geofence actions
@@ -2661,6 +2673,10 @@ int commander_thread_main(int argc, char *argv[])
 			status_changed = true;
 			main_state_changed = false;
 		}
+
+		/* restricted area warning */
+		status.errors_count2 &= RESTRICTED_AREA_BIT_MASK;
+		status.errors_count2 |= geofence_result.restricted_area_warning << RESTRICTED_AREA_BIT_SHIFT;
 
 		/* publish states (armed, control mode, vehicle status) at least with 5 Hz */
 		if (counter % (200000 / COMMANDER_MONITORING_INTERVAL) == 0 || status_changed) {

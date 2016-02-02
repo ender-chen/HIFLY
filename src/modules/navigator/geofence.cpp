@@ -54,12 +54,16 @@
 #include <drivers/drv_hrt.h>
 
 #define GEOFENCE_RANGE_WARNING_LIMIT 3000000
+#define RESTRICTED_AREA_WARNING_LIMIT 3000000
 
 /* Oddly, ERROR is not defined for C++ */
 #ifdef ERROR
 # undef ERROR
 #endif
 static const int ERROR = -1;
+
+#define RESTRICTED_AREA_ITEM_MAX 768
+static float point[RESTRICTED_AREA_ITEM_MAX][2] = {0.0f};
 
 Geofence::Geofence() :
 	SuperBlock(NULL, "GF"),
@@ -68,15 +72,20 @@ Geofence::Geofence() :
 	_home_pos_set(false),
 	_last_horizontal_range_warning(0),
 	_last_vertical_range_warning(0),
+	_last_restricted_area_violated_warning(0),
+	_last_restricted_area_approach_warning(0),
 	_altitude_min(0),
 	_altitude_max(0),
 	_vertices_count(0),
+	_restricted_area_count(0),
 	_param_action(this, "ACTION"),
 	_param_altitude_mode(this, "ALTMODE"),
 	_param_source(this, "SOURCE"),
 	_param_counter_threshold(this, "COUNT"),
 	_param_max_hor_distance(this, "MAX_HOR_DIST"),
 	_param_max_ver_distance(this, "MAX_VER_DIST"),
+	_param_safe_distance(this, "SAFE_DIST"),
+	_param_warn_distance(this, "WARN_DIST"),
 	_outside_counter(0),
 	_mavlinkFd(-1)
 {
@@ -183,6 +192,127 @@ bool Geofence::inside(double lat, double lon, float altitude)
 	}
 }
 
+int Geofence::load_restricted_area(const char *filename)
+{
+	FILE *fp;
+	char line[120];
+	int pointCounter = 0;
+	const char commentChar = '#';
+	int rc = ERROR;
+
+	 /* open the mixer definition file */
+	fp = fopen(filename, "r");
+
+	if (fp == NULL) {
+		warnx("area vertex failed.");
+		return ERROR;
+	}
+
+	/* create geofence points from valid lines and store in DM */
+	for (;;) {
+
+		/* get a line, bail on error/EOF */
+		if (fgets(line, sizeof(line), fp) == NULL) {
+			break;
+		}
+
+		/* Trim leading whitespace */
+		size_t textStart = 0;
+
+		while ((textStart < sizeof(line) / sizeof(char)) && isspace(line[textStart])) { textStart++; }
+
+		/* if the line starts with #, skip */
+		if (line[textStart] == commentChar) {
+			continue;
+		}
+
+		/* if there is only a linefeed, skip it */
+		if (line[0] == '\n') {
+			continue;
+		}
+
+		/* Parse the line as a geofence point */
+		struct fence_vertex_s vertex;
+
+		/* Handle decimal degree format */
+		if (sscanf(line, "%f %f", &(vertex.lon), &(vertex.lat)) != 2) {
+			warnx("Scanf to parse restricted area vertex failed.");
+			goto error;
+		}
+
+		point[pointCounter][0] = vertex.lat;
+		point[pointCounter][1] = vertex.lon;
+
+		pointCounter++;
+
+		/* restricted area item max count */
+		if (pointCounter >= RESTRICTED_AREA_ITEM_MAX) {
+			break;
+		}
+	}
+
+	/* Check if restricted area data import was successful */
+	if ( pointCounter > 0) {
+		_restricted_area_count = pointCounter;
+		mavlink_and_console_log_info(_mavlinkFd, "geofence imported %d restricted area", pointCounter);
+		rc = OK;
+
+	} else {
+		mavlink_and_console_log_critical(_mavlinkFd, "geofence restricted area import error");
+	}
+
+error:
+	fclose(fp);
+	return rc;
+}
+
+int Geofence:: inside_restricted_area(double lat, double lon)
+{
+	int low = 0;
+	int mid = 0;
+	int high = 0;
+
+	if (_restricted_area_count == 0) {
+		return false;
+	}
+
+	high = _restricted_area_count - 1;
+
+	updateParams();
+
+	//Binary-Search
+	while (low <= high) {
+		mid = low + (high - low) / 2;
+
+		float dist = get_distance_to_next_waypoint(lat, lon, point[mid][0], point[mid][1]);
+
+		if (dist < _param_safe_distance.get()) {
+			if (hrt_elapsed_time(&_last_restricted_area_violated_warning) > RESTRICTED_AREA_WARNING_LIMIT) {
+				mavlink_and_console_log_critical(_mavlinkFd, RESTRICTED_AREA_VIOLATED);
+				_last_restricted_area_violated_warning = hrt_absolute_time();
+			}
+
+			return geofence_result_s::RESTRICTED_AREA_WARNING_VIOLATED;
+
+		} else if (dist < _param_safe_distance.get() + _param_warn_distance.get()) {
+			if ( hrt_elapsed_time(&_last_restricted_area_approach_warning) > RESTRICTED_AREA_WARNING_LIMIT) {
+				mavlink_log_critical(_mavlinkFd, RESTRICTED_AREA_APPROACH);
+				_last_restricted_area_approach_warning = hrt_absolute_time();
+			}
+
+			return geofence_result_s::RESTRICTED_AREA_WARNING_APPROACH;
+		}
+
+		if (lon > (double)point[mid][1]) {
+			low = mid + 1;
+
+		} else {
+			high = mid - 1;
+
+		}
+	}
+	return geofence_result_s::RESTRICTED_AREA_WARNING_NONE;
+}
 
 bool Geofence::inside_polygon(double lat, double lon, float altitude)
 {

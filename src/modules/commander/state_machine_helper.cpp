@@ -249,6 +249,12 @@ arming_state_transition(struct vehicle_status_s *status,		///< current vehicle s
 							valid_transition = false;
 						}
 					}
+
+					if (status->restricted_area_violated_once) {
+						mavlink_log_critical(mavlink_fd, "Restricted Area Violated, REFUSE ARMING");
+						feedback_provided = true;
+						valid_transition = false;
+					}
 				}
 
 			} else if (new_arming_state == vehicle_status_s::ARMING_STATE_STANDBY && status->arming_state == vehicle_status_s::ARMING_STATE_ARMED_ERROR) {
@@ -878,6 +884,34 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		break;
 	default:
 		break;
+	}
+
+	//restricted area check
+	if (status->restricted_area_violated_once) {
+		if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER) {
+
+			status->failsafe = true;
+			if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
+				status->nav_state == vehicle_status_s::NAVIGATION_STATE_DESCEND ||
+				status->nav_state == vehicle_status_s::NAVIGATION_STATE_TERMINATION)) {
+
+				if (status->condition_global_position_valid && status->condition_home_position_valid) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+				} else if (status->condition_local_position_valid) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+				} else if (status->condition_local_altitude_valid) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_DESCEND;
+				} else {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+				}
+			}
+		}
+		// else if (status->main_state == vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF) {
+        //   status->nav_state = vehicle_status_s::NAVIGATION_STATE_TERMINATION;
+        //}
 	}
 
 	//Low battery check
