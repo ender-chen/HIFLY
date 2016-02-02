@@ -84,7 +84,7 @@ PARAM_DEFINE_INT32(NAV_DLL_OBC, 0);
  * @max 1
  * @group Mission
  */
-PARAM_DEFINE_INT32(NAV_RCL_OBC, 0);
+PARAM_DEFINE_INT32(NAV_RCL_OBC, 1);
 
 /**
  * Airfield home Lat
