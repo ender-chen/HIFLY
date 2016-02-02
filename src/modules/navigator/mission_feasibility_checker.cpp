@@ -51,6 +51,7 @@
 #include <errno.h>
 #include <uORB/topics/fence.h>
 #include <uORB/topics/vehicle_command.h>
+#include <uORB/topics/geofence_result.h>
 
 MissionFeasibilityChecker::MissionFeasibilityChecker() :
 	_mavlink_fd(-1),
@@ -151,23 +152,27 @@ bool MissionFeasibilityChecker::checkMissionFeasibleFixedwing(dm_item_t dm_curre
 bool MissionFeasibilityChecker::checkGeofence(dm_item_t dm_current, size_t nMissionItems, Geofence &geofence)
 {
 	/* Check if all mission items are inside the geofence (if we have a valid geofence) */
-	if (geofence.valid()) {
-		for (size_t i = 0; i < nMissionItems; i++) {
-			struct mission_item_s missionitem;
-			const ssize_t len = sizeof(missionitem);
+	for (size_t i = 0; i < nMissionItems; i++) {
+		struct mission_item_s missionitem;
+		const ssize_t len = sizeof(missionitem);
 
-			if (dm_read(dm_current, i, &missionitem, len) != len) {
-				/* not supposed to happen unless the datamanager can't access the SD card, etc. */
-				return false;
-			}
+		if (dm_read(dm_current, i, &missionitem, len) != len) {
+			/* not supposed to happen unless the datamanager can't access the SD card, etc. */
+			return false;
+		}
 
+		if (geofence.inside_restricted_area(missionitem.lat, missionitem.lon) == geofence_result_s::RESTRICTED_AREA_WARNING_VIOLATED) {
+			mavlink_log_critical(_mavlink_fd, "Geofence violation for restricted area");
+			return false;
+		}
+
+		if (geofence.valid()) {
 			if (!geofence.inside_polygon(missionitem.lat, missionitem.lon, missionitem.altitude)) {
 				mavlink_log_critical(_mavlink_fd, "Geofence violation for waypoint %d", i);
 				return false;
 			}
 		}
 	}
-
 	return true;
 }
 

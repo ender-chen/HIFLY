@@ -284,6 +284,14 @@ Navigator::task_main()
 		}
 	}
 
+	if (stat(RESTRICTED_AREA_FILENAME, &buffer) == 0) {
+		mavlink_and_console_log_info(_mavlink_fd, "Try to load restricted area database");
+		_geofence.load_restricted_area(RESTRICTED_AREA_FILENAME);
+
+	} else {
+		mavlink_and_console_log_critical(_mavlink_fd, "No restricted area database found");
+	}
+
 	/* do subscriptions */
 	_global_pos_sub = orb_subscribe(ORB_ID(vehicle_global_position));
 	_gps_pos_sub = orb_subscribe(ORB_ID(vehicle_gps_position));
@@ -419,6 +427,13 @@ Navigator::task_main()
 			(_geofence.getGeofenceAction() != geofence_result_s::GF_ACTION_NONE) &&
 			(hrt_elapsed_time(&last_geofence_check) > GEOFENCE_CHECK_INTERVAL)) {
 			bool inside = _geofence.inside(_global_pos, _gps_pos, _sensor_combined.baro_alt_meter[0], _home_pos, home_position_valid());
+
+			if (_geofence.getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
+				_geofence_result.restricted_area_warning = _geofence.inside_restricted_area(_global_pos.lat, _global_pos.lon);
+			} else {
+				_geofence_result.restricted_area_warning = _geofence.inside_restricted_area((double)_gps_pos.lat * 1.0e-7, (double)_gps_pos.lon * 1.0e-7);
+			}
+
 			last_geofence_check = hrt_absolute_time();
 			have_geofence_position_data = false;
 

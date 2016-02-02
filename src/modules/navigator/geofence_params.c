@@ -111,3 +111,25 @@ PARAM_DEFINE_INT32(GF_MAX_HOR_DIST, -1);
  * @group Geofence
  */
 PARAM_DEFINE_INT32(GF_MAX_VER_DIST, -1);
+
+/**
+ * Restricted area radius in meters.
+ *
+ * Set to > 0 to activate a restricted area action.
+ *
+ * @unit meters
+ * @min -1
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_SAFE_DIST, 4000);
+
+/**
+ * Restricted area warning distance in meters.
+ *
+ * Set to > 0 to activate a restricted area warning.
+ *
+ * @unit meters
+ * @min -1
+ * @group Geofence
+ */
+PARAM_DEFINE_INT32(GF_WARN_DIST, 100);
