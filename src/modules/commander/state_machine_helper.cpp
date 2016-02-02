@@ -624,7 +624,15 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->failsafe = true;
 
 			if (status->condition_global_position_valid && status->condition_home_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+				if (status->nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER
+						&& stay_in_failsafe) {
+					status->rc_loss_finished = true;
+				}
+				if (!status->rc_loss_finished) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+				} else {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+				}
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
 			} else if (status->condition_local_altitude_valid) {
@@ -681,8 +689,15 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		} else if (status->gps_failure_cmd) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL;
 		} else if (status->rc_signal_lost_cmd) {
-			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
-
+			if (status->nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER
+					&& stay_in_failsafe) {
+				status->rc_loss_finished = true;
+			}
+			if (!status->rc_loss_finished) {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+			} else {
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+			}
 		/* finished handling commands which have priority, now handle failures */
 		} else if (status->gps_failure) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL;
@@ -712,7 +727,15 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->failsafe = true;
 
 			if (status->condition_global_position_valid && status->condition_home_position_valid) {
-				status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+				if (status->nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER
+						&& stay_in_failsafe) {
+					status->rc_loss_finished = true;
+				}
+				if (!status->rc_loss_finished) {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RCRECOVER;
+				} else {
+					status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+				}
 			} else if (status->condition_local_position_valid) {
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
 			} else if (status->condition_local_altitude_valid) {

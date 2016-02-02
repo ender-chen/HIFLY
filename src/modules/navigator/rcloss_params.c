@@ -53,4 +53,4 @@
  * @min -1.0
  * @group Radio Signal Loss
  */
-PARAM_DEFINE_FLOAT(NAV_RCL_LT, 120.0f);
+PARAM_DEFINE_FLOAT(NAV_RCL_LT, 10.0f);

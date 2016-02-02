@@ -163,6 +163,7 @@ uint64 rc_signal_lost_timestamp			# Time at which the RC reception was lost
 bool rc_signal_lost_cmd				# true if RC lost mode is commanded
 bool rc_input_blocked				# set if RC input should be ignored temporarily
 uint8 rc_input_mode				# set to 1 to disable the RC input, 2 to enable manual control to RC in mapping.
+bool rc_loss_finished
 
 bool data_link_lost				# datalink to GCS lost
 bool data_link_lost_cmd				# datalink to GCS lost mode commanded

@@ -1151,6 +1151,7 @@ int commander_thread_main(int argc, char *argv[])
 	status.rc_signal_lost = true;
 	status.offboard_control_signal_lost = true;
 	status.data_link_lost = true;
+	status.rc_loss_finished = false;
 
 	/* set battery warning flag */
 	status.battery_warning = vehicle_status_s::VEHICLE_BATTERY_WARNING_NONE;
@@ -2264,6 +2265,7 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			status.rc_signal_lost = false;
+			status.rc_loss_finished = false;
 
 			/* check if left stick is in lower left position and we are in MANUAL, Rattitude, or AUTO_READY mode or (ASSIST mode and landed) -> disarm
 			 * do it only for rotary wings */
