@@ -85,7 +85,7 @@ public:
 	 */
 	bool inside(const struct vehicle_global_position_s &global_position,
 		    const struct vehicle_gps_position_s &gps_position, float baro_altitude_amsl,
-		    const struct home_position_s home_pos, bool home_position_set);
+		    const struct home_position_s home_pos, bool home_position_set, bool &hor_violated, bool &ver_violated);
 
 	bool inside_polygon(double lat, double lon, float altitude);
 
@@ -138,8 +138,8 @@ private:
 	control::BlockParamInt _param_altitude_mode;
 	control::BlockParamInt _param_source;
 	control::BlockParamInt _param_counter_threshold;
-	control::BlockParamInt _param_max_hor_distance;
-	control::BlockParamInt _param_max_ver_distance;
+	control::BlockParamFloat _param_max_hor_distance;
+	control::BlockParamFloat _param_max_ver_distance;
 	control::BlockParamInt _param_safe_distance;
 	control::BlockParamInt _param_warn_distance;
 
@@ -147,9 +147,9 @@ private:
 
 	int _mavlinkFd;
 
-	bool inside(double lat, double lon, float altitude);
-	bool inside(const struct vehicle_global_position_s &global_position);
-	bool inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl);
+	bool inside(double lat, double lon, float altitude, bool &hor_violated, bool &ver_violated);
+	bool inside(const struct vehicle_global_position_s &global_position, bool &hor_violated, bool &ver_violated);
+	bool inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl, bool &hor_violated, bool &ver_violated);
 };
 
 

@@ -77,6 +77,7 @@
 #include <uORB/topics/position_setpoint_triplet.h>
 #include <uORB/topics/vehicle_global_velocity_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/geofence_result.h>
 
 #include <systemlib/systemlib.h>
 #include <mathlib/mathlib.h>
@@ -138,6 +139,7 @@ private:
 	int		_pos_sp_triplet_sub;		/**< position setpoint triplet */
 	int		_local_pos_sp_sub;		/**< offboard local position setpoint */
 	int		_global_vel_sp_sub;		/**< offboard global velocity setpoint */
+	int		_geofence_result_sub;	/**< geofence result*/
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -155,6 +157,7 @@ private:
 	struct position_setpoint_triplet_s		_pos_sp_triplet;	/**< vehicle global position setpoint triplet */
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
 	struct vehicle_global_velocity_setpoint_s	_global_vel_sp;		/**< vehicle global velocity setpoint */
+	struct geofence_result_s			_geofence_result;	/**< geofence result */
 
 	control::BlockParamFloat _manual_thr_min;
 	control::BlockParamFloat _manual_thr_max;
@@ -352,6 +355,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_local_pos_sub(-1),
 	_pos_sp_triplet_sub(-1),
 	_global_vel_sp_sub(-1),
+	_geofence_result_sub(-1),
 
 	/* publications */
 	_att_sp_pub(nullptr),
@@ -393,6 +397,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	memset(&_global_vel_sp, 0, sizeof(_global_vel_sp));
 
 	memset(&_ref_pos, 0, sizeof(_ref_pos));
+	memset(&_geofence_result, 0, sizeof(_geofence_result));
 
 	_params.pos_p.zero();
 	_params.vel_p.zero();
@@ -626,6 +631,12 @@ MulticopterPositionControl::poll_subscriptions()
 	if (updated) {
 		orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
 	}
+
+	orb_check(_geofence_result_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(geofence_result), _geofence_result_sub, &_geofence_result);
+	}
 }
 
 float
@@ -763,6 +774,36 @@ MulticopterPositionControl::control_manual(float dt)
 	math::Vector<3> req_vel_sp_scaled = R_yaw_sp * req_vel_sp.emult(
 			_params.vel_max); // in NED and scaled to actual velocity
 
+	static float slow_down = 1.0f;
+	if (_control_mode.flag_control_position_enabled && _geofence_result.hor_violated) {
+		/* check for pos violated */
+		float req_vel_sp_scaled_length = sqrtf(req_vel_sp_scaled(0) * req_vel_sp_scaled(0) +
+										req_vel_sp_scaled(1) * req_vel_sp_scaled(1));
+		float pos_length = sqrtf(_pos(0) * _pos(0) + _pos(1) * _pos(1));
+		float dot_product = _pos(0) * req_vel_sp_scaled(0) + _pos(1) * req_vel_sp_scaled(1);
+		double angle = acos(dot_product / (req_vel_sp_scaled_length * pos_length));
+
+		if(slow_down > 0.0f) {
+			slow_down -= dt;
+		} else {
+			slow_down = 0.0f;
+		}
+
+		if (PX4_ISFINITE(angle) && angle < M_PI_2) {
+			/* far away from home, slow the vehicle down */
+			req_vel_sp_scaled(0) *= slow_down;
+			req_vel_sp_scaled(1) *= slow_down;
+		}
+
+	} else {
+		slow_down = 1.0f;
+	}
+
+	if (_control_mode.flag_control_altitude_enabled && _geofence_result.ver_violated) {
+		if (req_vel_sp_scaled(2) < 0.0f) {
+			req_vel_sp_scaled(2) = 0.0f;
+		}
+	}
 	/*
 	 * assisted velocity mode: user controls velocity, but if	velocity is small enough, position
 	 * hold is activated for the corresponding axis
@@ -1110,6 +1151,7 @@ MulticopterPositionControl::task_main()
 	_pos_sp_triplet_sub = orb_subscribe(ORB_ID(position_setpoint_triplet));
 	_local_pos_sp_sub = orb_subscribe(ORB_ID(vehicle_local_position_setpoint));
 	_global_vel_sp_sub = orb_subscribe(ORB_ID(vehicle_global_velocity_setpoint));
+	_geofence_result_sub = orb_subscribe(ORB_ID(geofence_result));
 
 
 	parameters_update(true);
