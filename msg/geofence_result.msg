@@ -11,3 +11,5 @@ uint8 RESTRICTED_AREA_WARNING_VIOLATED = 2	# restricted area violated
 bool geofence_violated		# true if the geofence is violated
 uint8 geofence_action       # action to take when geofence is violated
 uint8 restricted_area_warning	# warning of restricted area
+bool ver_violated	# true if the vertical altitude is violated
+bool hor_violated	# true if the horizontal distance is violated

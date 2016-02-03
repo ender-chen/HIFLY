@@ -99,20 +99,20 @@ Geofence::~Geofence()
 }
 
 
-bool Geofence::inside(const struct vehicle_global_position_s &global_position)
+bool Geofence::inside(const struct vehicle_global_position_s &global_position, bool &hor_violated, bool &ver_violated)
 {
-	return inside(global_position.lat, global_position.lon, global_position.alt);
+	return inside(global_position.lat, global_position.lon, global_position.alt, hor_violated, ver_violated);
 }
 
-bool Geofence::inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl)
+bool Geofence::inside(const struct vehicle_global_position_s &global_position, float baro_altitude_amsl, bool &hor_violated, bool &ver_violated)
 {
-	return inside(global_position.lat, global_position.lon, baro_altitude_amsl);
+	return inside(global_position.lat, global_position.lon, baro_altitude_amsl, hor_violated, ver_violated);
 }
 
 
 bool Geofence::inside(const struct vehicle_global_position_s &global_position,
 		      const struct vehicle_gps_position_s &gps_position, float baro_altitude_amsl,
-		      const struct home_position_s home_pos, bool home_position_set)
+		      const struct home_position_s home_pos, bool home_position_set, bool &hor_violated, bool &ver_violated)
 {
 	updateParams();
 
@@ -121,28 +121,31 @@ bool Geofence::inside(const struct vehicle_global_position_s &global_position,
 
 	if (getAltitudeMode() == Geofence::GF_ALT_MODE_WGS84) {
 		if (getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
-			return inside(global_position);
+			return inside(global_position, hor_violated, ver_violated);
 
 		} else {
 			return inside((double)gps_position.lat * 1.0e-7, (double)gps_position.lon * 1.0e-7,
-				      (double)gps_position.alt * 1.0e-3);
+				      (double)gps_position.alt * 1.0e-3, hor_violated, ver_violated);
 		}
 
 	} else {
 		if (getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
-			return inside(global_position, baro_altitude_amsl);
+			return inside(global_position, baro_altitude_amsl, hor_violated, ver_violated);
 
 		} else {
 			return inside((double)gps_position.lat * 1.0e-7, (double)gps_position.lon * 1.0e-7,
-				      baro_altitude_amsl);
+				      baro_altitude_amsl, hor_violated, ver_violated);
 		}
 	}
 }
 
-bool Geofence::inside(double lat, double lon, float altitude)
+bool Geofence::inside(double lat, double lon, float altitude, bool &hor_violated, bool &ver_violated)
 {
-		int32_t max_horizontal_distance = _param_max_hor_distance.get();
-		int32_t max_vertical_distance = _param_max_ver_distance.get();
+		float max_horizontal_distance = _param_max_hor_distance.get();
+		float max_vertical_distance = _param_max_ver_distance.get();
+
+		hor_violated = false;
+		ver_violated = false;
 
 		if (max_horizontal_distance > 0 || max_vertical_distance > 0) {
 			if (_home_pos_set) {
@@ -159,7 +162,7 @@ bool Geofence::inside(double lat, double lon, float altitude)
 						_last_vertical_range_warning = hrt_absolute_time();
 					}
 
-					return false;
+					ver_violated = true;
 				}
 
 				if (max_horizontal_distance > 0 && (dist_xy > max_horizontal_distance)) {
@@ -169,11 +172,12 @@ bool Geofence::inside(double lat, double lon, float altitude)
 						_last_horizontal_range_warning = hrt_absolute_time();
 					}
 
-					return false;
+					hor_violated = true;
 				}
 			}
 		}
 
+/*
 	bool inside_fence = inside_polygon(lat, lon, altitude);
 
 	if (inside_fence) {
@@ -190,6 +194,9 @@ bool Geofence::inside(double lat, double lon, float altitude)
 			return true;
 		}
 	}
+*/
+
+	return !(ver_violated || hor_violated);
 }
 
 int Geofence::load_restricted_area(const char *filename)
