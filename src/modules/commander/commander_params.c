@@ -299,7 +299,7 @@ PARAM_DEFINE_INT32(COM_RC_IN_MODE, 2);
  * @group Commander
  * @min 0
  */
-PARAM_DEFINE_INT32(COM_DISARM_LAND, 0);
+PARAM_DEFINE_INT32(COM_DISARM_LAND, 1);
 
  /**
  * Out of control, disarmed
