@@ -529,7 +529,7 @@ protected:
 
 		if (_cmd_sub->update(&_cmd_time, &cmd)) {
 			/* only send commands for other systems/components */
-			if (cmd.target_system != mavlink_system.sysid || cmd.target_component != mavlink_system.compid) {
+			if ((cmd.target_system != mavlink_system.sysid || cmd.target_component != mavlink_system.compid) && cmd.target_system != 0 && cmd.target_component != 0) {
 				mavlink_command_long_t msg;
 
 				msg.target_system = cmd.target_system;
