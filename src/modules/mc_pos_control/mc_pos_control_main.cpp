@@ -1986,6 +1986,14 @@ MulticopterPositionControl::task_main()
 				control_auto(dt);
 			}
 
+			/* weather-vane mode for vtol: disable yaw control */
+			if(_mode_auto && _pos_sp_triplet.current.disable_mc_yaw_control == true) {
+				_att_sp.disable_mc_yaw_control = true;
+			} else {
+				/* reset in case of setpoint updates */
+				_att_sp.disable_mc_yaw_control = false;
+			}
+
 			if (_control_mode.flag_control_auto_enabled && _pos_sp_triplet.current.valid
 			    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 				/* idle state, don't run controller and set zero thrust */
