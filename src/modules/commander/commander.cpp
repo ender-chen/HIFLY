@@ -162,6 +162,10 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define RESTRICTED_AREA_BIT_MASK 0xffcf
 #define RESTRICTED_AREA_BIT_SHIFT 4
 
+#define GEOFENCE_BIT_MASK 0xff3f
+#define GEOFENCE_HOR_BIT_SHIFT 7
+#define GEOFENCE_VER_BIT_SHIFT 6
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -2677,6 +2681,16 @@ int commander_thread_main(int argc, char *argv[])
 		/* restricted area warning */
 		status.errors_count2 &= RESTRICTED_AREA_BIT_MASK;
 		status.errors_count2 |= geofence_result.restricted_area_warning << RESTRICTED_AREA_BIT_SHIFT;
+
+		/* restricted area warning */
+		status.errors_count2 &= GEOFENCE_BIT_MASK;
+		if (geofence_result.hor_violated) {
+			status.errors_count2 |= 1 << GEOFENCE_HOR_BIT_SHIFT;
+		}
+
+		if (geofence_result.ver_violated) {
+			status.errors_count2 |= 1 << GEOFENCE_VER_BIT_SHIFT;
+		}
 
 		/* publish states (armed, control mode, vehicle status) at least with 5 Hz */
 		if (counter % (200000 / COMMANDER_MONITORING_INTERVAL) == 0 || status_changed) {
