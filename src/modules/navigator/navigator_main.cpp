@@ -113,6 +113,7 @@ Navigator::Navigator() :
 	_offboard_mission_sub(-1),
 	_param_update_sub(-1),
 	_vehicle_command_sub(-1),
+	_waypoint_sub(-1),
 	_pos_sp_triplet_pub(nullptr),
 	_mission_result_pub(nullptr),
 	_geofence_result_pub(nullptr),
@@ -128,6 +129,7 @@ Navigator::Navigator() :
 	_pos_sp_triplet{},
 	_mission_result{},
 	_att_sp{},
+	_waypoint_sp{},
 	_mission_item_valid(false),
 	_mission_instance_count(0),
 	_loop_perf(perf_alloc(PC_ELAPSED, "navigator")),
@@ -256,6 +258,18 @@ Navigator::params_update()
 }
 
 void
+Navigator::waypoint_update()
+{
+	orb_copy(ORB_ID(waypoint), _waypoint_sub, &_waypoint_sp);
+
+	static uint64_t print_time =  hrt_absolute_time();
+	if (hrt_elapsed_time(&print_time) > 10000000) {
+		print_time = hrt_absolute_time();
+		mavlink_log_info(_mavlink_fd, "waypoint update lat:%.7f, lon:%.7f", _waypoint_sp.lat, _waypoint_sp.lon);
+	}
+}
+
+void
 Navigator::task_main_trampoline(int argc, char *argv[])
 {
 	navigator::g_navigator->task_main();
@@ -304,6 +318,7 @@ Navigator::task_main()
 	_offboard_mission_sub = orb_subscribe(ORB_ID(offboard_mission));
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
 	_vehicle_command_sub = orb_subscribe(ORB_ID(vehicle_command));
+	_waypoint_sub = orb_subscribe(ORB_ID(waypoint));
 
 	/* copy all topics first time */
 	vehicle_status_update();
@@ -314,6 +329,7 @@ Navigator::task_main()
 	home_position_update(true);
 	navigation_capabilities_update();
 	params_update();
+	waypoint_update();
 
 	hrt_abstime mavlink_open_time = 0;
 	const hrt_abstime mavlink_open_interval = 500000;
@@ -401,6 +417,12 @@ Navigator::task_main()
 		orb_check(_home_pos_sub, &updated);
 		if (updated) {
 			home_position_update();
+		}
+
+		/* waypoint updated */
+		orb_check(_waypoint_sub, &updated);
+		if (updated) {
+			waypoint_update();
 		}
 
 		orb_check(_vehicle_command_sub, &updated);
