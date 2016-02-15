@@ -279,3 +279,6 @@ ORB_DEFINE(app_control_setpoint, struct app_control_setpoint_s);
 
 #include "topics/ekf2_innovations.h"
 ORB_DEFINE(ekf2_innovations, struct ekf2_innovations_s);
+
+#include "topics/waypoint.h"
+ORB_DEFINE(waypoint, struct waypoint_s);
