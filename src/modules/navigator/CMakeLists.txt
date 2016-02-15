@@ -53,6 +53,7 @@ px4_add_module(
 		enginefailure.cpp
 		gpsfailure.cpp
 		idle.cpp
+		follow_common.cpp
 	DEPENDS
 		platforms__common
 	)
