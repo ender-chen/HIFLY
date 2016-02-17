@@ -3088,7 +3088,7 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 			print_reject_mode(status_local, "AUTO_LOITER");
 
 		} else {
-			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_MISSION);
+			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_LAND);
 
 			if (res != TRANSITION_DENIED) {
 				break;	// changed successfully or already in this state
@@ -3255,8 +3255,8 @@ set_control_mode()
 		control_mode.flag_control_rates_enabled = true;
 		control_mode.flag_control_attitude_enabled = true;
 		/* in failsafe LAND mode position may be not available */
-		control_mode.flag_control_position_enabled = status.condition_local_position_valid;
-		control_mode.flag_control_velocity_enabled = status.condition_local_position_valid;
+		control_mode.flag_control_position_enabled = false;
+		control_mode.flag_control_velocity_enabled = false;
 		control_mode.flag_control_altitude_enabled = true;
 		control_mode.flag_control_climb_rate_enabled = true;
 		control_mode.flag_control_termination_enabled = false;

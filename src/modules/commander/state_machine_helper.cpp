@@ -405,6 +405,7 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 		if (status->condition_global_position_valid && status->condition_home_position_valid) {
 			ret = TRANSITION_CHANGED;
 		}
+		ret = TRANSITION_CHANGED;
 		break;
 
 	case vehicle_status_s::MAIN_STATE_OFFBOARD:
@@ -843,7 +844,8 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 
 	case vehicle_status_s::MAIN_STATE_AUTO_LAND:
 		/* require global position and home */
-
+		status->nav_state = vehicle_status_s::NAVIGATION_STATE_LAND;
+		break;
 		if (status->engine_failure) {
 			status->nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL;
 		} else if ((!status->condition_global_position_valid ||
