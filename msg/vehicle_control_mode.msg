@@ -1,4 +1,9 @@
-
+uint8 CUSTOM_MODE_NONE = 0
+uint8 CUSTOM_MODE_FOLLOW_CAMERA = 1
+uint8 CUSTOM_MODE_FOLLOW_LOITER = 2
+uint8 CUSTOM_MODE_FOLLOW_CIRCLE = 3
+uint8 CUSTOM_MODE_FOLLOW_FC_ARC = 4
+uint8 CUSTOM_MODE_MAX = 5
 uint64 timestamp				# in microseconds since system start
 						# is set whenever the writing thread stores new data
 
@@ -20,3 +25,4 @@ bool flag_control_position_enabled		# true if position is controlled
 bool flag_control_altitude_enabled		# true if altitude is controlled
 bool flag_control_climb_rate_enabled		# true if climb rate is controlled
 bool flag_control_termination_enabled		# true if flighttermination is enabled
+uint8 flag_control_custom_mode          # CUSTOM_MODE_XXX
