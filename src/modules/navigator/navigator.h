@@ -74,11 +74,12 @@
 #include "follow_camera.h"
 #include "follow_circle.h"
 #include "follow_far_close.h"
+#include "follow_loiter.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 13
+#define NAVIGATOR_MODE_ARRAY_SIZE 14
 
 class Navigator : public control::SuperBlock
 {
@@ -248,6 +249,7 @@ private:
 	FollowCamera _follow_camera;
 	FollowCircle	_follow_circle;
 	Fcf 			_follow_far_close;
+	FollowLoiter	_follow_loiter;
 
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 
