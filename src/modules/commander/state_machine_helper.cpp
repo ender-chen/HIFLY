@@ -404,6 +404,7 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 	case vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA:
 	case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
 	case vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC:
+	case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
 		/* need global position and home position */
 		if (status->condition_global_position_valid && status->condition_home_position_valid) {
 			ret = TRANSITION_CHANGED;
@@ -631,6 +632,7 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 	case vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA:
 	case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
 	case vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC:
+	case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
 		/* require RC for all manual modes */
 		if ((status->rc_signal_lost || status->rc_signal_lost_cmd) && armed && !status->condition_landed) {
 			status->failsafe = true;
@@ -688,6 +690,10 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 
 			case vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC;
+				break;
+
+			case vehicle_status_s::MAIN_STATE_FOLLOW_LOITER:
+				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER;
 				break;
 
 			default:

@@ -57,6 +57,7 @@ px4_add_module(
 		follow_camera.cpp
 		follow_circle.cpp
 		follow_far_close.cpp
+		follow_loiter.cpp
 	DEPENDS
 		platforms__common
 	)

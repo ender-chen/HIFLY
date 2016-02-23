@@ -425,6 +425,11 @@ private:
 	void		control_follow_circle(float dt);
 
 	/**
+	 * Set position setpoint for follow
+	 */
+	void		control_follow_loiter(float dt);
+
+	/**
 	 * Select between barometric and global (AMSL) altitudes
 	 */
 	void		select_alt(bool global);
@@ -1489,6 +1494,91 @@ MulticopterPositionControl::follow_fc_update(float dt)
 	// }
 }
 
+void MulticopterPositionControl::control_follow_loiter(float dt)
+{
+	if (!_mode_auto) {
+		_mode_auto = true;
+		/* reset position setpoint on AUTO mode activation */
+		reset_pos_sp();
+		reset_alt_sp();
+		/* set current velocity as last target velocity to smooth out transition */
+		_vel_sp_prev = _vel;
+	}
+
+	//Poll position setpoint
+	bool updated;
+	orb_check(_pos_sp_triplet_sub, &updated);
+	if (updated) {
+		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+
+		//Make sure that the position setpoint is valid
+		if (!isfinite(_pos_sp_triplet.current.lat) ||
+			!isfinite(_pos_sp_triplet.current.lon) ||
+			!isfinite(_pos_sp_triplet.current.alt)) {
+			_pos_sp_triplet.current.valid = false;
+		}
+	}
+
+	bool current_setpoint_valid = false;
+
+	math::Vector<3> curr_sp;
+
+	if (_pos_sp_triplet.current.valid) {
+		/* project setpoint to local frame */
+		map_projection_project(&_ref_pos,
+				       _pos_sp_triplet.current.lat, _pos_sp_triplet.current.lon,
+				       &curr_sp.data[0], &curr_sp.data[1]);
+		curr_sp(2) = -(_pos_sp_triplet.current.alt - _ref_alt);
+
+		if (PX4_ISFINITE(curr_sp(0)) &&
+		    PX4_ISFINITE(curr_sp(1)) &&
+		    PX4_ISFINITE(curr_sp(2))) {
+			current_setpoint_valid = true;
+		}
+	}
+
+	if (current_setpoint_valid) {
+		float vel_xy = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
+				_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
+
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+			math::Vector<3> follow_vel;
+			follow_vel(0) = math::constrain(vel_xy, 1.0f, _params.fol_v_max(0));
+			follow_vel(1) = math::constrain(vel_xy, 1.0f, _params.fol_v_max(1));
+			follow_vel(2) = math::constrain(fabsf(_pos_sp_triplet.current.vz), 1.0f, _params.fol_v_max(2));
+
+			/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+			math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
+
+			/* move setpoint not faster than max allowed speed */
+			math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+
+			/* convert current setpoint to scaled space */
+			math::Vector<3> pos_sp_s = curr_sp.emult(scale);
+
+			/* difference between current and desired position setpoints, 1 = max speed */
+			math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+			float d_pos_m_len = d_pos_m.length();
+
+			if (d_pos_m_len > dt) {
+				pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+			}
+
+			/* scale result back to normal space */
+			_pos_sp = pos_sp_s.edivide(scale);
+
+			/* update yaw setpoint if needed */
+			if (isfinite(_pos_sp_triplet.current.yaw)) {
+				_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+			}
+
+			/* in case of interrupted mission don't go to waypoint but stay at current position */
+			_reset_pos_sp = true;
+			_reset_alt_sp = true;
+		}
+	}
+}
+
 void MulticopterPositionControl::control_auto(float dt)
 {
 	if (!_mode_auto) {
@@ -1853,6 +1943,8 @@ MulticopterPositionControl::task_main()
 
 			} else if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE) {
 				control_follow_fc(dt);
+			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
+				control_follow_loiter(dt);
 
 			} else {
 				/* AUTO */
@@ -1924,7 +2016,7 @@ MulticopterPositionControl::task_main()
 				}
 
 				math::Vector<3> vel_max;
-				if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE) {
+				if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
 					vel_max = _params.fol_v_max;
 				} else {
 					vel_max = _params.vel_max;
