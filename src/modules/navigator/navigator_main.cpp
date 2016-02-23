@@ -151,6 +151,7 @@ Navigator::Navigator() :
 	_engineFailure(this, "EF"),
 	_gpsFailure(this, "GPSF"),
 	_idle(this, "IDLE"),
+    _follow_camera(this, "FOLCAM"),
 	_param_loiter_radius(this, "LOITER_RAD"),
 	_param_acceptance_radius(this, "ACC_RAD"),
 	_param_datalinkloss_obc(this, "DLL_OBC"),
@@ -167,6 +168,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[7] = &_takeoff;
 	_navigation_mode_array[8] = &_land;
 	_navigation_mode_array[9] = &_idle;
+	_navigation_mode_array[10] = &_follow_camera;
 
 	updateParams();
 }
@@ -546,6 +548,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_AUTO_IDLE:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_idle;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_follow_camera;
 				break;
 			default:
 				_navigation_mode = nullptr;

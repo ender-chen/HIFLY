@@ -328,3 +328,23 @@ PARAM_DEFINE_FLOAT(MPC_VELD_LP, 5.0f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(MPC_ACC_HOR_MAX, 4.0f);
+
+/**
+ * follow Maximum horizontal velocity
+ *
+ * @min 5.0
+ * @max 15.0
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_VXY_MAX, 15.0f);
+
+/**
+ * follow Maximum vertical velocity
+ *
+ * @min 1.0
+ * @max 5.0
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_VZ_MAX, 5.0f);
