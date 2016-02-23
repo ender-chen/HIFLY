@@ -72,11 +72,12 @@
 #include "geofence.h"
 #include "idle.h"
 #include "follow_camera.h"
+#include "follow_circle.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
  */
-#define NAVIGATOR_MODE_ARRAY_SIZE 11
+#define NAVIGATOR_MODE_ARRAY_SIZE 12
 
 class Navigator : public control::SuperBlock
 {
@@ -244,6 +245,7 @@ private:
 	Idle		_idle;					/**< class that handles the idle mode */
 
 	FollowCamera _follow_camera;
+	FollowCircle	_follow_circle;
 
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 
