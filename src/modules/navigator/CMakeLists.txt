@@ -55,6 +55,7 @@ px4_add_module(
 		idle.cpp
 		follow_common.cpp
 		follow_camera.cpp
+		follow_circle.cpp
 	DEPENDS
 		platforms__common
 	)

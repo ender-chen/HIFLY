@@ -348,3 +348,31 @@ PARAM_DEFINE_FLOAT(MPC_FOL_VXY_MAX, 15.0f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(MPC_FOL_VZ_MAX, 5.0f);
+
+/**
+ * circle radius
+ *
+ * @min 3
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_CIRCLE_R, 5.0f);
+
+/**
+ * circle velocity max
+ *
+ * @min 5
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_CIRCLE_VEL, 15.0f);
+
+/**
+ * circle angular velocity
+ *
+ * @min 0
+ *
+ * @group Multicopter Position Control
+ */
+
+PARAM_DEFINE_FLOAT(MPC_CIRCLE_ROT, 10.0f);
