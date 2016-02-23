@@ -54,6 +54,7 @@ px4_add_module(
 		gpsfailure.cpp
 		idle.cpp
 		follow_common.cpp
+		follow_camera.cpp
 	DEPENDS
 		platforms__common
 	)

@@ -650,6 +650,9 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 						case PX4_CUSTOM_SUB_MODE_AUTO_LAND:
 							main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_AUTO_LAND);
 							break;
+						case PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_CAMERA:
+							main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA);
+							break;
 
 						default:
 							main_ret = TRANSITION_DENIED;
@@ -3138,6 +3141,7 @@ set_control_mode()
 	control_mode.flag_external_manual_override_ok = (!status.is_rotary_wing && !status.is_vtol);
 	control_mode.flag_system_hil_enabled = status.hil_state == vehicle_status_s::HIL_STATE_ON;
 	control_mode.flag_control_offboard_enabled = false;
+	control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_NONE;
 
 	switch (status.nav_state) {
 	case vehicle_status_s::NAVIGATION_STATE_MANUAL:
@@ -3221,6 +3225,19 @@ set_control_mode()
 		control_mode.flag_control_position_enabled = !status.in_transition_mode;
 		control_mode.flag_control_velocity_enabled = !status.in_transition_mode;
 		control_mode.flag_control_termination_enabled = false;
+		break;
+
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CAMERA:
+		control_mode.flag_control_manual_enabled = false;
+		control_mode.flag_control_auto_enabled = true;
+		control_mode.flag_control_rates_enabled = true;
+		control_mode.flag_control_attitude_enabled = true;
+		control_mode.flag_control_altitude_enabled = true;
+		control_mode.flag_control_climb_rate_enabled = true;
+		control_mode.flag_control_position_enabled = !status.in_transition_mode;
+		control_mode.flag_control_velocity_enabled = !status.in_transition_mode;
+		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA;
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDGPSFAIL:
