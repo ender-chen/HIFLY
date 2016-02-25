@@ -112,6 +112,11 @@ protected:
 	void set_idle_item(struct mission_item_s *item);
 
 	/**
+	 * Set follow far close mission item
+	 */
+	void set_fcf_item(struct mission_item_s *item);
+
+	/**
 	 * Convert a mission item to a command
 	 */
 	void mission_item_to_vehicle_command(const struct mission_item_s *item, struct vehicle_command_s *cmd);

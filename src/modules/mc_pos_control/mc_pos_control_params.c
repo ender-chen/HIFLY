@@ -376,3 +376,43 @@ PARAM_DEFINE_FLOAT(MPC_CIRCLE_VEL, 15.0f);
  */
 
 PARAM_DEFINE_FLOAT(MPC_CIRCLE_ROT, 10.0f);
+
+/**
+ * Horizonal distance for far close follow.
+ *
+ * @unit m
+ * @min 0.1
+ * @max
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FCF_HORI, 5.0f);
+
+/**
+ * Vertical distance for far close follow.
+ *
+ * @unit m
+ * @min 0.1
+ * @max
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FCF_VER, 2.0f);
+
+/**
+ * Acceleration for far close follow.
+ *
+ * @unit m/s/s
+ * @min 0.1
+ * @max
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FCF_ACC, 0.5f);
+
+/**
+ * Direction for far close follow.
+ *
+ * @unit degree
+ * @min 0
+ * @max 360
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FCF_DIR, 0.0f);

@@ -153,6 +153,7 @@ Navigator::Navigator() :
 	_idle(this, "IDLE"),
     _follow_camera(this, "FOLCAM"),
 	_follow_circle(this, "FOLCLE"),
+	_follow_far_close(this, "FOLFC"),
 	_param_loiter_radius(this, "LOITER_RAD"),
 	_param_acceptance_radius(this, "ACC_RAD"),
 	_param_datalinkloss_obc(this, "DLL_OBC"),
@@ -171,6 +172,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[9] = &_idle;
 	_navigation_mode_array[10] = &_follow_camera;
 	_navigation_mode_array[11] = &_follow_circle;
+	_navigation_mode_array[12] = &_follow_far_close;
 
 	updateParams();
 }
@@ -558,6 +560,10 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_follow_circle;
+				break;
+			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC:
+				_pos_sp_triplet_published_invalid_once = false;
+				_navigation_mode = &_follow_far_close;
 				break;
 			default:
 				_navigation_mode = nullptr;

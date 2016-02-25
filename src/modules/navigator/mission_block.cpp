@@ -292,7 +292,9 @@ MissionBlock::mission_item_to_position_setpoint(const struct mission_item_s *ite
 	case NAV_CMD_LOITER_UNLIMITED:
 		sp->type = position_setpoint_s::SETPOINT_TYPE_LOITER;
 		break;
-
+	case NAV_CMD_FOLLOW_FAR_CLOSE:
+		sp->type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE;
+		break;
 	default:
 		sp->type = position_setpoint_s::SETPOINT_TYPE_POSITION;
 		break;
@@ -412,6 +414,24 @@ MissionBlock::set_idle_item(struct mission_item_s *item)
 	item->lon = _navigator->get_home_position()->lon;
 	item->altitude_is_relative = false;
 	item->altitude = _navigator->get_home_position()->alt;
+	item->yaw = NAN;
+	item->loiter_radius = _navigator->get_loiter_radius();
+	item->loiter_direction = 1;
+	item->acceptance_radius = _navigator->get_acceptance_radius();
+	item->time_inside = 0.0f;
+	item->pitch_min = 0.0f;
+	item->autocontinue = true;
+	item->origin = ORIGIN_ONBOARD;
+}
+
+void
+MissionBlock::set_fcf_item(struct mission_item_s *item)
+{
+	item->nav_cmd = NAV_CMD_FOLLOW_FAR_CLOSE;
+	item->lat = NAN;
+	item->lon = NAN;
+	item->altitude_is_relative = false;
+	item->altitude = NAN;
 	item->yaw = NAN;
 	item->loiter_radius = _navigator->get_loiter_radius();
 	item->loiter_direction = 1;
