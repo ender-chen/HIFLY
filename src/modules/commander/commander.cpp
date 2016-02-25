@@ -3040,7 +3040,7 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 				res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_STAB);
 			}
 
-		} 
+		}
 		else if(sp_man->rattitude_switch == manual_control_setpoint_s::SWITCH_POS_ON){
 			/* Similar to acro transitions for multirotors.  FW aircraft don't need a 
 			 * rattitude mode.*/
@@ -3095,6 +3095,7 @@ set_main_state_rc(struct vehicle_status_s *status_local, struct manual_control_s
 
 		} else {
 			res = main_state_transition(status_local,vehicle_status_s::MAIN_STATE_AUTO_MISSION);
+
 
 			if (res != TRANSITION_DENIED) {
 				break;	// changed successfully or already in this state
@@ -3214,6 +3215,7 @@ set_control_mode()
 		/* override is not ok for the RTL and recovery mode */
 		control_mode.flag_external_manual_override_ok = false;
 		/* fallthrough */
+	case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_RTGS:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_LANDENGFAIL:
 	case vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION:
@@ -3320,7 +3322,6 @@ set_control_mode()
 		control_mode.flag_control_climb_rate_enabled = false;
 		control_mode.flag_control_termination_enabled = true;
 		break;
-
 	case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
 		control_mode.flag_control_manual_enabled = false;
 		control_mode.flag_control_auto_enabled = false;
