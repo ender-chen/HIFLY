@@ -659,7 +659,9 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 						case PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_LOITER:
 							main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_FOLLOW_LOITER);
 							break;
-
+						case PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_FC_ARC:
+							main_ret = main_state_transition(status_local, vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC);
+							break;
 						default:
 							main_ret = TRANSITION_DENIED;
 							mavlink_log_critical(mavlink_fd, "Unsupported auto mode");
