@@ -2063,6 +2063,7 @@ MulticopterPositionControl::task_main()
 				    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND)
 				    || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_DESCEND) {
 					_vel_sp(2) = _params.land_speed;
+					warnx("we are in descend mode");
 				}
 
 				/* velocity handling during takeoff */
