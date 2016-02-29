@@ -495,6 +495,7 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_POSCTL:
 			case vehicle_status_s::NAVIGATION_STATE_TERMINATION:
 			case vehicle_status_s::NAVIGATION_STATE_OFFBOARD:
+			case vehicle_status_s::NAVIGATION_STATE_DESCEND:
 				_navigation_mode = nullptr;
 				_can_loiter_at_sp = false;
 				break;
