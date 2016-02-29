@@ -3321,9 +3321,10 @@ set_control_mode()
 		control_mode.flag_control_attitude_enabled = true;
 		control_mode.flag_control_position_enabled = false;
 		control_mode.flag_control_velocity_enabled = false;
-		control_mode.flag_control_altitude_enabled = false;
+		control_mode.flag_control_altitude_enabled = true;
 		control_mode.flag_control_climb_rate_enabled = true;
 		control_mode.flag_control_termination_enabled = false;
+		control_mode.flag_control_custom_mode = vehicle_control_mode_s::CUSTOM_MODE_DESCEND;
 		break;
 
 	case vehicle_status_s::NAVIGATION_STATE_TERMINATION:

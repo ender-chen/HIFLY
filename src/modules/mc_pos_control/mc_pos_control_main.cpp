@@ -2059,8 +2059,9 @@ MulticopterPositionControl::task_main()
 				}
 
 				/* use constant descend rate when landing, ignore altitude setpoint */
-				if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
-				    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
+				if ((!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
+				    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND)
+				    || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_DESCEND) {
 					_vel_sp(2) = _params.land_speed;
 				}
 
@@ -2217,8 +2218,9 @@ MulticopterPositionControl::task_main()
 					_acc_z_lp = _acc_z_lp * (1.0f - dt * 8.0f) + dt * 8.0f * vel_z_change;
 
 					/* adjust limits for landing mode */
-					if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid &&
-					    _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) {
+					if ((!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid &&
+					    _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) ||
+					    _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_DESCEND) {
 						/* limit max tilt and min lift when landing */
 						tilt_max = _params.tilt_max_land;
 
