@@ -567,6 +567,7 @@ Navigator::task_main()
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_follow_far_close;
+				break;
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER:
 				_pos_sp_triplet_published_invalid_once = false;
 				_navigation_mode = &_follow_loiter;
