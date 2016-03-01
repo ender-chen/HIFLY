@@ -360,6 +360,11 @@ private:
 	void		control_follow_camera(float dt);
 
 	/**
+	  * Main function assist follow mode.
+	  */
+	void 		control_follow();
+
+	/**
 	  * INIT for far close follow
 	  */
 	void 		follow_fc_init();
@@ -1097,6 +1102,17 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3> &sphere_c, f
 		/* have no roots, return D */
 		res = d;
 		return false;
+	}
+}
+
+void MulticopterPositionControl::control_follow()
+{
+	//Poll position setpoint
+	bool updated;
+	orb_check(_pos_sp_triplet_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
 	}
 }
 
@@ -1943,16 +1959,26 @@ MulticopterPositionControl::task_main()
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE) {
 				control_follow_circle(dt);
 
-			} else if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE) {
-				control_follow_fc(dt);
 			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
 				control_follow_loiter(dt);
-
+			} else if (_control_mode.flag_control_follow_enabled) {
+				control_follow();
 			} else {
 				/* AUTO */
 				control_auto(dt);
 			}
+			//custom follow mode start
+			if (_control_mode.flag_control_follow_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE)
+			{
+				_mode_auto = false;
+				control_follow_fc(dt);
+			}
+			else
+			{
+				_follow_fc_circle_init = false;
+			}
 
+			//custom follow mode end
 			if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
 			    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 				/* idle state, don't run controller and set zero thrust */

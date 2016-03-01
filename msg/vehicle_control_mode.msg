@@ -27,3 +27,4 @@ bool flag_control_altitude_enabled		# true if altitude is controlled
 bool flag_control_climb_rate_enabled		# true if climb rate is controlled
 bool flag_control_termination_enabled		# true if flighttermination is enabled
 uint8 flag_control_custom_mode          # CUSTOM_MODE_XXX
+uint8 flag_control_follow_enabled		# true if we set a follow mode.
