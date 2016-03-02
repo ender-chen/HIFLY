@@ -1405,7 +1405,7 @@ void MulticopterPositionControl::control_follow_circle(float dt)
 		}
 	}
 
-	if (current_setpoint_valid) {
+	if (current_setpoint_valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CIRCLE) {
 		circle_follow_init(curr_sp);
 
 		if (!_move_to_edge) {
