@@ -1125,37 +1125,39 @@ void MulticopterPositionControl::control_follow_camera(float dt)
 	}
 
 	if (_pos_sp_triplet.current.valid) {
-		float curr_alt_sp = -(_pos_sp_triplet.current.alt - _ref_alt);
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CAMERA) {
+			float curr_alt_sp = -(_pos_sp_triplet.current.alt - _ref_alt);
 
-		float alt_vel = math::constrain(fabsf(_pos_sp_triplet.current.vz), 1.0f, _params.fol_v_max(2));
+			float alt_vel = math::constrain(fabsf(_pos_sp_triplet.current.vz), 1.0f, _params.fol_v_max(2));
 
-		/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-		float scale = _params.pos_p(2) / alt_vel;	// TODO add mult param here
+			/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+			float scale = _params.pos_p(2) / alt_vel;	// TODO add mult param here
 
-		/* move setpoint not faster than max allowed speed */
-		float pos_sp_old_s = _pos_sp(2) * scale;
+			/* move setpoint not faster than max allowed speed */
+			float pos_sp_old_s = _pos_sp(2) * scale;
 
-		/* convert current setpoint to scaled space */
-		float pos_sp_s = curr_alt_sp * scale;
+			/* convert current setpoint to scaled space */
+			float pos_sp_s = curr_alt_sp * scale;
 
-		/* difference between current and desired position setpoints, 1 = max speed */
-		float d_pos_m = (pos_sp_s - pos_sp_old_s) / _params.pos_p(2);
+			/* difference between current and desired position setpoints, 1 = max speed */
+			float d_pos_m = (pos_sp_s - pos_sp_old_s) / _params.pos_p(2);
 
-		if (d_pos_m > dt) {
-			pos_sp_s = pos_sp_old_s + dt * _params.pos_p(2);
+			if (d_pos_m > dt) {
+				pos_sp_s = pos_sp_old_s + dt * _params.pos_p(2);
+			}
+
+			/* scale result back to normal space */
+			_pos_sp(2) = pos_sp_s / scale;
+
+			/* update yaw setpoint if needed */
+			if (PX4_ISFINITE(_pos_sp_triplet.current.yaw)) {
+				_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
+			}
+
+			/* in case of interrupted mission don't go to waypoint but stay at current position */
+			_reset_pos_sp = true;
+			_reset_alt_sp = true;
 		}
-
-		/* scale result back to normal space */
-		_pos_sp(2) = pos_sp_s / scale;
-
-		/* update yaw setpoint if needed */
-		if (PX4_ISFINITE(_pos_sp_triplet.current.yaw)) {
-			_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
-		}
-
-		/* in case of interrupted mission don't go to waypoint but stay at current position */
-		_reset_pos_sp = true;
-		_reset_alt_sp = true;
 	}
 }
 

@@ -112,7 +112,7 @@ FollowCamera::set_follow_item(const struct waypoint_s *waypoint) {
 			}
 
 			pos_sp_triplet->current.valid = true;
-			pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+			pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_CAMERA;
 			pos_sp_triplet->current.vz = waypoint->vel_d_m_s;
 
 			if(_param_alt_en.get()) {
