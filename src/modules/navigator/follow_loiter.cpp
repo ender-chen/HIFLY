@@ -156,7 +156,7 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 			}
 
 			pos_sp_triplet->current.valid = true;
-			pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_POSITION;
+			pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER;
 			pos_sp_triplet->current.vx = waypoint->vel_n_m_s;
 			pos_sp_triplet->current.vy = waypoint->vel_e_m_s;
 			pos_sp_triplet->current.vz = waypoint->vel_d_m_s;

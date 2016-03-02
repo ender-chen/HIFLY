@@ -1541,7 +1541,7 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 		float vel_xy = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
 				_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
 
-		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_POSITION) {
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER) {
 			math::Vector<3> follow_vel;
 			follow_vel(0) = math::constrain(vel_xy, 1.0f, _params.fol_v_max(0));
 			follow_vel(1) = math::constrain(vel_xy, 1.0f, _params.fol_v_max(1));
