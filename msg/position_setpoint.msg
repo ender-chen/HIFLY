@@ -10,6 +10,7 @@ uint8 SETPOINT_TYPE_OFFBOARD=6 	# setpoint in NED frame (x, y, z, vx, vy, vz) se
 uint8 SETPOINT_TYPE_FOLLOW_FAR_CLOSE = 7 # follow in far close way.
 uint8 SETPOINT_TYPE_FOLLOW_LOITER = 8 # follow loiter
 uint8 SETPOINT_TYPE_FOLLOW_CAMERA = 9 # follow camera
+uint8 SETPOINT_TYPE_FOLLOW_CIRCLE = 10 # follow camera
 
 bool valid			# true if setpoint is valid
 uint8 type			# setpoint type to adjust behavior of position controller
