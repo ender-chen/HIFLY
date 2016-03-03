@@ -355,7 +355,7 @@ calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel
 	worker_data.mavlink_fd = mavlink_fd;
 	worker_data.done_count = 0;
 
-	bool data_collected[detect_orientation_side_count] = { false, false, false, false, false, false };
+	bool data_collected[detect_orientation_side_count] = { false, false};
 
 	// Initialize subs to error condition so we know which ones are open and which are not
 	for (size_t i=0; i<max_accel_sens; i++) {

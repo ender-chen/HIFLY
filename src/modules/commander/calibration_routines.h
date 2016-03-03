@@ -61,15 +61,11 @@ static const unsigned max_accel_sens = 3;
 
 // The order of these cannot change since the calibration calculations depend on them in this order
 enum detect_orientation_return {
-	DETECT_ORIENTATION_TAIL_DOWN,
 	DETECT_ORIENTATION_NOSE_DOWN,
-	DETECT_ORIENTATION_LEFT,
-	DETECT_ORIENTATION_RIGHT,
-	DETECT_ORIENTATION_UPSIDE_DOWN,
 	DETECT_ORIENTATION_RIGHTSIDE_UP,
 	DETECT_ORIENTATION_ERROR
 };
-static const unsigned detect_orientation_side_count = 6;
+static const unsigned detect_orientation_side_count = 2;
 
 /// Wait for vehicle to become still and detect it's orientation
 ///	@return Returns detect_orientation_return according to orientation when vehicle

@@ -347,31 +347,13 @@ enum detect_orientation_return detect_orientation(int mavlink_fd, int cancel_sub
 	if (fabsf(accel_ema[0] - CONSTANTS_ONE_G) < accel_err_thr &&
 	    fabsf(accel_ema[1]) < accel_err_thr &&
 	    fabsf(accel_ema[2]) < accel_err_thr) {
-		return DETECT_ORIENTATION_TAIL_DOWN;        // [ g, 0, 0 ]
+		return DETECT_ORIENTATION_NOSE_DOWN;        // [ g, 0, 0 ]
 	}
 	
 	if (fabsf(accel_ema[0] + CONSTANTS_ONE_G) < accel_err_thr &&
 	    fabsf(accel_ema[1]) < accel_err_thr &&
 	    fabsf(accel_ema[2]) < accel_err_thr) {
 		return DETECT_ORIENTATION_NOSE_DOWN;        // [ -g, 0, 0 ]
-	}
-	
-	if (fabsf(accel_ema[0]) < accel_err_thr &&
-	    fabsf(accel_ema[1] - CONSTANTS_ONE_G) < accel_err_thr &&
-	    fabsf(accel_ema[2]) < accel_err_thr) {
-		return DETECT_ORIENTATION_LEFT;        // [ 0, g, 0 ]
-	}
-	
-	if (fabsf(accel_ema[0]) < accel_err_thr &&
-	    fabsf(accel_ema[1] + CONSTANTS_ONE_G) < accel_err_thr &&
-	    fabsf(accel_ema[2]) < accel_err_thr) {
-		return DETECT_ORIENTATION_RIGHT;        // [ 0, -g, 0 ]
-	}
-	
-	if (fabsf(accel_ema[0]) < accel_err_thr &&
-	    fabsf(accel_ema[1]) < accel_err_thr &&
-	    fabsf(accel_ema[2] - CONSTANTS_ONE_G) < accel_err_thr) {
-		return DETECT_ORIENTATION_UPSIDE_DOWN;        // [ 0, 0, g ]
 	}
 	
 	if (fabsf(accel_ema[0]) < accel_err_thr &&
@@ -388,11 +370,7 @@ enum detect_orientation_return detect_orientation(int mavlink_fd, int cancel_sub
 const char* detect_orientation_str(enum detect_orientation_return orientation)
 {
 	static const char* rgOrientationStrs[] = {
-		"back",		// tail down
 		"front",	// nose down
-		"left",
-		"right",
-		"up",		// upside-down
 		"down",		// right-side up
 		"error"
 	};

@@ -158,6 +158,29 @@ static bool magnometerCheck(int mavlink_fd, unsigned instance, bool optional, in
 		goto out;
 	}
 
+	/* check measurement result range */
+	struct mag_report mag;
+	ret = h.read(&mag, sizeof(mag));
+
+	if(ret == sizeof(mag)) {
+		float mag_magnitude = sqrtf(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
+		if (mag_magnitude < 0.12f || mag_magnitude > 0.25f /* m/s^2 */) {
+			if (report_fail) {
+				mavlink_and_console_log_critical(mavlink_fd, "PREFLIGHT FAIL: MAG RANGE, hold still on arming");
+			}
+			/* this is frickin' fatal */
+			success = false;
+			goto out;
+		}
+	} else {
+		if (report_fail) {
+			mavlink_log_critical(mavlink_fd, "PREFLIGHT FAIL: MAG READ");
+		}
+		/* this is frickin' fatal */
+		success = false;
+		goto out;
+	}
+
 out:
 	DevMgr::releaseHandle(h);
 	return success;
