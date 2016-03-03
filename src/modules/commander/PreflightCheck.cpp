@@ -238,7 +238,7 @@ static bool accelerometerCheck(int mavlink_fd, unsigned instance, bool optional,
 			/* evaluate values */
 			float accel_magnitude = sqrtf(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
 
-			if (accel_magnitude < 4.0f || accel_magnitude > 15.0f /* m/s^2 */) {
+			if (accel_magnitude < 6.0f || accel_magnitude > 12.0f /* m/s^2 */) {
 				if (report_fail) {
 					mavlink_and_console_log_critical(mavlink_fd, "PREFLIGHT FAIL: ACCEL RANGE, hold still on arming");
 				}
@@ -408,10 +408,10 @@ static bool gnssCheck(int mavlink_fd, bool report_fail)
 	return success;
 }
 
-bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro,
+int32_t preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro,
 		    bool checkBaro, bool checkAirspeed, bool checkRC, bool checkGNSS, bool checkDynamic, bool reportFailures)
 {
-	bool failed = false;
+	int32_t failed = 0;
 
 	/* ---- MAG ---- */
 	if (checkMag) {
@@ -425,7 +425,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			int device_id = -1;
 
 			if (!magnometerCheck(mavlink_fd, i, !required, device_id, reportFailures) && required) {
-				failed = true;
+				failed |= 4;
 			}
 
 			if (device_id == prime_id) {
@@ -438,7 +438,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			if (reportFailures) {
 				mavlink_and_console_log_critical(mavlink_fd, "Warning: Primary compass not found");
 			}
-			failed = true;
+			failed |= 4;
 		}
 	}
 
@@ -454,7 +454,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			int device_id = -1;
 
 			if (!accelerometerCheck(mavlink_fd, i, !required, checkDynamic, device_id, reportFailures) && required) {
-				failed = true;
+				failed |= 2;
 			}
 
 			if (device_id == prime_id) {
@@ -467,7 +467,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			if (reportFailures) {
 				mavlink_and_console_log_critical(mavlink_fd, "Warning: Primary accelerometer not found");
 			}
-			failed = true;
+			failed |= 2;
 		}
 	}
 
@@ -483,7 +483,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			int device_id = -1;
 
 			if (!gyroCheck(mavlink_fd, i, !required, device_id, reportFailures) && required) {
-				failed = true;
+				failed |= 1;
 			}
 
 			if (device_id == prime_id) {
@@ -496,7 +496,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			if (reportFailures) {
 				mavlink_and_console_log_critical(mavlink_fd, "Warning: Primary gyro not found");
 			}
-			failed = true;
+			failed |= 1;
 		}
 	}
 
@@ -512,7 +512,7 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			int device_id = -1;
 
 			if (!baroCheck(mavlink_fd, i, !required, device_id, reportFailures) && required) {
-				failed = true;
+				failed |= 8;
 			}
 
 			if (device_id == prime_id) {
@@ -526,14 +526,14 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			if (reportFailures) {
 				mavlink_and_console_log_critical(mavlink_fd, "warning: primary barometer not operational");
 			}
-			failed = true;
+			failed |= 8;
 		}
 	}
 
 	/* ---- AIRSPEED ---- */
 	if (checkAirspeed) {
 		if (!airspeedCheck(mavlink_fd, true, reportFailures)) {
-			failed = true;
+			failed |= 16;
 		}
 	}
 
@@ -543,19 +543,19 @@ bool preflightCheck(int mavlink_fd, bool checkMag, bool checkAcc, bool checkGyro
 			if (reportFailures) {
 				mavlink_and_console_log_critical(mavlink_fd, "RC calibration check failed");
 			}
-			failed = true;
+			failed |= 64;
 		}
 	}
 
 	/* ---- Global Navigation Satellite System receiver ---- */
 	if (checkGNSS) {
 		if (!gnssCheck(mavlink_fd, reportFailures)) {
-			failed = true;
+			failed |= 32;
 		}
 	}
 
 	/* Report status */
-	return !failed;
+	return failed;
 }
 
 }

@@ -36,88 +36,6 @@
  *
  * Implementation of accelerometer calibration.
  *
- * Transform acceleration vector to true orientation, scale and offset
- *
- * ===== Model =====
- * accel_corr = accel_T * (accel_raw - accel_offs)
- *
- * accel_corr[3] - fully corrected acceleration vector in body frame
- * accel_T[3][3] - accelerometers transform matrix, rotation and scaling transform
- * accel_raw[3]  - raw acceleration vector
- * accel_offs[3] - acceleration offset vector
- *
- * ===== Calibration =====
- *
- * Reference vectors
- * accel_corr_ref[6][3] = [  g  0  0 ]     // nose up
- *                        | -g  0  0 |     // nose down
- *                        |  0  g  0 |     // left side down
- *                        |  0 -g  0 |     // right side down
- *                        |  0  0  g |     // on back
- *                        [  0  0 -g ]     // level
- * accel_raw_ref[6][3]
- *
- * accel_corr_ref[i] = accel_T * (accel_raw_ref[i] - accel_offs), i = 0...5
- *
- * 6 reference vectors * 3 axes = 18 equations
- * 9 (accel_T) + 3 (accel_offs) = 12 unknown constants
- *
- * Find accel_offs
- *
- * accel_offs[i] = (accel_raw_ref[i*2][i] + accel_raw_ref[i*2+1][i]) / 2
- *
- * Find accel_T
- *
- * 9 unknown constants
- * need 9 equations -> use 3 of 6 measurements -> 3 * 3 = 9 equations
- *
- * accel_corr_ref[i*2] = accel_T * (accel_raw_ref[i*2] - accel_offs), i = 0...2
- *
- * Solve separate system for each row of accel_T:
- *
- * accel_corr_ref[j*2][i] = accel_T[i] * (accel_raw_ref[j*2] - accel_offs), j = 0...2
- *
- * A * x = b
- *
- * x = [ accel_T[0][i] ]
- *     | accel_T[1][i] |
- *     [ accel_T[2][i] ]
- *
- * b = [ accel_corr_ref[0][i] ]	// One measurement per side is enough
- *     | accel_corr_ref[2][i] |
- *     [ accel_corr_ref[4][i] ]
- *
- * a[i][j] = accel_raw_ref[i][j] - accel_offs[j], i = 0;2;4, j = 0...2
- *
- * Matrix A is common for all three systems:
- * A = [ a[0][0]  a[0][1]  a[0][2] ]
- *     | a[2][0]  a[2][1]  a[2][2] |
- *     [ a[4][0]  a[4][1]  a[4][2] ]
- *
- * x = A^-1 * b
- *
- * accel_T = A^-1 * g
- * g = 9.80665
- *
- * ===== Rotation =====
- *
- * Calibrating using model:
- * accel_corr = accel_T_r * (rot * accel_raw - accel_offs_r)
- *
- * Actual correction:
- * accel_corr = rot * accel_T * (accel_raw - accel_offs)
- *
- * Known: accel_T_r, accel_offs_r, rot
- * Unknown: accel_T, accel_offs
- *
- * Solution:
- * accel_T_r * (rot * accel_raw - accel_offs_r) = rot * accel_T * (accel_raw - accel_offs)
- * rot^-1 * accel_T_r * (rot * accel_raw - accel_offs_r) = accel_T * (accel_raw - accel_offs)
- * rot^-1 * accel_T_r * rot * accel_raw - rot^-1 * accel_T_r * accel_offs_r = accel_T * accel_raw - accel_T * accel_offs)
- * => accel_T = rot^-1 * accel_T_r * rot
- * => accel_offs = rot^-1 * accel_offs_r
- *
- * @author Anton Babushkin <anton.babushkin@me.com>
  */
 
 // FIXME: Can some of these headers move out with detect_ move?
@@ -157,21 +75,10 @@ static const int ERROR = -1;
 static const char *sensor_name = "accel";
 
 static int32_t device_id[max_accel_sens];
-static int device_prio_max = 0;
 static int32_t device_id_primary = 0;
 
-calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel_offs)[max_accel_sens][3], float (&accel_T)[max_accel_sens][3][3], unsigned *active_sensors);
-calibrate_return read_accelerometer_avg(int (&subs)[max_accel_sens], float (&accel_avg)[max_accel_sens][detect_orientation_side_count][3], unsigned orient, unsigned samples_num);
-int mat_invert3(float src[3][3], float dst[3][3]);
-calibrate_return calculate_calibration_values(unsigned sensor, float (&accel_ref)[max_accel_sens][detect_orientation_side_count][3], float (&accel_T)[max_accel_sens][3][3], float (&accel_offs)[max_accel_sens][3], float g);
-
-/// Data passed to calibration worker routine
-typedef struct  {
-	int		mavlink_fd;
-	unsigned	done_count;
-	int		subs[max_accel_sens];
-	float		accel_ref[max_accel_sens][detect_orientation_side_count][3];
-} accel_worker_data_t;
+calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel_offs)[max_accel_sens][3], unsigned *active_sensors);
+calibrate_return read_accelerometer_avg(int (&subs)[max_accel_sens], float (&accel_avg)[max_accel_sens][3], unsigned samples_num);
 
 int do_accel_calibration(int mavlink_fd)
 {
@@ -213,12 +120,11 @@ int do_accel_calibration(int mavlink_fd)
 	}
 
 	float accel_offs[max_accel_sens][3];
-	float accel_T[max_accel_sens][3][3];
 	unsigned active_sensors;
 
 	/* measure and calculate offsets & scales */
 	if (res == OK) {
-		calibrate_return cal_return = do_accel_calibration_measurements(mavlink_fd, accel_offs, accel_T, &active_sensors);
+		calibrate_return cal_return = do_accel_calibration_measurements(mavlink_fd, accel_offs, &active_sensors);
 		if (cal_return == calibrate_return_cancelled) {
 			// Cancel message already displayed, nothing left to do
 			return ERROR;
@@ -250,15 +156,13 @@ int do_accel_calibration(int mavlink_fd)
 		/* handle individual sensors, one by one */
 		math::Vector<3> accel_offs_vec(accel_offs[i]);
 		math::Vector<3> accel_offs_rotated = board_rotation_t * accel_offs_vec;
-		math::Matrix<3, 3> accel_T_mat(accel_T[i]);
-		math::Matrix<3, 3> accel_T_rotated = board_rotation_t * accel_T_mat * board_rotation;
 
 		accel_scale.x_offset = accel_offs_rotated(0);
-		accel_scale.x_scale = accel_T_rotated(0, 0);
+		accel_scale.x_scale = 1;
 		accel_scale.y_offset = accel_offs_rotated(1);
-		accel_scale.y_scale = accel_T_rotated(1, 1);
+		accel_scale.y_scale = 1;
 		accel_scale.z_offset = accel_offs_rotated(2);
-		accel_scale.z_scale = accel_T_rotated(2, 2);
+		accel_scale.z_scale = 1;
 		
 		bool failed = false;
 
@@ -324,96 +228,74 @@ int do_accel_calibration(int mavlink_fd)
 	return res;
 }
 
-static calibrate_return accel_calibration_worker(detect_orientation_return orientation, int cancel_sub, void* data)
-{
-	const unsigned samples_num = 750;
-	accel_worker_data_t* worker_data = (accel_worker_data_t*)(data);
-	
-	mavlink_and_console_log_info(worker_data->mavlink_fd, "[cal] Hold still, measuring %s side", detect_orientation_str(orientation));
-	
-	read_accelerometer_avg(worker_data->subs, worker_data->accel_ref, orientation, samples_num);
-	
-	mavlink_and_console_log_info(worker_data->mavlink_fd, "[cal] %s side result: [%8.4f %8.4f %8.4f]", detect_orientation_str(orientation),
-				     (double)worker_data->accel_ref[0][orientation][0],
-				     (double)worker_data->accel_ref[0][orientation][1],
-				     (double)worker_data->accel_ref[0][orientation][2]);
-	
-	worker_data->done_count++;
-	mavlink_and_console_log_info(worker_data->mavlink_fd, CAL_QGC_PROGRESS_MSG, 17 * worker_data->done_count);
-	
-	return calibrate_return_ok;
-}
-
-calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel_offs)[max_accel_sens][3], float (&accel_T)[max_accel_sens][3][3], unsigned *active_sensors)
+calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel_offs)[max_accel_sens][3], unsigned *active_sensors)
 {
 	calibrate_return result = calibrate_return_ok;
-	
+	const unsigned samples_num = 3000;
+	int     subs[max_accel_sens];
+	float       accel_ref[max_accel_sens][3];
 	*active_sensors = 0;
-	
-	accel_worker_data_t worker_data;
-	
-	worker_data.mavlink_fd = mavlink_fd;
-	worker_data.done_count = 0;
-
-	bool data_collected[detect_orientation_side_count] = { false, false};
-
-	// Initialize subs to error condition so we know which ones are open and which are not
-	for (size_t i=0; i<max_accel_sens; i++) {
-		worker_data.subs[i] = -1;
-	}
-
 	uint64_t timestamps[max_accel_sens];
-
+	/*Read the average value of the accelerometer*/
 	for (unsigned i = 0; i < max_accel_sens; i++) {
-		worker_data.subs[i] = orb_subscribe_multi(ORB_ID(sensor_accel), i);
-		if (worker_data.subs[i] < 0) {
+		subs[i] = orb_subscribe_multi(ORB_ID(sensor_accel), i);
+		if (subs[i] < 0) {
 			result = calibrate_return_error;
 			break;
 		}
 		
 		/* store initial timestamp - used to infer which sensors are active */
 		struct accel_report arp = {};
-		(void)orb_copy(ORB_ID(sensor_accel), worker_data.subs[i], &arp);
+		(void)orb_copy(ORB_ID(sensor_accel), subs[i], &arp);
 		timestamps[i] = arp.timestamp;
-
-		// Get priority
-		int32_t prio;
-		orb_priority(worker_data.subs[i], &prio);
-
-		if (prio > device_prio_max) {
-			device_prio_max = prio;
-			device_id_primary = device_id[i];
-		}
 	}
 
-	if (result == calibrate_return_ok) {
+	if (result == calibrate_return_ok) 
+	{
 		int cancel_sub = calibrate_cancel_subscribe();
-		result = calibrate_from_orientation(mavlink_fd, cancel_sub, data_collected, accel_calibration_worker, &worker_data, false /* normal still */);
+		read_accelerometer_avg(subs, accel_ref, samples_num);
+		mavlink_and_console_log_info(mavlink_fd, "[cal]result: [%8.4f %8.4f %8.4f]", (double)accel_ref[0][0]
+																				, (double)accel_ref[0][1]
+																				, (double)accel_ref[0][2]);
+		mavlink_and_console_log_info(mavlink_fd, CAL_QGC_PROGRESS_MSG, 100);
 		calibrate_cancel_unsubscribe(cancel_sub);
 	}
 
 	/* close all subscriptions */
 	for (unsigned i = 0; i < max_accel_sens; i++) {
-		if (worker_data.subs[i] >= 0) {
+		if (subs[i] >= 0) {
 			/* figure out which sensors were active */
 			struct accel_report arp = {};
-			(void)orb_copy(ORB_ID(sensor_accel), worker_data.subs[i], &arp);
+			(void)orb_copy(ORB_ID(sensor_accel), subs[i], &arp);
 			if (arp.timestamp != 0 && timestamps[i] != arp.timestamp) {
 				(*active_sensors)++;
 			}
-			px4_close(worker_data.subs[i]);
+			close(subs[i]);
 		}
 	}
+	/*Determine the direction of gravity*/
+	int	accel_max = 0;
+	for(int i = 1; i< 3; i++)
+	{
+		if(fabs(accel_ref[0][i]) > 5)
+		{
+			accel_max = i;	
+		}
+	}
+	/*Determine offset*/
+	for(int i = 0; i < 3; i++)
+	{
+		accel_offs[i][0] = accel_ref[i][0];
+		accel_offs[i][1] = accel_ref[i][1];
+		accel_offs[i][2] = accel_ref[i][2];
 
-	if (result == calibrate_return_ok) {
-		/* calculate offsets and transform matrix */
-		for (unsigned i = 0; i < (*active_sensors); i++) {
-			result = calculate_calibration_values(i, worker_data.accel_ref, accel_T, accel_offs, CONSTANTS_ONE_G);
-
-			if (result != calibrate_return_ok) {
-				mavlink_and_console_log_critical(mavlink_fd, "[cal] ERROR: calibration calculation error");
-				break;
-			}
+		if(accel_offs[i][accel_max] > 0)
+		{
+			accel_offs[i][accel_max] += -CONSTANTS_ONE_G;  
+		}
+		else
+		{
+			accel_offs[i][accel_max] += CONSTANTS_ONE_G;
 		}
 	}
 
@@ -423,7 +305,7 @@ calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel
 /*
  * Read specified number of accelerometer samples, calculate average and dispersion.
  */
-calibrate_return read_accelerometer_avg(int (&subs)[max_accel_sens], float (&accel_avg)[max_accel_sens][detect_orientation_side_count][3], unsigned orient, unsigned samples_num)
+calibrate_return read_accelerometer_avg(int (&subs)[max_accel_sens], float (&accel_avg)[max_accel_sens][3], unsigned samples_num)
 {
 	/* get total sensor board rotation matrix */
 	param_t board_rotation_h = param_find("SENS_BOARD_ROT");
@@ -505,66 +387,7 @@ calibrate_return read_accelerometer_avg(int (&subs)[max_accel_sens], float (&acc
 
 	for (unsigned s = 0; s < max_accel_sens; s++) {
 		for (unsigned i = 0; i < 3; i++) {
-			accel_avg[s][orient][i] = accel_sum[s][i] / counts[s];
-		}
-	}
-
-	return calibrate_return_ok;
-}
-
-int mat_invert3(float src[3][3], float dst[3][3])
-{
-	float det = src[0][0] * (src[1][1] * src[2][2] - src[1][2] * src[2][1]) -
-		    src[0][1] * (src[1][0] * src[2][2] - src[1][2] * src[2][0]) +
-		    src[0][2] * (src[1][0] * src[2][1] - src[1][1] * src[2][0]);
-
-	if (fabsf(det) < FLT_EPSILON) {
-		return ERROR;        // Singular matrix
-	}
-
-	dst[0][0] = (src[1][1] * src[2][2] - src[1][2] * src[2][1]) / det;
-	dst[1][0] = (src[1][2] * src[2][0] - src[1][0] * src[2][2]) / det;
-	dst[2][0] = (src[1][0] * src[2][1] - src[1][1] * src[2][0]) / det;
-	dst[0][1] = (src[0][2] * src[2][1] - src[0][1] * src[2][2]) / det;
-	dst[1][1] = (src[0][0] * src[2][2] - src[0][2] * src[2][0]) / det;
-	dst[2][1] = (src[0][1] * src[2][0] - src[0][0] * src[2][1]) / det;
-	dst[0][2] = (src[0][1] * src[1][2] - src[0][2] * src[1][1]) / det;
-	dst[1][2] = (src[0][2] * src[1][0] - src[0][0] * src[1][2]) / det;
-	dst[2][2] = (src[0][0] * src[1][1] - src[0][1] * src[1][0]) / det;
-
-	return OK;
-}
-
-calibrate_return calculate_calibration_values(unsigned sensor, float (&accel_ref)[max_accel_sens][detect_orientation_side_count][3], float (&accel_T)[max_accel_sens][3][3], float (&accel_offs)[max_accel_sens][3], float g)
-{
-	/* calculate offsets */
-	for (unsigned i = 0; i < 3; i++) {
-		accel_offs[sensor][i] = (accel_ref[sensor][i * 2][i] + accel_ref[sensor][i * 2 + 1][i]) / 2;
-	}
-
-	/* fill matrix A for linear equations system*/
-	float mat_A[3][3];
-	memset(mat_A, 0, sizeof(mat_A));
-
-	for (unsigned i = 0; i < 3; i++) {
-		for (unsigned j = 0; j < 3; j++) {
-			float a = accel_ref[sensor][i * 2][j] - accel_offs[sensor][j];
-			mat_A[i][j] = a;
-		}
-	}
-
-	/* calculate inverse matrix for A */
-	float mat_A_inv[3][3];
-
-	if (mat_invert3(mat_A, mat_A_inv) != OK) {
-		return calibrate_return_error;
-	}
-
-	/* copy results to accel_T */
-	for (unsigned i = 0; i < 3; i++) {
-		for (unsigned j = 0; j < 3; j++) {
-			/* simplify matrices mult because b has only one non-zero element == g at index i */
-			accel_T[sensor][j][i] = mat_A_inv[j][i] * g;
+			accel_avg[s][i] = accel_sum[s][i] / counts[s];
 		}
 	}
 
