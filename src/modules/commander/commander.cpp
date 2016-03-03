@@ -1440,8 +1440,13 @@ int commander_thread_main(int argc, char *argv[])
 		set_tune_override(TONE_STARTUP_TUNE); //normal boot tune
 	} else {
 			// sensor diagnostics done continiously, not just at boot so don't warn about any issues just yet
-			status.condition_system_sensors_initialized = Commander::preflightCheck(mavlink_fd, true, true, true, true,
+			status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true,
 			checkAirspeed, (status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), !status.circuit_breaker_engaged_gpsfailure_check, false);
+			if(status.condition_system_sensors_initialized > 0) {
+				status.condition_system_sensors_initialized = false;
+			} else {
+				status.condition_system_sensors_initialized = true;
+			}
 			set_tune_override(TONE_STARTUP_TUNE); //normal boot tune
 	}
 
@@ -1552,8 +1557,13 @@ int commander_thread_main(int argc, char *argv[])
 				param_get(_param_map_mode_sw, &map_mode_sw_new);
 
 				if (map_mode_sw == 0 && map_mode_sw != map_mode_sw_new && map_mode_sw_new < input_rc_s::RC_INPUT_MAX_CHANNELS && map_mode_sw_new > 0) {
-					status.condition_system_sensors_initialized = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
+					status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
 							(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
+					if(status.condition_system_sensors_initialized > 0) {
+						status.condition_system_sensors_initialized = false;
+					} else {
+						status.condition_system_sensors_initialized = true;
+					}
 				}
 			}
 
@@ -1664,11 +1674,11 @@ int commander_thread_main(int argc, char *argv[])
 					/* provide RC and sensor status feedback to the user */
 					if (is_hil_setup(autostart_id)) {
 						/* HIL configuration: check only RC input */
-						(void)Commander::preflightCheck(mavlink_fd, false, false, false, false, false,
+						status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, false, false, false, false, false,
 								(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), false, true);
 					} else {
 						/* check sensors also */
-						(void)Commander::preflightCheck(mavlink_fd, true, true, true, true, chAirspeed,
+						status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true, chAirspeed,
 								(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
 					}
 				}
@@ -1992,12 +2002,12 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			/* mark / unmark as ok */
-			if (info.ok) {
-				status.onboard_control_sensors_health |= info.subsystem_type;
-
-			} else {
-				status.onboard_control_sensors_health &= ~info.subsystem_type;
-			}
+//			if (info.ok) {
+//				status.onboard_control_sensors_health |= info.subsystem_type;
+//
+//			} else {
+//				status.onboard_control_sensors_health &= ~info.subsystem_type;
+//			}
 
 			status_changed = true;
 		}
@@ -3570,6 +3580,9 @@ void *commander_low_prio_loop(void *arg)
 						/* gyro calibration */
 						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub, command_ack);
 						calib_ret = do_gyro_calibration(mavlink_fd);
+						/* accelerometer calibration */
+						answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub, command_ack);
+						calib_ret = do_accel_calibration(mavlink_fd);
 
 					} else if ((int)(cmd.param2) == 1) {
 						/* magnetometer calibration */
@@ -3642,8 +3655,13 @@ void *commander_low_prio_loop(void *arg)
 							checkAirspeed = true;
 						}
 
-						status.condition_system_sensors_initialized = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
+						status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
 							!(status.rc_input_mode >= vehicle_status_s::RC_IN_MODE_OFF), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
+						if(status.onboard_control_sensors_health > 0) {
+							status.condition_system_sensors_initialized = 0;
+						} else {
+							status.condition_system_sensors_initialized = 1;
+						}
 
 						arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_STANDBY, &armed, false /* fRunPreArmChecks */, mavlink_fd);
 
