@@ -350,6 +350,16 @@ PARAM_DEFINE_FLOAT(MPC_FOL_VXY_MAX, 15.0f);
 PARAM_DEFINE_FLOAT(MPC_FOL_VZ_MAX, 5.0f);
 
 /**
+ * follow speed threshold
+ *
+ * @min 0.5
+ * @max 5.0
+ *
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_FOL_V_T, 1.0f);
+
+/**
  * circle radius
  *
  * @min 3

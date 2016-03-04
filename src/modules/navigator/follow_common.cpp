@@ -49,7 +49,7 @@
 #include "navigator.h"
 #include "follow_common.h"
 
-#define WAYPOINT_TIMEOUT 3000000
+#define WAYPOINT_TIMEOUT 1000000
 
 FollowCommon::FollowCommon(Navigator *navigator, const char *name) :
 	MissionBlock(navigator, name),
@@ -81,6 +81,12 @@ FollowCommon::on_active() {
 		if (is_valid_follow_item(waypoint_sp)) {
 			advance_follow();
 			set_follow_item(waypoint_sp);
+		} else {
+			struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
+			if (pos_sp_triplet->current.valid && pos_sp_triplet->current.velocity_valid) {
+				pos_sp_triplet->current.velocity_valid = false;
+				_navigator->set_position_setpoint_triplet_updated();
+			}
 		}
 	}
 }
