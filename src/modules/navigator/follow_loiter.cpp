@@ -137,6 +137,9 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 				/* update target horizontal position */
 				pos_sp_triplet->current.lat = target_lat;
 				pos_sp_triplet->current.lon = target_lon;
+				pos_sp_triplet->current.position_valid = true;
+			} else {
+				pos_sp_triplet->current.position_valid = false;
 			}
 
 			if(_param_alt_en.get()) {

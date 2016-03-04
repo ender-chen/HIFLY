@@ -201,6 +201,7 @@ private:
 		param_t circle_radius;
 		param_t circle_vel;
 		param_t circle_rot;
+		param_t fol_v_t;
 		param_t follow_fc_horizon_distance;
 		param_t follow_fc_vertical_distance;
 		param_t follow_fc_circle_accelerate;
@@ -227,6 +228,7 @@ private:
 		float circle_radius;
 		float circle_vel;
 		float circle_rot;
+		float fol_v_t;
 		float follow_fc_horizon_distance;
 		float follow_fc_vertical_distance;
 		float follow_fc_circle_accelerate;
@@ -589,6 +591,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_params_handles.circle_radius = param_find("MPC_CIRCLE_R");
 	_params_handles.circle_vel = param_find("MPC_CIRCLE_VEL");
 	_params_handles.circle_rot = param_find("MPC_CIRCLE_ROT");
+	_params_handles.fol_v_t = param_find("MPC_FOL_V_T");
 	_params_handles.follow_fc_horizon_distance = param_find("MPC_FCF_HORI");
 	_params_handles.follow_fc_vertical_distance = param_find("MPC_FCF_VER");
 	_params_handles.follow_fc_circle_accelerate = param_find("MPC_FCF_ACC");
@@ -651,6 +654,7 @@ MulticopterPositionControl::parameters_update(bool force)
 		param_get(_params_handles.circle_vel, &_params.circle_vel);
 		param_get(_params_handles.circle_rot, &_params.circle_rot);
 		_params.circle_rot = math::radians(_params.circle_rot);
+		param_get(_params_handles.fol_v_t, &_params.fol_v_t);
 
 		param_get(_params_handles.follow_fc_horizon_distance, &_params.follow_fc_horizon_distance);
 		param_get(_params_handles.follow_fc_vertical_distance, &_params.follow_fc_vertical_distance);
@@ -1556,34 +1560,47 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 	}
 
 	if (current_setpoint_valid) {
-		float vel_xy = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
-				_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
-
 		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER) {
-			math::Vector<3> follow_vel;
-			follow_vel(0) = math::constrain(vel_xy, 1.0f, _params.fol_v_max(0));
-			follow_vel(1) = math::constrain(vel_xy, 1.0f, _params.fol_v_max(1));
-			follow_vel(2) = math::constrain(fabsf(_pos_sp_triplet.current.vz), 1.0f, _params.fol_v_max(2));
+			if (_pos_sp_triplet.current.position_valid) {
+				/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+				math::Vector<3> scale = _params.pos_p.edivide(_params.fol_v_max);	// TODO add mult param here
 
-			/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-			math::Vector<3> scale = _params.pos_p.edivide(follow_vel);	// TODO add mult param here
+				/* move setpoint not faster than max allowed speed */
+				math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
 
-			/* move setpoint not faster than max allowed speed */
-			math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+				/* convert current setpoint to scaled space */
+				math::Vector<3> pos_sp_s = curr_sp.emult(scale);
 
-			/* convert current setpoint to scaled space */
-			math::Vector<3> pos_sp_s = curr_sp.emult(scale);
+				/* difference between current and desired position setpoints, 1 = max speed */
+				math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+				float d_pos_m_len = d_pos_m.length();
 
-			/* difference between current and desired position setpoints, 1 = max speed */
-			math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
-			float d_pos_m_len = d_pos_m.length();
+				if (d_pos_m_len > dt) {
+					pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+				}
 
-			if (d_pos_m_len > dt) {
-				pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+				/* scale result back to normal space */
+				_pos_sp = pos_sp_s.edivide(scale);
+
+				if (_pos_sp_triplet.current.velocity_valid) {
+					float vel = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
+							_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
+					if (vel > _params.fol_v_t) {
+						math::Vector<2> vel_sp;
+						vel_sp(0) = (_pos_sp(0) - _pos(0)) * _params.pos_p(0);
+						vel_sp(1) = (_pos_sp(1) - _pos(1)) * _params.pos_p(1);
+						_pos_sp(0) = _pos(0);
+						_pos_sp(1) = _pos(1);
+						_run_pos_control = false;
+
+						if (isfinite(_pos_sp_triplet.current.yaw)) {
+							_vel_sp(0) = vel_sp(0) + vel * cosf(_pos_sp_triplet.current.yaw);
+							_vel_sp(1) = vel_sp(1) + vel * sinf(_pos_sp_triplet.current.yaw);
+						}
+					}
+
+				}
 			}
-
-			/* scale result back to normal space */
-			_pos_sp = pos_sp_s.edivide(scale);
 
 			/* update yaw setpoint if needed */
 			if (isfinite(_pos_sp_triplet.current.yaw)) {
