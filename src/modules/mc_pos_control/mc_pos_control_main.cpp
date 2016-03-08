@@ -341,6 +341,10 @@ private:
 	 */
 	void		reset_alt_sp();
 
+	void 		reset_follow_fc();
+
+	void 		reset_follow_circle();
+
 	/**
 	 * Check if position setpoint is too far from current position and adjust it if needed.
 	 */
@@ -364,7 +368,7 @@ private:
 	/**
 	  * Main function assist follow mode.
 	  */
-	void 		control_follow();
+	void 		control_follow(float dt);
 
 	/**
 	  * INIT for far close follow
@@ -868,6 +872,18 @@ MulticopterPositionControl::reset_pos_sp()
 }
 
 void
+MulticopterPositionControl::reset_follow_fc()
+{
+	_follow_fc_circle_init = false;
+}
+
+void
+MulticopterPositionControl::reset_follow_circle()
+{
+	_circle_follow_init = false;
+}
+
+void
 MulticopterPositionControl::reset_alt_sp()
 {
 	if (_reset_alt_sp) {
@@ -1109,7 +1125,7 @@ MulticopterPositionControl::cross_sphere_line(const math::Vector<3> &sphere_c, f
 	}
 }
 
-void MulticopterPositionControl::control_follow()
+void MulticopterPositionControl::control_follow(float dt)
 {
 	//Poll position setpoint
 	bool updated;
@@ -1117,6 +1133,33 @@ void MulticopterPositionControl::control_follow()
 
 	if (updated) {
 		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
+
+		//Make sure that the position setpoint is valid
+		if (!PX4_ISFINITE(_pos_sp_triplet.current.lat) ||
+		    !PX4_ISFINITE(_pos_sp_triplet.current.lon) ||
+		    !PX4_ISFINITE(_pos_sp_triplet.current.alt)) {
+			_pos_sp_triplet.current.valid = false;
+		}
+	}
+
+	if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE) {
+		control_follow_fc(dt);
+	} else {
+		reset_follow_fc();
+	}
+
+	if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CIRCLE) {
+		control_follow_circle(dt);
+	} else {
+		reset_follow_circle();
+	}
+
+	if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CAMERA) {
+		control_follow_camera(dt);
+	}
+
+	if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER) {
+		control_follow_loiter(dt);
 	}
 }
 
@@ -1129,19 +1172,6 @@ void MulticopterPositionControl::control_follow_camera(float dt)
 		reset_alt_sp();
 		/* set current velocity as last target velocity to smooth out transition */
 		_vel_sp_prev = _vel;
-	}
-
-	//Poll position setpoint
-	bool updated;
-	orb_check(_pos_sp_triplet_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
-
-		//Make sure that the altitude setpoint is valid
-		if (!PX4_ISFINITE(_pos_sp_triplet.current.alt)) {
-			_pos_sp_triplet.current.valid = false;
-		}
 	}
 
 	if (_pos_sp_triplet.current.valid) {
@@ -1393,20 +1423,6 @@ void MulticopterPositionControl::control_follow_circle(float dt)
 		_vel_sp_prev = _vel;
 	}
 
-	//Poll position setpoint
-	bool updated;
-	orb_check(_pos_sp_triplet_sub, &updated);
-	if (updated) {
-		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
-
-		//Make sure that the position setpoint is valid
-		if (!isfinite(_pos_sp_triplet.current.lat) ||
-			!isfinite(_pos_sp_triplet.current.lon) ||
-			!isfinite(_pos_sp_triplet.current.alt)) {
-			_pos_sp_triplet.current.valid = false;
-		}
-	}
-
 	bool current_setpoint_valid = false;
 
 	math::Vector<3> curr_sp;
@@ -1525,20 +1541,6 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 		reset_alt_sp();
 		/* set current velocity as last target velocity to smooth out transition */
 		_vel_sp_prev = _vel;
-	}
-
-	//Poll position setpoint
-	bool updated;
-	orb_check(_pos_sp_triplet_sub, &updated);
-	if (updated) {
-		orb_copy(ORB_ID(position_setpoint_triplet), _pos_sp_triplet_sub, &_pos_sp_triplet);
-
-		//Make sure that the position setpoint is valid
-		if (!isfinite(_pos_sp_triplet.current.lat) ||
-			!isfinite(_pos_sp_triplet.current.lon) ||
-			!isfinite(_pos_sp_triplet.current.alt)) {
-			_pos_sp_triplet.current.valid = false;
-		}
 	}
 
 	bool current_setpoint_valid = false;
@@ -1951,12 +1953,9 @@ MulticopterPositionControl::task_main()
 				_alt_hold_engaged = false;
 			}
 
-			 if (_control_mode.flag_control_custom_mode != vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE) {
-				_circle_follow_init = false;
-			}
-			if (!(!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE))
-			{
-				_follow_fc_circle_init = false;
+			if (!_control_mode.flag_control_follow_enabled) {
+				reset_follow_circle();
+				reset_follow_fc();
 			}
 
 			/* select control source */
@@ -1970,33 +1969,15 @@ MulticopterPositionControl::task_main()
 				control_offboard(dt);
 				_mode_auto = false;
 
-			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA) {
-				control_follow_camera(dt);
-
-			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE) {
-				control_follow_circle(dt);
-
-			} else if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
-				control_follow_loiter(dt);
 			} else if (_control_mode.flag_control_follow_enabled) {
-				control_follow();
+				/* follow control */
+				control_follow(dt);
 			} else {
 				/* AUTO */
 				control_auto(dt);
 			}
-			//custom follow mode start
-			if (_control_mode.flag_control_follow_enabled && _pos_sp_triplet.current.valid && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_FAR_CLOSE)
-			{
-				_mode_auto = false;
-				control_follow_fc(dt);
-			}
-			else
-			{
-				_follow_fc_circle_init = false;
-			}
 
-			//custom follow mode end
-			if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
+			if (_control_mode.flag_control_auto_enabled && _pos_sp_triplet.current.valid
 			    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_IDLE) {
 				/* idle state, don't run controller and set zero thrust */
 				_reset_pos_sp = true;
@@ -2061,7 +2042,10 @@ MulticopterPositionControl::task_main()
 				}
 
 				math::Vector<3> vel_max;
-				if (_control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CAMERA || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_CIRCLE || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_FOLLOW_LOITER) {
+				if (_control_mode.flag_control_follow_enabled &&
+					(_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER ||
+					_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CIRCLE ||
+					_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CAMERA)) {
 					vel_max = _params.fol_v_max;
 				} else {
 					vel_max = _params.vel_max;
@@ -2104,14 +2088,14 @@ MulticopterPositionControl::task_main()
 				}
 
 				/* use constant descend rate when landing, ignore altitude setpoint */
-				if ((!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
+				if ((_control_mode.flag_control_auto_enabled && _pos_sp_triplet.current.valid
 				    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND)
-				    || _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_DESCEND) {
+				    || _control_mode.flag_control_descend_enabled) {
 					_vel_sp(2) = _params.land_speed;
 				}
 
 				/* velocity handling during takeoff */
-				if (!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid
+				if (_control_mode.flag_control_auto_enabled && _pos_sp_triplet.current.valid
 				    && _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF) {
 
 					// check if we are not already in air.
@@ -2226,7 +2210,7 @@ MulticopterPositionControl::task_main()
 					math::Vector<3> thrust_sp = vel_err.emult(_params.vel_p) + _vel_err_d.emult(_params.vel_d) + thrust_int;
 
 					if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_TAKEOFF
-							&& !_takeoff_jumped && !_control_mode.flag_control_manual_enabled) {
+							&& !_takeoff_jumped && _control_mode.flag_control_auto_enabled) {
 						// for jumped takeoffs use special thrust setpoint calculated above
 						thrust_sp.zero();
 						thrust_sp(2) = -_takeoff_thrust_sp;
@@ -2263,9 +2247,9 @@ MulticopterPositionControl::task_main()
 					_acc_z_lp = _acc_z_lp * (1.0f - dt * 8.0f) + dt * 8.0f * vel_z_change;
 
 					/* adjust limits for landing mode */
-					if ((!_control_mode.flag_control_manual_enabled && _pos_sp_triplet.current.valid &&
+					if ((_control_mode.flag_control_auto_enabled && _pos_sp_triplet.current.valid &&
 					    _pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_LAND) ||
-					    _control_mode.flag_control_custom_mode == vehicle_control_mode_s::CUSTOM_MODE_DESCEND) {
+					    _control_mode.flag_control_descend_enabled) {
 						/* limit max tilt and min lift when landing */
 						tilt_max = _params.tilt_max_land;
 
