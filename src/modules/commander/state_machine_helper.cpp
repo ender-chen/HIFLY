@@ -687,6 +687,7 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 
 			case vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_CIRCLE;
+				break;
 
 			case vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC:
 				status->nav_state = vehicle_status_s::NAVIGATION_STATE_FOLLOW_FC_ARC;
