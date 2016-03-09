@@ -218,7 +218,7 @@ static unsigned progress_percentage(mag_worker_data_t* worker_data) {
 	return 100 * ((float)worker_data->done_count) / calibration_sides;
 }
 
-static calibrate_return mag_calibration_worker(detect_orientation_return orientation, int cancel_sub, void* data)
+static calibrate_return mag_calibration_worker(fist_orientation_axis* orient_axis, int cancel_sub, void* data)
 {
 	calibrate_return result = calibrate_return_ok;
 	
@@ -226,9 +226,6 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 
 	mag_worker_data_t* worker_data = (mag_worker_data_t*)(data);
 	
-	mavlink_and_console_log_info(worker_data->mavlink_fd, "[cal] Rotate vehicle around the detected orientation");
-	mavlink_and_console_log_info(worker_data->mavlink_fd, "[cal] Continue rotation for %u seconds", worker_data->calibration_interval_perside_seconds);
-
 	/*
 	 * Detect if the system is rotating.
 	 *
@@ -250,12 +247,43 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 	
 	calibration_counter_side = 0;
 	
-	while ((orientation?(fabs(gyro_z_integral) < 6.4):(fabs(gyro_x_integral) < 6.4)) &&
-	       calibration_counter_side < worker_data->calibration_points_perside) {
+	while (calibration_counter_side < worker_data->calibration_points_perside) {
 		
 		if (calibrate_cancel_check(worker_data->mavlink_fd, cancel_sub)) {
 			result = calibrate_return_cancelled;
 			break;
+		}
+
+		if (*orient_axis == ORIENTATION_AXIS_NO)
+		{
+			if(fabs(gyro_x_integral) > 7) {
+				*orient_axis = ORIENTATION_AXIS_X;
+				break;
+			} else if (fabs(gyro_y_integral) > 7) {
+				*orient_axis = ORIENTATION_AXIS_Y;
+				break;
+			} else if (fabs(gyro_z_integral) > 7) {
+				*orient_axis = ORIENTATION_AXIS_Z;
+				break;
+			}
+		} else if (*orient_axis == ORIENTATION_AXIS_X) {
+			if (fabs(gyro_y_integral) > 7) {
+				break;
+			} else if (fabs(gyro_z_integral) > 7) {
+				break;
+			}
+		} else if (*orient_axis == ORIENTATION_AXIS_Y) {
+			if (fabs(gyro_x_integral) > 7) {
+				break;
+			} else if(fabs(gyro_z_integral) > 7) {
+				break;
+			}
+		} else if (*orient_axis == ORIENTATION_AXIS_Z) {
+			if (fabs(gyro_x_integral) > 7) {
+				break;
+			} else if (fabs(gyro_y_integral) > 7) {
+				break;
+			}
 		}
 		
 		// Wait clocking for new data on all mags
@@ -345,7 +373,6 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 	px4_close(sub_gyro);
 	
 	if (result == calibrate_return_ok) {
-		mavlink_and_console_log_info(worker_data->mavlink_fd, "[cal] %s side done, rotate to a different side", detect_orientation_str(orientation));
 		
 		worker_data->done_count++;
 		mavlink_and_console_log_info(worker_data->mavlink_fd, CAL_QGC_PROGRESS_MSG, progress_percentage(worker_data));

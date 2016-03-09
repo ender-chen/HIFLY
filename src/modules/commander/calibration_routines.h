@@ -61,10 +61,18 @@ static const unsigned max_accel_sens = 3;
 
 // The order of these cannot change since the calibration calculations depend on them in this order
 enum detect_orientation_return {
-	DETECT_ORIENTATION_NOSE_DOWN,
 	DETECT_ORIENTATION_RIGHTSIDE_UP,
+	DETECT_ORIENTATION_NOSE_DOWN,
 	DETECT_ORIENTATION_ERROR
 };
+//The first rotation of the magnetic force is more than 380 degrees
+enum fist_orientation_axis {
+	ORIENTATION_AXIS_NO,
+	ORIENTATION_AXIS_X,
+	ORIENTATION_AXIS_Y,
+	ORIENTATION_AXIS_Z
+};
+
 static const unsigned detect_orientation_side_count = 2;
 
 /// Wait for vehicle to become still and detect it's orientation
@@ -85,7 +93,7 @@ enum calibrate_return {
 	calibrate_return_cancelled
 };
 
-typedef calibrate_return (*calibration_from_orientation_worker_t)(detect_orientation_return	orientation,	///< Orientation which was detected
+typedef calibrate_return (*calibration_from_orientation_worker_t)(fist_orientation_axis*	orient_axis,	///< Orientation which was detected
 								  int				cancel_sub,	///< Cancel subscription from calibration_cancel_subscribe
 								  void*				worker_data);	///< Opaque worker data
 
