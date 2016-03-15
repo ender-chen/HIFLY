@@ -176,6 +176,7 @@ bool gps_failure_cmd				# Set to true if a gps failure mode is commanded
 bool mission_failure				# Set to true if mission could not continue/finish
 bool barometer_failure				# Set to true if a barometer failure is detected
 bool restricted_area_violated_once			# Set to true if restricted area violated
+bool force_disarm                             # force disarm
 
 bool offboard_control_signal_found_once
 bool offboard_control_signal_lost

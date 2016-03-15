@@ -991,6 +991,20 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}
 		break;
+	case vehicle_command_s::VEHICLE_CMD_FORCE_DISARM: {
+			if (cmd->param1 > 0.5f) {
+				status_local->force_disarm = true;
+				mavlink_log_info(mavlink_fd, "Enable force disarm");
+			} else {
+				status_local->force_disarm = false;
+				mavlink_log_info(mavlink_fd, "Disable force disarm");
+			}
+			if (armed.armed) {
+				arm_disarm(false, mavlink_fd, "disarm command VEHICLE_CMD_FORCE_DISARM");
+			}
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+		}
+		break;
 
 	default:
 		/* Warn about unsupported commands, this makes sense because only commands
@@ -1219,6 +1233,8 @@ int commander_thread_main(int argc, char *argv[])
 	status.avionics_power_rail_voltage = -1.0f;
 	status.usb_connected = false;
 	status.restricted_area_violated_once = false;
+	status.force_disarm = false;
+
 
 	// CIRCUIT BREAKERS
 	status.circuit_breaker_engaged_power_check = false;
