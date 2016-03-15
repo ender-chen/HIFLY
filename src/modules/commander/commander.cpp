@@ -2623,9 +2623,13 @@ int commander_thread_main(int argc, char *argv[])
 		if (sp_man.control_source != previous_control_source)
 		{
 			control_source_changed = true;
-			warnx("control_source changed");
+			previous_control_source = sp_man.control_source;
+			if (sp_man.control_souce == manual_control_setpoint_s::CONTROL_SOURCE_RC) {
+				mavlink_log_info(mavlink_fd, "CONTROL_SOURCE now is RC");
+			} else if (sp_man.control_souce == manual_control_setpoint_s::CONTROL_SOURCE_APP){
+				mavlink_log_info(mavlink_fd, "CONTROL_SOURCE now is APP");
+			}
 		}
-		previous_control_source = sp_man.control_source;
 		if (control_source_changed)
 		{
 			if (status.condition_landed)
