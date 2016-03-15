@@ -1,3 +1,34 @@
+20160312: merge release v1.2.0 from stable branch
+
+	commit 73751922de95fbd9a64c5f5deb9e171e268c7c06
+	Author: Lorenz Meier <lm@inf.ethz.ch>
+	Date:   Fri Feb 19 21:37:36 2016 +0100
+
+		Harmonize Pixracer and Pixhawk OSD API
+
+    some unmerged commit releated to PWM driver as follow:
+		8007a84 FMU: Ensure an all-low output set on boot with direct start of the PWM sequence
+		fb131f4 fix the bug ( error: array subscript is above array bounds [-Werror=array-bounds] )
+		0bde2b6 Fixed Channel mapping
+		7541aec Fixed Isr restore (moved out of loop)
+		7edd07f Rebased on master, removing the default_rate field and using default to 0 for rates
+		0d13c41 Ran Astyle
+		8268161 Fmu interface to Capture
+		b3af469 IO Timer Changes for Capture
+		0397537 Adding input capture driver
+		f3c22d3 Refactored pwm servo to use drv_io_timer
+		2949578 Renamed pwm_timers to more appropriate io timers for use in pwm in/out and capture
+
+20160201: merge release v1.1.3 from stable branch
+
+	commit 9e89af363202694cf99cd47848d2d48fd2087dd2
+	Author: Roman <bapstr@ethz.ch>
+	Date:   Wed Jan 27 11:15:22 2016 +0100
+
+	- only use takeoff strategy when in auto mode
+	- after jumped takeoff set previous vel setpoint such that thrust setpoint is continuous
+
+
 20160121: porting on px4 release v1.1.1.x from stable branch
 
    last commit infomation:
