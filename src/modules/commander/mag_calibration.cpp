@@ -297,7 +297,7 @@ static calibrate_return mag_calibration_worker(fist_orientation_axis* orient_axi
 			}
 		}
 		/* Wait clocking for new data on all gyro */
-		struct pollfd fds_gyro[1];
+		px4_pollfd_struct_t fds_gyro[1];
 		fds_gyro[0].fd = sub_gyro;
 		fds_gyro[0].events = POLLIN;
 		size_t fd_count_gyro = 1;

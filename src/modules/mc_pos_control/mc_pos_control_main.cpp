@@ -1619,7 +1619,7 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 						_pos_sp(1) = _pos(1);
 						_run_pos_control = false;
 
-						if (isfinite(_pos_sp_triplet.current.yaw)) {
+						if (PX4_ISFINITE(_pos_sp_triplet.current.yaw)) {
 							_vel_sp(0) = vel_sp(0) + vel * cosf(_pos_sp_triplet.current.yaw);
 							_vel_sp(1) = vel_sp(1) + vel * sinf(_pos_sp_triplet.current.yaw);
 						}
@@ -1629,7 +1629,7 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 			}
 
 			/* update yaw setpoint if needed */
-			if (isfinite(_pos_sp_triplet.current.yaw)) {
+			if (PX4_ISFINITE(_pos_sp_triplet.current.yaw)) {
 				_att_sp.yaw_body = _pos_sp_triplet.current.yaw;
 			}
 
