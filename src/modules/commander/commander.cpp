@@ -97,8 +97,8 @@
 #include <uORB/topics/vehicle_land_detected.h>
 #include <uORB/topics/input_rc.h>
 #include <uORB/topics/vehicle_command_ack.h>
-#include <uORB/topics/waypoint.h>
 #include <uORB/topics/follow_reference_position.h>
+#include <uORB/topics/follow_target.h>
 
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
@@ -215,8 +215,8 @@ static struct safety_s safety;
 static struct vehicle_control_mode_s control_mode;
 static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
-static orb_advert_t _waypoint_pub = nullptr;
 static orb_advert_t _follow_ref_pos_pub = nullptr;
+static orb_advert_t _follow_me_pub = nullptr;
 
 static unsigned _last_mission_instance = 0;
 static manual_control_setpoint_s _last_sp_man;
@@ -978,20 +978,21 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 		break;
 
 	case vehicle_command_s::VEHICLE_CMD_NAV_WAYPOINT: {
-			/* follow me position */
-			struct waypoint_s waypoint;
-			waypoint.timestamp = hrt_absolute_time();
-			waypoint.vel_n_m_s = cmd->param2;
-			waypoint.vel_e_m_s = cmd->param3;
-			waypoint.vel_d_m_s = cmd->param4;
-			waypoint.lat = cmd->param5;
-			waypoint.lon = cmd->param6;
-			waypoint.alt = cmd->param7;
 
-			if (_waypoint_pub != nullptr) {
-				orb_publish(ORB_ID(waypoint),  _waypoint_pub, &waypoint);
+			follow_target_s follow_target_topic = { };
+			follow_target_topic.timestamp = hrt_absolute_time();
+			follow_target_topic.seq = cmd->param1 + 0.5f;
+			follow_target_topic.lat = cmd->param5;
+			follow_target_topic.lon = cmd->param6;
+			follow_target_topic.alt = cmd->param7;
+			follow_target_topic.vel_n_m_s = cmd->param2;
+			follow_target_topic.vel_e_m_s = cmd->param3;
+			follow_target_topic.vel_d_m_s = cmd->param4;
+
+			if (_follow_me_pub == nullptr) {
+				_follow_me_pub = orb_advertise(ORB_ID(follow_target), &follow_target_topic);
 			} else {
-				_waypoint_pub = orb_advertise(ORB_ID(waypoint), &waypoint);
+				orb_publish(ORB_ID(follow_target), _follow_me_pub, &follow_target_topic);
 			}
 			//cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}

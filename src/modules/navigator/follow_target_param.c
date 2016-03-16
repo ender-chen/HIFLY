@@ -1,4 +1,8 @@
-/*copyright (c) 2013-2014 PX4 Development Team. All rights reserved.
+/****************************************************************************
+ *
+ *   Copyright (c) 2013 PX4 Development Team. All rights reserved.
+ *
+ * opyright (c) 2013 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -15,7 +19,7 @@
  *    without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
  * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
  * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
@@ -28,37 +32,65 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *
  ****************************************************************************/
+
 /**
- * @file follow_loiter.h
+ * @file follow_target_params.c
  *
- * Navigator mode to access missions
+ * Parameters for follow loiter
  *
- * @author liang.tang <liang.tang@ck-telecom.com>
+ * @author Thomas Gubler <liang.tang@ck-telecom.com>
  */
 
-#ifndef NAVIGATOR_FOLLOW_LOITER_H
-#define NAVIGATOR_FOLLOW_LOITER_H
+/*
+ * Follow parameters, accessible via MAVLink
+ */
 
-#include "follow_common.h"
+/**
+ * Follow update alt
+ *
+ * relative distance
+ *
+ * @unit meters
+ * @group Follow
+ */
+PARAM_DEFINE_INT32(F_TAR_UPD_ALT, 0);
 
-class Navigator;
+/**
+ * Follow alt.
+ *
+ * relative altitude
+ *
+ * @unit meters
+ * @group Follow
+ */
+PARAM_DEFINE_FLOAT(F_TAR_ALT, 5.0f);
 
-class FollowLoiter : public FollowCommon
-{
-public:
-	FollowLoiter(Navigator *navigator, const char *name);
+/**
+ * Follow dist.
+ *
+ * relative distance
+ *
+ * @unit meters
+ * @group Follow
+ */
+PARAM_DEFINE_FLOAT(F_TAR_DIST, 5.0f);
 
-	~FollowLoiter();
-private:
-	void set_follow_item(const struct follow_target_s *target);
+/**
+ * Follow yaw valid distance.
+ *
+ * relative distance
+ *
+ * @unit meters
+ * @group Follow
+ */
+PARAM_DEFINE_FLOAT(F_TAR_YAW_VALID, 3.0f);
 
-	float _bearing;
-	float _dist;
-
-	control::BlockParamInt _param_alt_en;
-	control::BlockParamFloat _param_alt;
-	control::BlockParamFloat _param_dist;
-	control::BlockParamFloat _param_yaw_valid;
-};
-
-#endif
+/**
+ * Follow yaw valid distance.
+ *
+ * relative distance
+ *
+ * @unit meters
+ * @group Follow
+ */
+PARAM_DEFINE_FLOAT(F_TAR_VEL_GAIN, 0.15f);

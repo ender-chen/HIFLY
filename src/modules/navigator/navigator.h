@@ -57,7 +57,6 @@
 #include <uORB/topics/mission_result.h>
 #include <uORB/topics/geofence_result.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
-#include <uORB/topics/waypoint.h>
 #include <uORB/topics/follow_reference_position.h>
 
 #include "navigator_mode.h"
@@ -76,6 +75,7 @@
 #include "follow_circle.h"
 #include "follow_far_close.h"
 #include "follow_loiter.h"
+#include "follow_target.h"
 
 /**
  * Number of navigation modes that need on_active/on_inactive calls
@@ -149,7 +149,7 @@ public:
 	struct mission_result_s*	    get_mission_result() { return &_mission_result; }
 	struct geofence_result_s*		    get_geofence_result() { return &_geofence_result; }
 	struct vehicle_attitude_setpoint_s* get_att_sp() { return &_att_sp; }
-	struct waypoint_s* get_waypoint_sp() { return &_waypoint_sp; }
+	struct follow_target_s* get_follow_target() { return &_target; }
 	bool				    use_current_position_to_follow() { return _follow_ref_pos.cur_ref2target_pos; }
 
 	int		get_onboard_mission_sub() { return _onboard_mission_sub; }
@@ -197,7 +197,7 @@ private:
 	int		_offboard_mission_sub;		/**< offboard mission subscription */
 	int		_param_update_sub;		/**< param update subscription */
 	int		_vehicle_command_sub;		/**< vehicle commands (onboard and offboard) */
-	int		_waypoint_sub;			/**< waypoint subscription */
+	int		_follow_target_sub;			/**< waypoint subscription */
 	int		_follow_ref_pos_sub;		/**< follow position type subscription */
 
 	orb_advert_t	_pos_sp_triplet_pub;		/**< publish position setpoint triplet */
@@ -220,7 +220,7 @@ private:
 	mission_result_s				_mission_result;
 	geofence_result_s				_geofence_result;
 	vehicle_attitude_setpoint_s			_att_sp;
-	waypoint_s					_waypoint_sp;
+	follow_target_s					_target;
 	follow_reference_position_s			_follow_ref_pos;
 
 	bool 		_mission_item_valid;		/**< flags if the current mission item is valid */
@@ -256,6 +256,7 @@ private:
 	FollowCircle	_follow_circle;
 	Fcf 			_follow_far_close;
 	FollowLoiter	_follow_loiter;
+	FollowTarget _follow_target;
 
 	NavigatorMode *_navigation_mode_array[NAVIGATOR_MODE_ARRAY_SIZE];	/**< array of navigation modes */
 
@@ -306,7 +307,7 @@ private:
 	/**
 	 * Update waypoint
 	*/
-	void		waypoint_update();
+	void		follow_target_update();
 
 	/**
 	 * Update Follow position type

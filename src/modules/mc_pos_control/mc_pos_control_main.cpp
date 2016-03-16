@@ -1193,7 +1193,7 @@ void MulticopterPositionControl::control_follow(float dt)
 		control_follow_camera(dt);
 	}
 
-	if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER) {
+	if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_TARGET) {
 		control_follow_loiter(dt);
 	}
 }
@@ -1597,46 +1597,59 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 	}
 
 	if (current_setpoint_valid) {
-		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER) {
-			if (_pos_sp_triplet.current.position_valid) {
-				/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-				math::Vector<3> scale = _params.pos_p.edivide(_params.fol_v_max);	// TODO add mult param here
+		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_TARGET) {
+			/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
+			//math::Vector<3> scale = _params.pos_p.edivide(_params.fol_v_max);	// TODO add mult param here
+			math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
 
-				/* move setpoint not faster than max allowed speed */
-				math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
+			/* move setpoint not faster than max allowed speed */
+			math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
 
-				/* convert current setpoint to scaled space */
-				math::Vector<3> pos_sp_s = curr_sp.emult(scale);
+			/* convert current setpoint to scaled space */
+			math::Vector<3> pos_sp_s = curr_sp.emult(scale);
 
-				/* difference between current and desired position setpoints, 1 = max speed */
-				math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
-				float d_pos_m_len = d_pos_m.length();
+			/* difference between current and desired position setpoints, 1 = max speed */
+			math::Vector<3> d_pos_m = (pos_sp_s - pos_sp_old_s).edivide(_params.pos_p);
+			float d_pos_m_len = d_pos_m.length();
 
-				if (d_pos_m_len > dt) {
-					pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
-				}
+			if (d_pos_m_len > dt) {
+				pos_sp_s = pos_sp_old_s + (d_pos_m / d_pos_m_len * dt).emult(_params.pos_p);
+			}
 
-				/* scale result back to normal space */
-				_pos_sp = pos_sp_s.edivide(scale);
+			/* scale result back to normal space */
+			_pos_sp = pos_sp_s.edivide(scale);
 
-				if (_pos_sp_triplet.current.velocity_valid) {
-					float vel = sqrtf(_pos_sp_triplet.current.vx * _pos_sp_triplet.current.vx +
-							_pos_sp_triplet.current.vy * _pos_sp_triplet.current.vy);
-					if (vel > _params.fol_v_t) {
-						math::Vector<2> vel_sp;
-						vel_sp(0) = (_pos_sp(0) - _pos(0)) * _params.pos_p(0);
-						vel_sp(1) = (_pos_sp(1) - _pos(1)) * _params.pos_p(1);
-						_pos_sp(0) = _pos(0);
-						_pos_sp(1) = _pos(1);
-						_run_pos_control = false;
+			// do not go slower than the follow target velocity when position tracking is active
+			if(_pos_sp_triplet.current.velocity_valid) {
+				if (_pos_sp_triplet.current.position_valid) {
 
-						if (PX4_ISFINITE(_pos_sp_triplet.current.yaw)) {
-							_vel_sp(0) = vel_sp(0) + vel * cosf(_pos_sp_triplet.current.yaw);
-							_vel_sp(1) = vel_sp(1) + vel * sinf(_pos_sp_triplet.current.yaw);
-						}
+					math::Vector<3> ft_vel(_pos_sp_triplet.current.vx, _pos_sp_triplet.current.vy, 0);
+
+					_vel_sp(0) = (_pos_sp(0) - _pos(0)) * _params.pos_p(0);
+					_vel_sp(1) = (_pos_sp(1) - _pos(1)) * _params.pos_p(1);
+
+					float cos_ratio = (ft_vel*_vel_sp)/(ft_vel.length()*_vel_sp.length());
+
+					// only override velocity set points when uav is traveling in same direction as target and
+					// vector component is greater than calculated position set point velocity component
+					if(PX4_ISFINITE(cos_ratio) && cos_ratio > 0) {
+						ft_vel *= (cos_ratio);
+						// min speed a little faster than target vel
+						ft_vel += ft_vel.normalized() * 1.5f;
+					} else {
+						ft_vel.zero();
 					}
 
+					_vel_sp(0) = fabs(ft_vel(0)) > fabs(_vel_sp(0)) ? ft_vel(0) : _vel_sp(0);
+					_vel_sp(1) = fabs(ft_vel(1)) > fabs(_vel_sp(1)) ? ft_vel(1) : _vel_sp(1);
+
+				} else {
+					// Ignore position control calculated vel set points
+					_vel_sp(0) = _pos_sp_triplet.current.vx;
+					_vel_sp(1) = _pos_sp_triplet.current.vy;
 				}
+
+				_run_pos_control = false; /* request velocity setpoint to be used, instead of position setpoint */
 			}
 
 			/* update yaw setpoint if needed */

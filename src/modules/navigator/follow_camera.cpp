@@ -64,7 +64,7 @@ FollowCamera::~FollowCamera() {
 }
 
 void
-FollowCamera::set_follow_item(const struct waypoint_s *waypoint) {
+FollowCamera::set_follow_item(const struct follow_target_s *target) {
 
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
@@ -74,7 +74,7 @@ FollowCamera::set_follow_item(const struct waypoint_s *waypoint) {
 	switch (_follow_state) {
 		case FOLLOW_STATE_INIT:
 		{
-			float rel_alt = _navigator->get_sensor_combined()->baro_alt_meter[0] - waypoint->alt;
+			float rel_alt = _navigator->get_sensor_combined()->baro_alt_meter[0] - target->alt;
 			float alt_sp = math::constrain(_param_alt.get(), MIN_FOLLOW_ALT, MAX_FOLLOW_ALT);
 
 			if (_navigator->use_current_position_to_follow()) {
@@ -83,7 +83,7 @@ FollowCamera::set_follow_item(const struct waypoint_s *waypoint) {
 				_vehicle_ref_alt = _navigator->get_global_position()->alt + alt_sp - rel_alt;
 			}
 
-			_waypoint_ref_alt = waypoint->alt;
+			_waypoint_ref_alt = target->alt;
 
 			mavlink_log_info(_navigator->get_mavlink_fd(),"v_ref_alt %d, w_ref alt %d",
 				(int)_vehicle_ref_alt, (int)_waypoint_ref_alt);
@@ -98,7 +98,7 @@ FollowCamera::set_follow_item(const struct waypoint_s *waypoint) {
 			get_distance_to_point_global_wgs84(_navigator->get_global_position()->lat,
 							_navigator->get_global_position()->lon,
 							_navigator->get_global_position()->alt,
-							waypoint->lat, waypoint->lon, waypoint->alt,
+							target->lat, target->lon, target->alt,
 							&dist, &alt);
 
 			/* update vehicle yaw angle if needed */
@@ -106,17 +106,17 @@ FollowCamera::set_follow_item(const struct waypoint_s *waypoint) {
 				pos_sp_triplet->current.yaw = get_bearing_to_next_waypoint(
 						_navigator->get_global_position()->lat,
 						_navigator->get_global_position()->lon,
-						waypoint->lat, waypoint->lon);
+						target->lat, target->lon);
 			} else {
 				pos_sp_triplet->current.yaw = NAN;
 			}
 
 			pos_sp_triplet->current.valid = true;
 			pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_CAMERA;
-			pos_sp_triplet->current.vz = waypoint->vel_d_m_s;
+			pos_sp_triplet->current.vz = target->vel_d_m_s;
 
 			if(_param_alt_en.get()) {
-				pos_sp_triplet->current.alt = _vehicle_ref_alt + waypoint->alt - _waypoint_ref_alt;
+				pos_sp_triplet->current.alt = _vehicle_ref_alt + target->alt - _waypoint_ref_alt;
 			} else {
 				pos_sp_triplet->current.alt = _vehicle_ref_alt;
 			}

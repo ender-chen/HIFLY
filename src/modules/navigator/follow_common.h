@@ -44,7 +44,7 @@
 #include <controllib/blocks.hpp>
 #include <controllib/block/BlockParam.hpp>
 
-#include <uORB/topics/waypoint.h>
+#include <uORB/topics/follow_target.h>
 #include "navigator_mode.h"
 #include "mission_block.h"
 
@@ -68,9 +68,9 @@ public:
 
 	virtual void on_active();
 
-	virtual void set_follow_item(const struct waypoint_s *waypoint);
+	virtual void set_follow_item(const struct follow_target_s *target);
 
-	virtual bool is_valid_follow_item(const struct waypoint_s *waypoint);
+	virtual bool is_valid_follow_item(const struct follow_target_s *target);
 
 	virtual void advance_follow();
 

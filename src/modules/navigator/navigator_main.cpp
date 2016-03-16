@@ -113,7 +113,7 @@ Navigator::Navigator() :
 	_offboard_mission_sub(-1),
 	_param_update_sub(-1),
 	_vehicle_command_sub(-1),
-	_waypoint_sub(-1),
+	_follow_target_sub(-1),
 	_follow_ref_pos_sub(-1),
 	_pos_sp_triplet_pub(nullptr),
 	_mission_result_pub(nullptr),
@@ -130,7 +130,7 @@ Navigator::Navigator() :
 	_pos_sp_triplet{},
 	_mission_result{},
 	_att_sp{},
-	_waypoint_sp{},
+	_target{},
 	_follow_ref_pos{},
 	_mission_item_valid(false),
 	_mission_instance_count(0),
@@ -157,6 +157,7 @@ Navigator::Navigator() :
 	_follow_circle(this, "FOLCLE"),
 	_follow_far_close(this, "FOLFC"),
 	_follow_loiter(this, "FOLLOI"),
+	_follow_target(this, "FOLTAR"),
 	_param_loiter_radius(this, "LOITER_RAD"),
 	_param_acceptance_radius(this, "ACC_RAD"),
 	_param_datalinkloss_obc(this, "DLL_OBC"),
@@ -176,7 +177,7 @@ Navigator::Navigator() :
 	_navigation_mode_array[10] = &_follow_camera;
 	_navigation_mode_array[11] = &_follow_circle;
 	_navigation_mode_array[12] = &_follow_far_close;
-	_navigation_mode_array[13] = &_follow_loiter;
+	_navigation_mode_array[13] = &_follow_target;
 
 	updateParams();
 }
@@ -268,14 +269,14 @@ Navigator::params_update()
 }
 
 void
-Navigator::waypoint_update()
+Navigator::follow_target_update()
 {
-	orb_copy(ORB_ID(waypoint), _waypoint_sub, &_waypoint_sp);
+	orb_copy(ORB_ID(follow_target), _follow_target_sub, &_target);
 
 	static uint64_t print_time =  hrt_absolute_time();
 	if (hrt_elapsed_time(&print_time) > 10000000) {
 		print_time = hrt_absolute_time();
-		mavlink_log_info(_mavlink_fd, "waypoint update lat:%.7f, lon:%.7f", _waypoint_sp.lat, _waypoint_sp.lon);
+		mavlink_log_info(_mavlink_fd, "target update lat:%.7f, lon:%.7f", _target.lat, _target.lon);
 	}
 }
 
@@ -334,7 +335,7 @@ Navigator::task_main()
 	_offboard_mission_sub = orb_subscribe(ORB_ID(offboard_mission));
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
 	_vehicle_command_sub = orb_subscribe(ORB_ID(vehicle_command));
-	_waypoint_sub = orb_subscribe(ORB_ID(waypoint));
+	_follow_target_sub = orb_subscribe(ORB_ID(follow_target));
 	_follow_ref_pos_sub = orb_subscribe(ORB_ID(follow_reference_position));
 
 	/* copy all topics first time */
@@ -346,7 +347,7 @@ Navigator::task_main()
 	home_position_update(true);
 	navigation_capabilities_update();
 	params_update();
-	waypoint_update();
+	follow_target_update();
 
 	hrt_abstime mavlink_open_time = 0;
 	const hrt_abstime mavlink_open_interval = 500000;
@@ -436,10 +437,10 @@ Navigator::task_main()
 			home_position_update();
 		}
 
-		/* waypoint updated */
-		orb_check(_waypoint_sub, &updated);
+		/* follow target updated */
+		orb_check(_follow_target_sub, &updated);
 		if (updated) {
-			waypoint_update();
+			follow_target_update();
 		}
 
 		/* follow reference position updated */
@@ -585,7 +586,7 @@ Navigator::task_main()
 				break;
 			case vehicle_status_s::NAVIGATION_STATE_FOLLOW_LOITER:
 				_pos_sp_triplet_published_invalid_once = false;
-				_navigation_mode = &_follow_loiter;
+				_navigation_mode = &_follow_target;
 				break;
 			default:
 				_navigation_mode = nullptr;

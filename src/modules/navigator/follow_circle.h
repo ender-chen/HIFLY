@@ -50,7 +50,7 @@ public:
 
 	~FollowCircle();
 private:
-	void set_follow_item(const struct waypoint_s *waypoint);
+	void set_follow_item(const struct follow_target_s *target);
 
 	control::BlockParamInt _param_alt_en;
 	control::BlockParamFloat _param_alt;

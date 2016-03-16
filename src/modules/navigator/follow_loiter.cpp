@@ -67,7 +67,7 @@ FollowLoiter::~FollowLoiter() {
 }
 
 void
-FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
+FollowLoiter::set_follow_item(const struct follow_target_s *target) {
 
 	struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 
@@ -77,25 +77,25 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 	switch (_follow_state) {
 		case FOLLOW_STATE_INIT:
 		{
-			_bearing = get_bearing_to_next_waypoint(waypoint->lat, waypoint->lon,
+			_bearing = get_bearing_to_next_waypoint(target->lat, target->lon,
 					_navigator->get_global_position()->lat,
 					_navigator->get_global_position()->lon);
 
 			float dist = get_distance_to_next_waypoint(_navigator->get_global_position()->lat,
 					_navigator->get_global_position()->lon,
-					waypoint->lat, waypoint->lon);
+					target->lat, target->lon);
 
 			if (_navigator->use_current_position_to_follow()) {
 				_vehicle_ref_alt = _navigator->get_global_position()->alt;
 				_dist = math::constrain(dist, MIN_FOLLOW_DIST, MAX_FOLLOW_DIST);
 			} else {
-				float rel_alt = _navigator->get_sensor_combined()->baro_alt_meter[0] - waypoint->alt;
+				float rel_alt = _navigator->get_sensor_combined()->baro_alt_meter[0] - target->alt;
 				float alt_sp = math::constrain(_param_alt.get(), MIN_FOLLOW_ALT, MAX_FOLLOW_ALT);
 				_vehicle_ref_alt = _navigator->get_global_position()->alt + alt_sp - rel_alt;
 				_dist = math::constrain(_param_dist.get(), MIN_FOLLOW_DIST, MAX_FOLLOW_DIST);
 			}
 
-			_waypoint_ref_alt = waypoint->alt;
+			_waypoint_ref_alt = target->alt;
 
 			mavlink_log_info(_navigator->get_mavlink_fd(),"v_ref_alt %d, w_ref alt %d",
 				(int)_vehicle_ref_alt, (int)_waypoint_ref_alt);
@@ -106,14 +106,14 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 		{
 			float dist = get_distance_to_next_waypoint(_navigator->get_global_position()->lat,
 					_navigator->get_global_position()->lon,
-					waypoint->lat, waypoint->lon);
+					target->lat, target->lon);
 
 			/* move to target if needed*/
 			if (dist > _dist) {
 				float v_n = 0.0f;
 				float v_e = 0.0f;
 
-				get_vector_to_next_waypoint(waypoint->lat, waypoint->lon,
+				get_vector_to_next_waypoint(target->lat, target->lon,
 					_navigator->get_global_position()->lat,
 					_navigator->get_global_position()->lon,
 					&v_n, &v_e);
@@ -127,7 +127,7 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 				double target_lat = 0.0f;
 				double target_lon = 0.0f;
 
-				add_vector_to_global_position(waypoint->lat, waypoint->lon, v_n_t, v_e_t, &target_lat, &target_lon);
+				add_vector_to_global_position(target->lat, target->lon, v_n_t, v_e_t, &target_lat, &target_lon);
 
 				/* update target horizontal position */
 				pos_sp_triplet->current.lat = target_lat;
@@ -138,7 +138,7 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 			}
 
 			if(_param_alt_en.get()) {
-				pos_sp_triplet->current.alt = _vehicle_ref_alt + waypoint->alt - _waypoint_ref_alt;
+				pos_sp_triplet->current.alt = _vehicle_ref_alt + target->alt - _waypoint_ref_alt;
 			} else {
 				pos_sp_triplet->current.alt = _vehicle_ref_alt;
 			}
@@ -148,16 +148,16 @@ FollowLoiter::set_follow_item(const struct waypoint_s *waypoint) {
 				pos_sp_triplet->current.yaw = get_bearing_to_next_waypoint(
 					_navigator->get_global_position()->lat,
 					_navigator->get_global_position()->lon,
-					waypoint->lat, waypoint->lon);
+					target->lat, target->lon);
 			} else {
 				pos_sp_triplet->current.yaw = NAN;
 			}
 
 			pos_sp_triplet->current.valid = true;
 			pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER;
-			pos_sp_triplet->current.vx = waypoint->vel_n_m_s;
-			pos_sp_triplet->current.vy = waypoint->vel_e_m_s;
-			pos_sp_triplet->current.vz = waypoint->vel_d_m_s;
+			pos_sp_triplet->current.vx = target->vel_n_m_s;
+			pos_sp_triplet->current.vy = target->vel_e_m_s;
+			pos_sp_triplet->current.vz = target->vel_d_m_s;
 
 			_navigator->set_position_setpoint_triplet_updated();
 		break;

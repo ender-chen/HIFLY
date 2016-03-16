@@ -77,10 +77,10 @@ void
 FollowCommon::on_active() {
 	if (!_navigator->get_vstatus()->condition_landed) {
 
-		struct waypoint_s* waypoint_sp = _navigator->get_waypoint_sp();
-		if (is_valid_follow_item(waypoint_sp)) {
+		struct follow_target_s* target = _navigator->get_follow_target();
+		if (is_valid_follow_item(target)) {
 			advance_follow();
-			set_follow_item(waypoint_sp);
+			set_follow_item(target);
 		} else {
 			struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
 			if (pos_sp_triplet->current.valid && pos_sp_triplet->current.velocity_valid) {
@@ -92,7 +92,7 @@ FollowCommon::on_active() {
 }
 
 void
-FollowCommon::set_follow_item(const struct waypoint_s *waypoint) {
+FollowCommon::set_follow_item(const struct follow_target_s *target) {
 
 }
 
@@ -114,6 +114,6 @@ FollowCommon::advance_follow()
 }
 
 bool
-FollowCommon::is_valid_follow_item(const struct waypoint_s *waypoint) {
-	return !(waypoint->timestamp == 0 || hrt_elapsed_time(&waypoint->timestamp) > WAYPOINT_TIMEOUT);
+FollowCommon::is_valid_follow_item(const struct follow_target_s *target) {
+	return !(target->timestamp == 0 || hrt_elapsed_time(&target->timestamp) > WAYPOINT_TIMEOUT);
 }
