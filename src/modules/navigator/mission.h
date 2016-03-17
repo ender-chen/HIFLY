@@ -89,7 +89,8 @@ public:
 		MISSION_YAWMODE_FRONT_TO_WAYPOINT = 1,
 		MISSION_YAWMODE_FRONT_TO_HOME = 2,
 		MISSION_YAWMODE_BACK_TO_HOME = 3,
-		MISSION_YAWMODE_MAX = 4
+		MISSION_YAWMODE_ROI = 4,
+		MISSION_YAWMODE_MAX = 5
 	};
 
 private:
@@ -203,6 +204,8 @@ private:
 	 */
 	bool check_mission_valid();
 
+	size_t check_roi_mission_item(dm_item_t dm_current, size_t num_mission_items);
+
 	control::BlockParamInt _param_onboard_enabled;
 	control::BlockParamFloat _param_takeoff_alt;
 	control::BlockParamFloat _param_dist_1wp;
@@ -241,6 +244,13 @@ private:
 		WORK_ITEM_TYPE_ALIGN,		/**< align for next waypoint */
 		WORK_ITEM_TYPE_CMD_BEFORE_MOVE	/**<  */
 	} _work_item_type;	/**< current type of work to do (sub mission item) */
+
+	struct roi_position_s {
+		uint64_t timestamp;
+		double lat;
+		double lon;
+		bool valid;
+	} _roi_position;
 
 };
 

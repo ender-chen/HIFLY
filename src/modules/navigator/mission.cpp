@@ -84,8 +84,10 @@ Mission::Mission(Navigator *navigator, const char *name) :
 	_min_current_sp_distance_xy(FLT_MAX),
 	_mission_item_previous_alt(NAN),
 	_distance_current_previous(0.0f),
-	_work_item_type(WORK_ITEM_TYPE_DEFAULT)
+	_work_item_type(WORK_ITEM_TYPE_DEFAULT),
+	_roi_position{}
 {
+	_roi_position.valid = false;
 	/* load initial params */
 	updateParams();
 }
@@ -256,9 +258,15 @@ Mission::update_offboard_mission()
 		/* Check mission feasibility, for now do not handle the return value,
 		 * however warnings are issued to the gcs via mavlink from inside the MissionFeasiblityChecker */
 		dm_item_t dm_current = DM_KEY_WAYPOINTS_OFFBOARD(_offboard_mission.dataman_id);
+		size_t mission_item_count = 0;
+		if (check_roi_mission_item(dm_current, _offboard_mission.count)) {
+			mission_item_count = (size_t) _offboard_mission.count - 1;
+		} else {
+			mission_item_count = (size_t) _offboard_mission.count;
+		}
 
 		failed = !_missionFeasibilityChecker.checkMissionFeasible(_navigator->get_mavlink_fd(), (_navigator->get_vstatus()->is_rotary_wing || _navigator->get_vstatus()->is_vtol),
-				dm_current, (size_t) _offboard_mission.count, _navigator->get_geofence(),
+				dm_current, mission_item_count, _navigator->get_geofence(),
 				_navigator->get_home_position()->alt, _navigator->home_position_valid(),
 				_navigator->get_global_position()->lat, _navigator->get_global_position()->lon,
 				_param_dist_1wp.get(), _navigator->get_mission_result()->warning, _navigator->get_acceptance_radius(),
@@ -285,6 +293,32 @@ Mission::update_offboard_mission()
 	}
 
 	set_current_offboard_mission_item();
+}
+
+size_t
+Mission::check_roi_mission_item(dm_item_t dm_current, size_t num_mission_items)
+{
+	struct mission_item_s mission_item;
+	const ssize_t len = sizeof(struct mission_item_s);
+	if (num_mission_items >= 1) {
+		if (dm_read(dm_current, num_mission_items-1, &mission_item, len) != len) {
+			// not supposed to happen unless the datamanager can't access the SD card, etc.
+			mavlink_log_critical(_navigator->get_mavlink_fd(), "Rejecting Mission: Cannot access SD card");
+			return false;
+		}
+	} else {
+		return false;
+	}
+	if (mission_item.nav_cmd == NAV_CMD_ROI) {
+		_roi_position.lat = mission_item.lat;
+		_roi_position.lon = mission_item.lon;
+		_roi_position.valid = true;
+		mavlink_log_info(_navigator->get_mavlink_fd(), "Getting roi mission");
+		return true;
+	} else {
+		_roi_position.valid = false;
+		return false;
+	}
 }
 
 
@@ -724,6 +758,12 @@ Mission::heading_sp_update()
 			point_to_latlon[0] = _navigator->get_home_position()->lat;
 			point_to_latlon[1] = _navigator->get_home_position()->lon;
 
+
+		} else if (_param_yawmode.get() == MISSION_YAWMODE_ROI && _navigator->get_vstatus()->is_rotary_wing
+				&& !(_mission_item.nav_cmd == NAV_CMD_DO_VTOL_TRANSITION || _navigator->get_vstatus()->in_transition_mode) 
+				&& _roi_position.valid) {
+			point_to_latlon[0] = _roi_position.lat;
+			point_to_latlon[1] = _roi_position.lon;
 		/* target location is next (current) waypoint */
 		} else {
 			point_to_latlon[0] = pos_sp_triplet->current.lat;
@@ -929,7 +969,8 @@ Mission::read_mission_item(bool onboard, int offset, struct mission_item_s *miss
 				/* no more DO_JUMPS, therefore just try to continue with next mission item */
 				(*mission_index_ptr)++;
 			}
-
+		} else if(mission_item_tmp.nav_cmd == NAV_CMD_ROI) {
+			return false;
 		} else {
 			/* if it's not a DO_JUMP, then we were successful */
 			memcpy(mission_item, &mission_item_tmp, sizeof(struct mission_item_s));
@@ -1030,9 +1071,15 @@ Mission::check_mission_valid()
 	if (!_home_inited && _navigator->home_position_valid()) {
 
 		dm_item_t dm_current = DM_KEY_WAYPOINTS_OFFBOARD(_offboard_mission.dataman_id);
+		size_t mission_item_count = 0;
+		if (check_roi_mission_item(dm_current, _offboard_mission.count)) {
+			mission_item_count = (size_t) _offboard_mission.count - 1;
+		} else {
+			mission_item_count = (size_t) _offboard_mission.count;
+		}
 
 		_navigator->get_mission_result()->valid = _missionFeasibilityChecker.checkMissionFeasible(_navigator->get_mavlink_fd(), (_navigator->get_vstatus()->is_rotary_wing || _navigator->get_vstatus()->is_vtol),
-				dm_current, (size_t) _offboard_mission.count, _navigator->get_geofence(),
+				dm_current, mission_item_count, _navigator->get_geofence(),
 				_navigator->get_home_position()->alt, _navigator->home_position_valid(),
 				_navigator->get_global_position()->lat, _navigator->get_global_position()->lon,
 				_param_dist_1wp.get(), _navigator->get_mission_result()->warning, _navigator->get_acceptance_radius(),
