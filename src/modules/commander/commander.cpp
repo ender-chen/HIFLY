@@ -169,6 +169,8 @@ static constexpr uint8_t COMMANDER_MAX_GPS_NOISE = 60;		/**< Maximum percentage 
 #define GEOFENCE_HOR_BIT_SHIFT 7
 #define GEOFENCE_VER_BIT_SHIFT 6
 
+#define GPS_STATUS_BIT_MASK 0xfffc
+
 enum MAV_MODE_FLAG {
 	MAV_MODE_FLAG_CUSTOM_MODE_ENABLED = 1, /* 0b00000001 Reserved for future use. | */
 	MAV_MODE_FLAG_TEST_ENABLED = 2, /* 0b00000010 system has a test mode enabled. This flag is intended for temporary system tests and should not be used for stable implementations. | */
@@ -204,6 +206,7 @@ static uint64_t _time_on_off_before_takeoff = 0;
 
 static float eph_threshold = 5.0f;
 static float epv_threshold = 10.0f;
+static float eph_threshold_perfect = 1.0f;
 
 static struct vehicle_status_s status;
 static struct actuator_armed_s armed;
@@ -1113,6 +1116,7 @@ int commander_thread_main(int argc, char *argv[])
 	param_t _param_rc_in_off = param_find("COM_RC_IN_MODE");
 	param_t _param_eph = param_find("COM_HOME_H_T");
 	param_t _param_epv = param_find("COM_HOME_V_T");
+	param_t _param_eph_perfect = param_find("COM_HOME_H_P");
 	param_t _param_geofence_action = param_find("GF_ACTION");
 	param_t _param_disarm_land = param_find("COM_DISARM_LAND");
 	param_t _param_map_mode_sw = param_find("RC_MAP_MODE_SW");
@@ -1616,6 +1620,7 @@ int commander_thread_main(int argc, char *argv[])
 			/* EPH / EPV */
 			param_get(_param_eph, &eph_threshold);
 			param_get(_param_epv, &epv_threshold);
+			param_get(_param_eph_perfect, &eph_threshold_perfect);
 
 			param_get(_param_disarm_ooc, &disarm_when_ooc);
 			param_get(_param_ooc_angle, &ooc_angle);
@@ -2145,7 +2150,24 @@ int commander_thread_main(int argc, char *argv[])
 
 		if (updated) {
 			orb_copy(ORB_ID(vehicle_gps_position), gps_sub, &gps_position);
+
+			if (gps_position.eph < eph_threshold_perfect) {
+				status.gps_status = vehicle_status_s::GPS_STATUS_PERFECT;
+			}
+			else if (gps_position.eph < eph_threshold) {
+				status.gps_status = vehicle_status_s::GPS_STATUS_GOOD;
+			}
+			else {
+				status.gps_status = vehicle_status_s::GPS_STATUS_BAD;
+			}
 		}
+
+		if (hrt_absolute_time() - gps_position.timestamp_time > POSITION_TIMEOUT) {
+			status.gps_status = vehicle_status_s::GPS_STATUS_BAD;
+		}
+
+		status.errors_count2 &= GPS_STATUS_BIT_MASK;
+		status.errors_count2 |= status.gps_status;
 
 		/* Initialize map projection if gps is valid */
 		if (!map_projection_global_initialized()

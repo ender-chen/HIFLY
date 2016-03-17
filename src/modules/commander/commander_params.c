@@ -379,3 +379,11 @@ PARAM_DEFINE_FLOAT(COM_BAT_EMER, 10.8f);
  *
  */
 PARAM_DEFINE_INT32(COM_IDLE_TIME, 10);
+
+/**
+ *  EPH_perfect
+ *
+ * Defines the perfect threshold for the eph.
+ *
+ */
+PARAM_DEFINE_FLOAT(COM_HOME_H_P, 1.0f);

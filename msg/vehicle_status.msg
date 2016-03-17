@@ -116,6 +116,10 @@ uint8 RC_IN_MODE_DEFAULT = 0
 uint8 RC_IN_MODE_OFF = 1
 uint8 RC_IN_MODE_GENERATED = 2
 
+uint8 GPS_STATUS_BAD = 2
+uint8 GPS_STATUS_GOOD = 1
+uint8 GPS_STATUS_PERFECT = 0
+
 # state machine / state of vehicle.
 # Encodes the complete system state and is set by the commander app.
 uint16 counter   # incremented by the writing thread everytime new data is stored
@@ -210,3 +214,5 @@ bool circuit_breaker_engaged_enginefailure_check
 bool circuit_breaker_engaged_gpsfailure_check
 bool circuit_breaker_engaged_takeoff_att_check
 bool cb_usb
+
+uint8 gps_status
