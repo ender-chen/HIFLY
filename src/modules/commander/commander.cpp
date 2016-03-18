@@ -988,7 +988,7 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 			} else {
 				_waypoint_pub = orb_advertise(ORB_ID(waypoint), &waypoint);
 			}
-				cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+			//cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}
 		break;
 	case vehicle_command_s::VEHICLE_CMD_FORCE_DISARM: {
