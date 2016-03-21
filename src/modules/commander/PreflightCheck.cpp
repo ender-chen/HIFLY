@@ -158,6 +158,7 @@ static bool magnometerCheck(int mavlink_fd, unsigned instance, bool optional, in
 		goto out;
 	}
 
+#ifdef __PX4_NUTTX
 	/* check measurement result range */
 	struct mag_report mag;
 	ret = h.read(&mag, sizeof(mag));
@@ -180,6 +181,7 @@ static bool magnometerCheck(int mavlink_fd, unsigned instance, bool optional, in
 		success = false;
 		goto out;
 	}
+#endif
 
 out:
 	DevMgr::releaseHandle(h);
