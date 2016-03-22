@@ -58,6 +58,7 @@
 #include <uORB/topics/geofence_result.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/waypoint.h>
+#include <uORB/topics/follow_reference_position.h>
 
 #include "navigator_mode.h"
 #include "mission.h"
@@ -149,6 +150,7 @@ public:
 	struct geofence_result_s*		    get_geofence_result() { return &_geofence_result; }
 	struct vehicle_attitude_setpoint_s* get_att_sp() { return &_att_sp; }
 	struct waypoint_s* get_waypoint_sp() { return &_waypoint_sp; }
+	bool				    use_current_position_to_follow() { return _follow_ref_pos.cur_ref2target_pos; }
 
 	int		get_onboard_mission_sub() { return _onboard_mission_sub; }
 	int		get_offboard_mission_sub() { return _offboard_mission_sub; }
@@ -196,6 +198,7 @@ private:
 	int		_param_update_sub;		/**< param update subscription */
 	int		_vehicle_command_sub;		/**< vehicle commands (onboard and offboard) */
 	int		_waypoint_sub;			/**< waypoint subscription */
+	int		_follow_ref_pos_sub;		/**< follow position type subscription */
 
 	orb_advert_t	_pos_sp_triplet_pub;		/**< publish position setpoint triplet */
 	orb_advert_t	_mission_result_pub;
@@ -218,6 +221,7 @@ private:
 	geofence_result_s				_geofence_result;
 	vehicle_attitude_setpoint_s			_att_sp;
 	waypoint_s					_waypoint_sp;
+	follow_reference_position_s			_follow_ref_pos;
 
 	bool 		_mission_item_valid;		/**< flags if the current mission item is valid */
 	int		_mission_instance_count;	/**< instance count for the current mission */
@@ -303,6 +307,11 @@ private:
 	 * Update waypoint
 	*/
 	void		waypoint_update();
+
+	/**
+	 * Update Follow position type
+	*/
+	void		follow_ref_pos_update();
 
 	/**
 	 * Shim for calling task_main from task_create.

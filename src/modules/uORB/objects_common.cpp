@@ -282,3 +282,6 @@ ORB_DEFINE(app_control_setpoint, struct app_control_setpoint_s);
 
 #include "topics/waypoint.h"
 ORB_DEFINE(waypoint, struct waypoint_s);
+
+#include "topics/follow_reference_position.h"
+ORB_DEFINE(follow_reference_position, struct follow_reference_position_s);

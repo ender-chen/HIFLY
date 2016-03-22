@@ -98,6 +98,7 @@
 #include <uORB/topics/input_rc.h>
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/waypoint.h>
+#include <uORB/topics/follow_reference_position.h>
 
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
@@ -215,6 +216,7 @@ static struct vehicle_control_mode_s control_mode;
 static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
 static orb_advert_t _waypoint_pub = nullptr;
+static orb_advert_t _follow_ref_pos_pub = nullptr;
 
 static unsigned _last_mission_instance = 0;
 static manual_control_setpoint_s _last_sp_man;
@@ -1005,6 +1007,20 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 			if (armed.armed) {
 				arm_disarm(false, mavlink_fd, "disarm command VEHICLE_CMD_FORCE_DISARM");
 			}
+			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
+		}
+		break;
+
+	case vehicle_command_s::VEHICLE_CMD_FOLLOW_REFERENCE_POSITION: {
+			struct follow_reference_position_s ref_pos;
+			ref_pos.cur_ref2target_pos = (cmd->param1 + 0.5f) > 1.0f;
+
+			if (_follow_ref_pos_pub != nullptr) {
+				orb_publish(ORB_ID(follow_reference_position),  _follow_ref_pos_pub, &ref_pos);
+			} else {
+				_follow_ref_pos_pub = orb_advertise(ORB_ID(follow_reference_position), &ref_pos);
+			}
+
 			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}
 		break;

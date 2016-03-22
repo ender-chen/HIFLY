@@ -1,0 +1,1 @@
+bool cur_ref2target_pos

@@ -114,6 +114,7 @@ Navigator::Navigator() :
 	_param_update_sub(-1),
 	_vehicle_command_sub(-1),
 	_waypoint_sub(-1),
+	_follow_ref_pos_sub(-1),
 	_pos_sp_triplet_pub(nullptr),
 	_mission_result_pub(nullptr),
 	_geofence_result_pub(nullptr),
@@ -130,6 +131,7 @@ Navigator::Navigator() :
 	_mission_result{},
 	_att_sp{},
 	_waypoint_sp{},
+	_follow_ref_pos{},
 	_mission_item_valid(false),
 	_mission_instance_count(0),
 	_loop_perf(perf_alloc(PC_ELAPSED, "navigator")),
@@ -278,6 +280,12 @@ Navigator::waypoint_update()
 }
 
 void
+Navigator::follow_ref_pos_update()
+{
+	orb_copy(ORB_ID(follow_reference_position), _follow_ref_pos_sub, &_follow_ref_pos);
+}
+
+void
 Navigator::task_main_trampoline(int argc, char *argv[])
 {
 	navigator::g_navigator->task_main();
@@ -327,6 +335,7 @@ Navigator::task_main()
 	_param_update_sub = orb_subscribe(ORB_ID(parameter_update));
 	_vehicle_command_sub = orb_subscribe(ORB_ID(vehicle_command));
 	_waypoint_sub = orb_subscribe(ORB_ID(waypoint));
+	_follow_ref_pos_sub = orb_subscribe(ORB_ID(follow_reference_position));
 
 	/* copy all topics first time */
 	vehicle_status_update();
@@ -431,6 +440,12 @@ Navigator::task_main()
 		orb_check(_waypoint_sub, &updated);
 		if (updated) {
 			waypoint_update();
+		}
+
+		/* follow reference position updated */
+		orb_check(_follow_ref_pos_sub, &updated);
+		if (updated) {
+			follow_ref_pos_update();
 		}
 
 		orb_check(_vehicle_command_sub, &updated);

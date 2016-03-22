@@ -76,7 +76,7 @@ FollowCircle::set_follow_item(const struct waypoint_s *waypoint) {
 			float rel_alt = _navigator->get_sensor_combined()->baro_alt_meter[0] - waypoint->alt;
 			float alt_sp = math::constrain(_param_alt.get(), MIN_FOLLOW_ALT, MAX_FOLLOW_ALT);
 
-			if (_param_alt.get() < 0.0f) {
+			if (_navigator->use_current_position_to_follow()) {
 				_vehicle_ref_alt = _navigator->get_global_position()->alt;
 			} else {
 				_vehicle_ref_alt = _navigator->get_global_position()->alt + alt_sp - rel_alt;

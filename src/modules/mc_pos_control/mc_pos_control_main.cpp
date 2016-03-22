@@ -78,6 +78,7 @@
 #include <uORB/topics/vehicle_global_velocity_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/geofence_result.h>
+#include <uORB/topics/follow_reference_position.h>
 
 #include <systemlib/systemlib.h>
 #include <mathlib/mathlib.h>
@@ -139,6 +140,7 @@ private:
 	int		_local_pos_sp_sub;		/**< offboard local position setpoint */
 	int		_global_vel_sp_sub;		/**< offboard global velocity setpoint */
 	int		_geofence_result_sub;	/**< geofence result*/
+	int		_follow_ref_pos_sub;	/**< follow position type*/
 
 	orb_advert_t	_att_sp_pub;			/**< attitude setpoint publication */
 	orb_advert_t	_local_pos_sp_pub;		/**< vehicle local position setpoint publication */
@@ -157,6 +159,7 @@ private:
 	struct vehicle_local_position_setpoint_s	_local_pos_sp;		/**< vehicle local position setpoint */
 	struct vehicle_global_velocity_setpoint_s	_global_vel_sp;		/**< vehicle global velocity setpoint */
 	struct geofence_result_s			_geofence_result;	/**< geofence result */
+	struct follow_reference_position_s		_follow_ref_pos;	/**< follow reference position */
 
 	control::BlockParamFloat _manual_thr_min;
 	control::BlockParamFloat _manual_thr_max;
@@ -483,6 +486,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 	_pos_sp_triplet_sub(-1),
 	_global_vel_sp_sub(-1),
 	_geofence_result_sub(-1),
+	_follow_ref_pos_sub(-1),
 
 	/* publications */
 	_att_sp_pub(nullptr),
@@ -542,6 +546,7 @@ MulticopterPositionControl::MulticopterPositionControl() :
 
 	memset(&_ref_pos, 0, sizeof(_ref_pos));
 	memset(&_geofence_result, 0, sizeof(_geofence_result));
+	memset(&_follow_ref_pos, 0, sizeof(_follow_ref_pos));
 
 	_params.pos_p.zero();
 	_params.vel_p.zero();
@@ -817,6 +822,12 @@ MulticopterPositionControl::poll_subscriptions()
 
 	if (updated) {
 		orb_copy(ORB_ID(geofence_result), _geofence_result_sub, &_geofence_result);
+	}
+
+	orb_check(_follow_ref_pos_sub, &updated);
+
+	if (updated) {
+		orb_copy(ORB_ID(follow_reference_position), _follow_ref_pos_sub, &_follow_ref_pos);
 	}
 }
 
@@ -1415,7 +1426,7 @@ void MulticopterPositionControl::circle_follow_init(const math::Vector<3>& cente
 
 	_circle_center = center;
 
-	if (_params.circle_radius < 0.0f) {
+	if (_follow_ref_pos.cur_ref2target_pos) {
 		float dx = _pos(0) - center(0);
 		float dy = _pos(1) - center(1);
 		_circle_radius = sqrtf(dx * dx + dy * dy);
@@ -1856,6 +1867,7 @@ MulticopterPositionControl::task_main()
 	_local_pos_sp_sub = orb_subscribe(ORB_ID(vehicle_local_position_setpoint));
 	_global_vel_sp_sub = orb_subscribe(ORB_ID(vehicle_global_velocity_setpoint));
 	_geofence_result_sub = orb_subscribe(ORB_ID(geofence_result));
+	_follow_ref_pos_sub = orb_subscribe(ORB_ID(follow_reference_position));
 
 
 	parameters_update(true);
