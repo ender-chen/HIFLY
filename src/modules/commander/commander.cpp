@@ -1054,9 +1054,9 @@ static void commander_set_home_position(orb_advert_t &homePub, home_position_s &
 	}
 
 	//Ensure that the GPS accuracy is good enough for intializing home
-	if (globalPosition.eph > eph_threshold || globalPosition.epv > epv_threshold) {
-		return;
-	}
+	// if (globalPosition.eph > eph_threshold || globalPosition.epv > epv_threshold) {
+	// 	return;
+	// }
 
 	//Set home position
 	home.timestamp = hrt_absolute_time();
@@ -1071,7 +1071,7 @@ static void commander_set_home_position(orb_advert_t &homePub, home_position_s &
 	home.yaw = attitude.yaw;
 
 	PX4_INFO("home: %.7f, %.7f, %.2f", home.lat, home.lon, (double)home.alt);
-
+	mavlink_log_info(mavlink_fd, "home: %.7f, %.7f, %.2f", home.lat, home.lon, (double)home.alt);
 	/* announce new home position */
 	if (homePub != nullptr) {
 		orb_publish(ORB_ID(home_position), homePub, &home);
