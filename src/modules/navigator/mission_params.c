@@ -64,7 +64,7 @@ PARAM_DEFINE_FLOAT(MIS_TAKEOFF_ALT, 2.5f);
  * @max 1
  * @group Mission
  */
-PARAM_DEFINE_INT32(MIS_ONBOARD_EN, 1);
+PARAM_DEFINE_INT32(MIS_ONBOARD_EN, 0);
 
 /**
  * Maximal horizontal distance from home to first waypoint
