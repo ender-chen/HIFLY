@@ -63,4 +63,4 @@ PARAM_DEFINE_INT32(F_CIR_ALT_EN, 1);
  * @unit meters
  * @group Follow
  */
-PARAM_DEFINE_FLOAT(F_CIR_ALT, -1.0f);
+PARAM_DEFINE_FLOAT(F_CIR_ALT, 5.0f);

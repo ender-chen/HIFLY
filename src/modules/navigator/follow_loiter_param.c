@@ -63,7 +63,7 @@ PARAM_DEFINE_INT32(F_LOI_ALT_EN, 1);
  * @unit meters
  * @group Follow
  */
-PARAM_DEFINE_FLOAT(F_LOI_ALT, -1.0f);
+PARAM_DEFINE_FLOAT(F_LOI_ALT, 5.0f);
 
 /**
  * Follow dist.
@@ -73,7 +73,7 @@ PARAM_DEFINE_FLOAT(F_LOI_ALT, -1.0f);
  * @unit meters
  * @group Follow
  */
-PARAM_DEFINE_FLOAT(F_LOI_DIST, -1.0f);
+PARAM_DEFINE_FLOAT(F_LOI_DIST, 5.0f);
 
 /**
  * Follow yaw valid distance.
