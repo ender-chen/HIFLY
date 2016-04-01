@@ -44,6 +44,7 @@
 #include <controllib/block/BlockParam.hpp>
 #include <lib/mathlib/math/Vector.hpp>
 #include <mathlib/mathlib.h>
+#include <uORB/topics/follow_target.h>
 
 #include "navigator_mode.h"
 #include "mission_block.h"
