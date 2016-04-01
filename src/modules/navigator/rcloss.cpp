@@ -127,7 +127,7 @@ RCLoss::set_rcl_item()
 	}
 	case RCL_STATE_TERMINATE: {
 		/* Request flight termination from the commander */
-		_navigator->get_mission_result()->flight_termination = true;
+		//_navigator->get_mission_result()->flight_termination = true;
 		_navigator->set_mission_result_updated();
 		warnx("rc not recovered: request flight termination");
 		pos_sp_triplet->previous.valid = false;
