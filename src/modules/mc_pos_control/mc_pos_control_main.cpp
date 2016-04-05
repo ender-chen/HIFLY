@@ -1599,8 +1599,8 @@ void MulticopterPositionControl::control_follow_loiter(float dt)
 	if (current_setpoint_valid) {
 		if (_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_TARGET) {
 			/* scaled space: 1 == position error resulting max allowed speed, L1 = 1 in this space */
-			//math::Vector<3> scale = _params.pos_p.edivide(_params.fol_v_max);	// TODO add mult param here
-			math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
+			math::Vector<3> scale = _params.pos_p.edivide(_params.fol_v_max);	// TODO add mult param here
+			//math::Vector<3> scale = _params.pos_p.edivide(_params.vel_max);	// TODO add mult param here
 
 			/* move setpoint not faster than max allowed speed */
 			math::Vector<3> pos_sp_old_s = _pos_sp.emult(scale);
