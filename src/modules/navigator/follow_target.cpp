@@ -146,11 +146,11 @@ void FollowTarget::on_active() {
 			mavlink_log_info(_navigator->get_mavlink_fd(),"_reference_position_init");
 		}
 
-		uint64_t dt = current_time - _previous_target_motion.timestamp;
-		uint8_t seq_interval = _current_target_motion.seq - _previous_target_motion.seq;
+		uint64_t dt = _current_target_motion.timestamp - _previous_target_motion.timestamp;
+		uint32_t seq_interval = _current_target_motion.seq - _previous_target_motion.seq;
 
 		if (dt > 500000 || seq_interval >= 2) {
-			mavlink_log_info(_navigator->get_mavlink_fd(),"target timeout %llums and lost %d wp", dt / 1000, seq_interval - 1);
+			mavlink_log_info(_navigator->get_mavlink_fd(),"target timeout %llums and lost %d target", (dt / 1000), (seq_interval - 1));
 		}
 
 	} else if (((current_time - _previous_target_motion.timestamp) / 1000 / 1000) > TARGET_TIMEOUT_S && target_velocity_valid()) {
@@ -196,17 +196,28 @@ void FollowTarget::on_active() {
 
 		// get last gps known reference for target
 
-		//map_projection_init(&target_ref, _previous_target_motion.lat, _previous_target_motion.lon);
+		map_projection_init(&target_ref, _previous_target_motion.lat, _previous_target_motion.lon);
 
 		// calculate distance the target has moved
 
-		//map_projection_project(&target_ref, _current_target_motion.lat, _current_target_motion.lon, &(target_position(0)), &(target_position(1)));
+		map_projection_project(&target_ref, _current_target_motion.lat, _current_target_motion.lon, &(target_position(0)), &(target_position(1)));
 
 		// update the average velocity of the target based on the position
 
 		//_target_vel = target_position / (dt_ms / 1000.0f);
-		float target_vel = sqrtf(_current_target_motion.vel_n_m_s * _current_target_motion.vel_n_m_s +
+		float average_vel = target_position.length() / (dt_ms / 1000.0f);
+
+		float instantaneous_vel = sqrtf(_current_target_motion.vel_n_m_s * _current_target_motion.vel_n_m_s +
 				_current_target_motion.vel_e_m_s * _current_target_motion.vel_e_m_s);
+
+		float target_vel = 0.0f;
+
+		if (average_vel <= instantaneous_vel) {
+			target_vel = instantaneous_vel;
+
+		} else {
+			target_vel = average_vel;
+		}
 
 		if (PX4_ISFINITE(target_vel) && _yaw_valid && PX4_ISFINITE(yaw)) {
 			_target_vel(0) = target_vel * cosf(yaw);
