@@ -245,7 +245,7 @@ PARAM_DEFINE_FLOAT(MPC_XY_VEL_D, 0.01f);
  * @decimal 2
  * @group Multicopter Position Control
  */
-PARAM_DEFINE_FLOAT(MPC_XY_VEL_MAX, 5.0f);
+PARAM_DEFINE_FLOAT(MPC_XY_VEL_MAX, 15.0f);
 
 /**
  * Horizontal velocity feed forward
