@@ -930,7 +930,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 		if (status->main_state == vehicle_status_s::MAIN_STATE_ALTCTL ||
 			status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
 			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
-			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER) {
+			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_LOITER ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC) {
 
 			status->failsafe = true;
 			if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
@@ -959,7 +963,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->main_state == vehicle_status_s::MAIN_STATE_POSCTL ||
 			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
 			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
-			status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD) {
+			status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_LOITER ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC) {
 
 			status->failsafe = true;
 			if (!(status->nav_state == vehicle_status_s::NAVIGATION_STATE_LAND ||
@@ -984,7 +992,11 @@ bool set_nav_state(struct vehicle_status_s *status, const bool data_link_loss_en
 			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_MISSION ||
 			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_LOITER ||
 			status->main_state == vehicle_status_s::MAIN_STATE_AUTO_RTL ||
-			status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD) {
+			status->main_state == vehicle_status_s::MAIN_STATE_OFFBOARD ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CAMERA ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_CIRCLE ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_LOITER ||
+			status->main_state == vehicle_status_s::MAIN_STATE_FOLLOW_FC_ARC) {
 
 			status->failsafe = true;
 			if (status->condition_local_position_valid) {
