@@ -75,6 +75,7 @@ static const int ERROR = -1;
 static const char *sensor_name = "accel";
 
 static int32_t device_id[max_accel_sens];
+static int device_prio_max = 0;
 static int32_t device_id_primary = 0;
 
 calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel_offs)[max_accel_sens][3], unsigned *active_sensors);
@@ -248,6 +249,15 @@ calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel
 		struct accel_report arp = {};
 		(void)orb_copy(ORB_ID(sensor_accel), subs[i], &arp);
 		timestamps[i] = arp.timestamp;
+
+		// Get priority
+		int32_t prio;
+		orb_priority(subs[i], &prio);
+
+		if (prio > device_prio_max) {
+			device_prio_max = prio;
+			device_id_primary = device_id[i];
+		}
 	}
 
 	if (result == calibrate_return_ok) 
@@ -270,7 +280,7 @@ calibrate_return do_accel_calibration_measurements(int mavlink_fd, float (&accel
 			if (arp.timestamp != 0 && timestamps[i] != arp.timestamp) {
 				(*active_sensors)++;
 			}
-			close(subs[i]);
+			px4_close(subs[i]);
 		}
 	}
 	/*Determine the direction of gravity*/
