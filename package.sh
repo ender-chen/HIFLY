@@ -47,5 +47,5 @@ bl_firmware_path=$bin2dfu_dir/bl_firmware.sh
 $bl_firmware_path $bl_path $firmware_path
 
 cd $top_dir
-firmware_prefix=HiFly-F-S00A_CKT_L1EN
+firmware_prefix=HIFLY01A-F-S00A_CKT_L1EN
 cp $bin2dfu_dir/output.dfu $top_dir/build_hifly/src/firmware/nuttx/$firmware_prefix\_$build_sn\_$build_date\_$git_hash.dfu
