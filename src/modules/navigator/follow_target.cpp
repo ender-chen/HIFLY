@@ -314,6 +314,7 @@ void FollowTarget::update_position_sp(follow_target_s &target, float yaw, bool u
 	pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_FOLLOW_TARGET;
 	pos_sp_triplet->current.lat = target.lat;
 	pos_sp_triplet->current.lon = target.lon;
+	pos_sp_triplet->current.alt = target.alt;
 	pos_sp_triplet->current.yaw = yaw;
 	pos_sp_triplet->current.position_valid = use_position;
 	pos_sp_triplet->current.velocity_valid = use_velocity;
