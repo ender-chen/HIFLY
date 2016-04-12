@@ -1781,16 +1781,20 @@ MPU6000::measure()
 	   sampled at 8kHz, so we would incorrectly think we have new
 	   data when we are in fact getting duplicate accelerometer data.
 	*/
-	if (!_got_duplicate && memcmp(&mpu_report.accel_x[0], &_last_accel[0], 6) == 0) {
+	if (memcmp(&mpu_report.accel_x[0], &_last_accel[0], 6) == 0) {
 		// it isn't new data - wait for next timer
-		perf_end(_sample_perf);
-		perf_count(_duplicates);
 		_got_duplicate = true;
-		return;
+	} else {
+		_got_duplicate = false;
 	}
 
 	memcpy(&_last_accel[0], &mpu_report.accel_x[0], 6);
-	_got_duplicate = false;
+
+	if(_got_duplicate) {
+		perf_end(_sample_perf);
+		perf_count(_duplicates);
+		return;
+	}
 
 	/*
 	 * Convert from big to little endian

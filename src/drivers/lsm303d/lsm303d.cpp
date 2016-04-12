@@ -1680,6 +1680,13 @@ LSM303D::mag_measure()
 	raw_mag_report.cmd = ADDR_OUT_TEMP_L | DIR_READ | ADDR_INCREMENT;
 	transfer((uint8_t *)&raw_mag_report, (uint8_t *)&raw_mag_report, sizeof(raw_mag_report));
 
+	/* check new data is available*/
+	/* NOTE: Disconnect the circuit link, possibly to raw_mag_report.status=255 */
+	if(!(raw_mag_report.status & 0x0f) || (raw_mag_report.status == 255)) {
+			perf_end(_mag_sample_perf);
+			return;
+	}
+
 	/*
 	 * 1) Scale raw value to SI units using scaling from datasheet.
 	 * 2) Subtract static offset (in SI units)
@@ -2065,6 +2072,7 @@ test()
 	warnx("mag x: \t%d\traw", (int)m_report.x_raw);
 	warnx("mag y: \t%d\traw", (int)m_report.y_raw);
 	warnx("mag z: \t%d\traw", (int)m_report.z_raw);
+	warnx("mag scale: %8.4f ga", (double)m_report.scaling);
 	warnx("mag range: %8.4f ga", (double)m_report.range_ga);
 
 	/* reset to default polling */

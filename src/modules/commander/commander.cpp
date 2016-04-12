@@ -103,6 +103,10 @@
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
 #include <drivers/drv_tone_alarm.h>
+#include <drivers/drv_mag.h>
+#include <drivers/drv_gyro.h>
+#include <drivers/drv_accel.h>
+#include <drivers/drv_baro.h>
 
 #include <mavlink/mavlink_log.h>
 #include <systemlib/param/param.h>
@@ -127,6 +131,9 @@
 #include "airspeed_calibration.h"
 #include "esc_calibration.h"
 #include "PreflightCheck.h"
+#include "DevMgr.hpp"
+
+using namespace DriverFramework;
 
 /* oddly, ERROR is not defined for c++ */
 #ifdef ERROR
@@ -288,6 +295,21 @@ static void commander_set_home_position(orb_advert_t &homePub, home_position_s &
  * Loop that runs at a lower rate and priority for calibration and parameter tasks.
  */
 void *commander_low_prio_loop(void *arg);
+
+void check_mag(bool &health, bool &calibration);
+
+void check_acc(bool &health, bool &calibration);
+
+void check_gyro(bool &health, bool &calibration);
+
+void check_baro(bool &health, bool &calibration);
+
+void check_gps(bool &health, bool &calibration);
+
+/**
+ *Loop that runs at a lower rate and priority for check sensors stat tasks.
+ */
+void *commander_check_sensors_loop(void *arg);
 
 void answer_command(struct vehicle_command_s &cmd, unsigned result,
 					orb_advert_t &command_ack_pub, vehicle_command_ack_s &command_ack);
@@ -1195,6 +1217,9 @@ int commander_thread_main(int argc, char *argv[])
 	/* pthread for slow low prio thread */
 	pthread_t commander_low_prio_thread;
 
+	/*pthread for slow low prio thread to check sensors stat*/
+	pthread_t commander_check_sensors_thread;
+
 	/* initialize */
 	if (led_init() != OK) {
 		mavlink_and_console_log_critical(mavlink_fd, "ERROR: LED INIT FAIL");
@@ -1489,13 +1514,8 @@ int commander_thread_main(int argc, char *argv[])
 		set_tune_override(TONE_STARTUP_TUNE); //normal boot tune
 	} else {
 			// sensor diagnostics done continiously, not just at boot so don't warn about any issues just yet
-			status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true,
+			status.condition_system_sensors_initialized = Commander::preflightCheck(mavlink_fd, true, true, true, true,
 			checkAirspeed, (status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), !status.circuit_breaker_engaged_gpsfailure_check, false);
-			if(status.onboard_control_sensors_health > 0) {
-				status.condition_system_sensors_initialized = false;
-			} else {
-				status.condition_system_sensors_initialized = true;
-			}
 			set_tune_override(TONE_STARTUP_TUNE); //normal boot tune
 	}
 
@@ -1555,6 +1575,19 @@ int commander_thread_main(int argc, char *argv[])
 	pthread_create(&commander_low_prio_thread, &commander_low_prio_attr, commander_low_prio_loop, NULL);
 	pthread_attr_destroy(&commander_low_prio_attr);
 
+	/*create a low priority thread to check sensors stat*/
+	pthread_attr_t commander_check_sensors_attr;
+	pthread_attr_init(&commander_check_sensors_attr);
+	pthread_attr_setstacksize(&commander_check_sensors_attr, 2600);
+
+	(void)pthread_attr_getschedparam(&commander_check_sensors_attr, &param);
+
+	/*low priority*/
+	param.sched_priority = SCHED_PRIORITY_DEFAULT - 20;
+	(void)pthread_attr_setschedparam(&commander_check_sensors_attr, &param);
+	pthread_create(&commander_check_sensors_thread, &commander_check_sensors_attr, commander_check_sensors_loop, NULL);
+	pthread_attr_destroy(&commander_check_sensors_attr);
+
 	while (!thread_should_exit) {
 
 		if (mavlink_fd < 0 && counter % (1000000 / MAVLINK_OPEN_INTERVAL) == 0) {
@@ -1606,13 +1639,8 @@ int commander_thread_main(int argc, char *argv[])
 				param_get(_param_map_mode_sw, &map_mode_sw_new);
 
 				if (map_mode_sw == 0 && map_mode_sw != map_mode_sw_new && map_mode_sw_new < input_rc_s::RC_INPUT_MAX_CHANNELS && map_mode_sw_new > 0) {
-					status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
+					status.condition_system_sensors_initialized = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
 							(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
-					if(status.onboard_control_sensors_health  > 0) {
-						status.condition_system_sensors_initialized = false;
-					} else {
-						status.condition_system_sensors_initialized = true;
-					}
 				}
 			}
 
@@ -1724,11 +1752,11 @@ int commander_thread_main(int argc, char *argv[])
 					/* provide RC and sensor status feedback to the user */
 					if (is_hil_setup(autostart_id)) {
 						/* HIL configuration: check only RC input */
-						status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, false, false, false, false, false,
+						(void)Commander::preflightCheck(mavlink_fd, false, false, false, false, false,
 								(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), false, true);
 					} else {
 						/* check sensors also */
-						status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true, chAirspeed,
+						(void)Commander::preflightCheck(mavlink_fd, true, true, true, true, chAirspeed,
 								(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
 					}
 				}
@@ -2056,12 +2084,12 @@ int commander_thread_main(int argc, char *argv[])
 			}
 
 			/* mark / unmark as ok */
-//			if (info.ok) {
-//				status.onboard_control_sensors_health |= info.subsystem_type;
-//
-//			} else {
-//				status.onboard_control_sensors_health &= ~info.subsystem_type;
-//			}
+			if (info.ok) {
+				status.onboard_control_sensors_health |= info.subsystem_type;
+
+			} else {
+				status.onboard_control_sensors_health &= ~info.subsystem_type;
+			}
 
 			status_changed = true;
 		}
@@ -2918,6 +2946,7 @@ int commander_thread_main(int argc, char *argv[])
 
 	/* wait for threads to complete */
 	ret = pthread_join(commander_low_prio_thread, NULL);
+	ret = pthread_join(commander_check_sensors_thread, NULL);
 
 	if (ret) {
 		warn("join failed: %d", ret);
@@ -3537,6 +3566,264 @@ void answer_command(struct vehicle_command_s &cmd, unsigned result,
 	}
 }
 
+void check_mag(bool &health, bool &calibration)
+{
+	int devid;
+	int ret = OK;
+	DevHandle h;
+	int calibration_devid;
+	const char* calibrate_id = "CAL_MAG0_ID";
+	DevMgr::getHandle(MAG0_DEVICE_PATH, h);
+
+	if (!h.isValid()) {
+		health =true;
+		goto out;
+	} else {
+		size_t sz;
+		struct mag_report mag;
+		sz = h.read(&mag, sizeof(mag));
+		if (sz != sizeof(mag)) {
+			health = true;
+			goto out;
+		}
+		health = false;
+	}
+
+	devid = h.ioctl(DEVIOCGDEVICEID, 0);
+	param_get(param_find(calibrate_id), &(calibration_devid));
+	if (devid != calibration_devid) {
+		calibration = true;
+		goto out;
+	}
+
+	ret = h.ioctl(MAGIOCSELFTEST, 0);
+
+	if (ret != OK) {
+		calibration = true;
+	} else {
+		calibration = false;
+	}
+
+out:
+	DevMgr::releaseHandle(h);
+	return;
+}
+
+void check_acc(bool &health, bool &calibration)
+{
+	int devid;
+	int ret = OK;
+	DevHandle h;
+	int calibration_devid;
+	const char* calibrate_id = "CAL_ACC0_ID";
+	DevMgr::getHandle(ACCEL0_DEVICE_PATH, h);
+
+	if (!h.isValid()) {
+		health =true;
+		goto out;
+	} else {
+		size_t sz;
+		struct accel_report accel;
+		sz = h.read(&accel, sizeof(accel));
+		if (sz != sizeof(accel)) {
+			health = true;
+			goto out;
+		}
+		health = false;
+	}
+
+	devid = h.ioctl(DEVIOCGDEVICEID, 0);
+	param_get(param_find(calibrate_id), &(calibration_devid));
+	if (devid != calibration_devid) {
+		calibration = true;
+		goto out;
+	}
+
+	ret = h.ioctl(ACCELIOCSELFTEST, 0);
+
+	if (ret != OK) {
+		calibration = true;
+	} else {
+		calibration = false;
+	}
+
+out:
+	DevMgr::releaseHandle(h);
+	return;
+}
+
+void check_gyro(bool &health, bool &calibration)
+{
+	int devid;
+	int ret = OK;
+	DevHandle h;
+	int calibration_devid;
+	const char* calibrate_id = "CAL_GYRO0_ID";
+	DevMgr::getHandle(GYRO0_DEVICE_PATH, h);
+
+	if (!h.isValid()) {
+		health =true;
+		goto out;
+	} else {
+		size_t sz;
+		struct gyro_report gyro;
+		sz = h.read(&gyro, sizeof(gyro));
+		if (sz != sizeof(gyro)) {
+			health = true;
+			goto out;
+		}
+		health = false;
+	}
+
+	devid = h.ioctl(DEVIOCGDEVICEID, 0);
+	param_get(param_find(calibrate_id), &(calibration_devid));
+	if (devid != calibration_devid) {
+		calibration = true;
+		goto out;
+	}
+
+	ret = h.ioctl(GYROIOCSELFTEST, 0);
+
+	if (ret != OK) {
+		calibration = true;
+	} else {
+		calibration = false;
+	}
+
+out:
+	DevMgr::releaseHandle(h);
+	return;
+}
+
+void check_baro(bool &health, bool &calibration)
+{
+	DevHandle h;
+
+	DevMgr::getHandle(BARO0_DEVICE_PATH, h);
+	if (!h.isValid()) {
+		health = false;
+		calibration = true;
+	} else {
+		health = false;
+		calibration = false;
+	}
+	DevMgr::releaseHandle(h);
+
+	return;
+}
+
+void check_gps(bool &health, bool &calibration)
+{
+	bool success = true;
+
+	int gpsSub = orb_subscribe(ORB_ID(vehicle_gps_position));
+	//Wait up to 2000ms to allow the driver to detect a GNSS receiver module
+	px4_pollfd_struct_t fds[1];
+	fds[0].fd = gpsSub;
+	fds[0].events = POLLIN;
+	if(px4_poll(fds, 1, 2000) <= 0) {
+		success = false;
+	} else {
+		struct vehicle_gps_position_s gps;
+		if ( (OK != orb_copy(ORB_ID(vehicle_gps_position), gpsSub, &gps)) ||
+				(hrt_elapsed_time(&gps.timestamp_position) > 1000000)) {
+			success = false;
+		}
+	}
+
+	if(!success) {
+		health = true;
+		calibration = true;
+	} else {
+		health = false;
+		calibration = false;
+	}
+	px4_close(gpsSub);
+
+	return;
+}
+
+void *commander_check_sensors_loop(void *arg)
+{
+	/*set thread name*/
+	prctl(PR_SET_NAME, "commander_check_sensors", getpid());
+
+	struct subsystem_info_s info = {
+		true,
+		true,
+		true,
+		0
+	};
+
+	static orb_advert_t pub;
+	/*advertise subsystem_info*/
+	pub = orb_advertise(ORB_ID(subsystem_info), &info);
+
+	/*counts for choice check sensors*/
+	enum check_counts {
+		MAG_CHECK = 0,
+		ACCEL_CHECK,
+		GYRO_CHECK,
+		BARO_CHECK,
+		GPS_CHECK
+	};
+
+	bool health = false, calibration = false;
+
+	enum check_counts check_sensor = MAG_CHECK;
+
+	while(!thread_should_exit) {
+		switch(check_sensor) {
+			case MAG_CHECK:
+				info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_MAG;
+				check_mag(health, calibration);
+				check_sensor = ACCEL_CHECK;
+				break;
+			case ACCEL_CHECK:
+				info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_ACC;
+				check_acc(health, calibration);
+				check_sensor = GYRO_CHECK;
+				break;
+			case GYRO_CHECK:
+				info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_GYRO;
+				check_gyro(health, calibration);
+				check_sensor = BARO_CHECK;
+				break;
+			case BARO_CHECK:
+				info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_ABSPRESSURE;
+				check_baro(health, calibration);
+				check_sensor = GPS_CHECK;
+				break;
+			case GPS_CHECK:
+				info.subsystem_type = subsystem_info_s::SUBSYSTEM_TYPE_GPS;
+				check_gps(health, calibration);
+				check_sensor = MAG_CHECK;
+				break;
+			default:
+				check_sensor = MAG_CHECK;
+				break;
+		}
+
+		if(health ==  true) {
+			info.present = true;
+			info.enabled = true;
+			info.ok = true;
+		} else if (calibration == true){
+			info.present = false;
+			info.enabled = false;
+			info.ok = true;
+		} else {
+			info.present = false;
+			info.enabled = false;
+			info.ok = false;
+		}
+
+		orb_publish(ORB_ID(subsystem_info), pub, &info);
+		usleep(100*1000);
+	}
+	return NULL;
+}
+
 void *commander_low_prio_loop(void *arg)
 {
 	/* Set thread name */
@@ -3722,13 +4009,8 @@ void *commander_low_prio_loop(void *arg)
 							checkAirspeed = true;
 						}
 
-						status.onboard_control_sensors_health = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
-							!(status.rc_input_mode >= vehicle_status_s::RC_IN_MODE_OFF), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
-						if(status.onboard_control_sensors_health > 0) {
-							status.condition_system_sensors_initialized = false;
-						} else {
-							status.condition_system_sensors_initialized = true;
-						}
+						status.condition_system_sensors_initialized = Commander::preflightCheck(mavlink_fd, true, true, true, true, checkAirspeed,
+							!(status.rc_input_mode == vehicle_status_s::RC_IN_MODE_OFF), !status.circuit_breaker_engaged_gpsfailure_check, hotplug_timeout);
 
 						arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_STANDBY, &armed, false /* fRunPreArmChecks */, mavlink_fd);
 

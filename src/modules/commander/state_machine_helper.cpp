@@ -1028,14 +1028,9 @@ int preflight_check(struct vehicle_status_s *status, const int mavlink_fd, bool 
 		checkAirspeed = true;
 	}
 
-	bool preflight_ok = 0;
-	if(Commander::preflightCheck(mavlink_fd, true, true, true, true,
+	bool preflight_ok = Commander::preflightCheck(mavlink_fd, true, true, true, true,
 				checkAirspeed, (status->rc_input_mode == vehicle_status_s::RC_IN_MODE_DEFAULT),
-				!status->circuit_breaker_engaged_gpsfailure_check, true, reportFailures)) {
-		preflight_ok = 0;
-	} else {
-		preflight_ok = 1;
-	}
+				!status->circuit_breaker_engaged_gpsfailure_check, true, reportFailures);
 		
 	if (!status->cb_usb && status->usb_connected && prearm) {
 		preflight_ok = false;
