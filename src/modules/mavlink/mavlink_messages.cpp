@@ -597,6 +597,36 @@ protected:
 		_status_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_status)))
 	{}
 
+	void get_mavlink_error_count1(struct vehicle_status_s *status, uint16_t *errors_count1)
+	{
+		*errors_count1 &= 0xf000;
+		if (!status->condition_landed) {
+			*errors_count1 |= 0x0001;
+		}
+		if (status->rc_signal_lost) {
+			*errors_count1 |= 0x0002;
+		}
+		if (status->large_angle_ooc_occured) {
+			*errors_count1 |= 0x0004;
+		}
+		if (!status->condition_global_position_valid) {
+			*errors_count1 |= 0x0008;
+		}
+		if (status->force_disarm) {
+			*errors_count1 |= 0x0010;
+		}
+		if (!status->condition_takeoff_attitude_valid) {
+			*errors_count1 |= 0x0020;
+		}
+		if (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_LOW) {
+			*errors_count1 |= 0x0040;
+		} else if (status->battery_warning == vehicle_status_s::VEHICLE_BATTERY_WARNING_CRITICAL) {
+			*errors_count1 |= 0x0080;
+		} else if (status->battery_warning == vehicle_status_s :: VEHICLE_BATTERY_WARNING_EMERGENCY) {
+			*errors_count1 |= 0x0100;
+		}
+	}
+
 	void send(const hrt_abstime t)
 	{
 		struct vehicle_status_s status;
@@ -613,6 +643,7 @@ protected:
 			msg.drop_rate_comm = status.drop_rate_comm;
 			msg.errors_comm = status.errors_comm;
 			msg.errors_count1 = status.errors_count1;
+			get_mavlink_error_count1(&status, &msg.errors_count1);
 			msg.errors_count2 = status.errors_count2;
 			msg.errors_count3 = status.errors_count3;
 			msg.errors_count4 = status.errors_count4;
