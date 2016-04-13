@@ -1255,7 +1255,7 @@ int commander_thread_main(int argc, char *argv[])
 	status.usb_connected = false;
 	status.restricted_area_violated_once = false;
 	status.force_disarm = false;
-
+	status.large_angle_ooc_occured = false;
 
 	// CIRCUIT BREAKERS
 	status.circuit_breaker_engaged_power_check = false;
@@ -2131,7 +2131,7 @@ int commander_thread_main(int argc, char *argv[])
 			mavlink_log_emergency(mavlink_fd, "Large angle, armed error");
 			arming_ret = arming_state_transition(&status, &safety, vehicle_status_s::ARMING_STATE_ARMED_ERROR, &armed, true /* fRunPreArmChecks */,
 								     mavlink_fd);
-
+			status.large_angle_ooc_occured = true;
 			if (arming_ret == TRANSITION_CHANGED) {
 				arming_state_changed = true;
 			}
