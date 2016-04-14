@@ -1256,6 +1256,8 @@ int commander_thread_main(int argc, char *argv[])
 	status.restricted_area_violated_once = false;
 	status.force_disarm = false;
 	status.large_angle_ooc_occured = false;
+	status.condition_takeoff_attitude_valid = true;
+
 
 	// CIRCUIT BREAKERS
 	status.circuit_breaker_engaged_power_check = false;
@@ -2957,6 +2959,9 @@ get_circuit_breaker_params()
 		circuit_breaker_enabled("CBRK_ENGINEFAIL", CBRK_ENGINEFAIL_KEY);
 	status.circuit_breaker_engaged_gpsfailure_check =
 		circuit_breaker_enabled("CBRK_GPSFAIL", CBRK_GPSFAIL_KEY);
+	status.circuit_breaker_engaged_takeoff_att_check =
+		circuit_breaker_enabled("CBRK_TFA_CHK", CBRK_TFA_CHK_KEY);
+
 }
 
 void

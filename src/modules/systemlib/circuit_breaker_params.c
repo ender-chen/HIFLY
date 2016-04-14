@@ -160,3 +160,16 @@ PARAM_DEFINE_INT32(CBRK_BUZZER, 0);
  * @group Circuit Breaker
  */
 PARAM_DEFINE_INT32(CBRK_USB_CHK, 0);
+
+/**
+ * Circuit breaker for takeoff attitude check
+ *
+ * Setting this parameter to 846251 will disable the takeoff attitude
+ * checks in the commander.
+ * WARNING: ENABLING THIS CIRCUIT BREAKER IS AT OWN RISK
+ *
+ * @min 0
+ * @max 846251
+ * @group Circuit Breaker
+ */
+PARAM_DEFINE_INT32(CBRK_TFA_CHK, 0);
