@@ -95,6 +95,8 @@
 #define MANUAL_THROTTLE_MAX_MULTICOPTER	0.9f
 #define ONE_G	9.8066f
 #define CIRCLE_ANGULAR_ACCEL_MIN 2.0f        // angular acceleration should never be less than 2deg/sec
+#define MIN_CIRCLE_RADIUS 5.0f
+#define MAX_CIRCLE_RADIUS 30.0f
 
 /**
  * Multicopter position control app start / stop handling function
@@ -1430,10 +1432,16 @@ void MulticopterPositionControl::circle_follow_init(const math::Vector<3>& cente
 		float dx = _pos(0) - center(0);
 		float dy = _pos(1) - center(1);
 		_circle_radius = sqrtf(dx * dx + dy * dy);
-		_move_to_edge = false;
+		if (_circle_radius < MIN_CIRCLE_RADIUS || _circle_radius > MAX_CIRCLE_RADIUS) {
+			_circle_radius = math::constrain(_circle_radius, MIN_CIRCLE_RADIUS, MAX_CIRCLE_RADIUS);
+			get_closest_point_on_circle();
+			_move_to_edge = true;
+		} else {
+			_move_to_edge = false;
+		}
 
 	} else {
-		_circle_radius = math::constrain(_params.circle_radius, 2.5f, 30.0f);
+		_circle_radius = math::constrain(_params.circle_radius, MIN_CIRCLE_RADIUS, MAX_CIRCLE_RADIUS);
 		get_closest_point_on_circle();
 		_move_to_edge = true;
 	}
