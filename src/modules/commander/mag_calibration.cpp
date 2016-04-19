@@ -74,6 +74,7 @@ static constexpr unsigned int calibration_total_points = 80;		///< The total poi
 static constexpr unsigned int calibraton_duration_seconds = 10; 	///< The total duration the routine is allowed to take
 
 static constexpr float MAG_MAX_OFFSET_LEN = 0.9f;	///< The maximum measurement range is ~1.4 Ga, the earth field is ~0.6 Ga, so an offset larger than ~0.8-0.6 Ga means the mag will saturate in some directions.
+static constexpr float GYRO_INTEGRAL_RAD = 13.0f;
 
 int32_t	device_ids[max_mags];
 int device_prio_max = 0;
@@ -256,32 +257,32 @@ static calibrate_return mag_calibration_worker(fist_orientation_axis* orient_axi
 
 		if (*orient_axis == ORIENTATION_AXIS_NO)
 		{
-			if(fabs(gyro_x_integral) > 7) {
+			if(fabs(gyro_x_integral) > (double)GYRO_INTEGRAL_RAD) {
 				*orient_axis = ORIENTATION_AXIS_X;
 				break;
-			} else if (fabs(gyro_y_integral) > 7) {
+			} else if (fabs(gyro_y_integral) > (double)GYRO_INTEGRAL_RAD) {
 				*orient_axis = ORIENTATION_AXIS_Y;
 				break;
-			} else if (fabs(gyro_z_integral) > 7) {
+			} else if (fabs(gyro_z_integral) > (double)GYRO_INTEGRAL_RAD) {
 				*orient_axis = ORIENTATION_AXIS_Z;
 				break;
 			}
 		} else if (*orient_axis == ORIENTATION_AXIS_X) {
-			if (fabs(gyro_y_integral) > 7) {
+			if (fabs(gyro_y_integral) > (double)GYRO_INTEGRAL_RAD) {
 				break;
-			} else if (fabs(gyro_z_integral) > 7) {
+			} else if (fabs(gyro_z_integral) > (double)GYRO_INTEGRAL_RAD) {
 				break;
 			}
 		} else if (*orient_axis == ORIENTATION_AXIS_Y) {
-			if (fabs(gyro_x_integral) > 7) {
+			if (fabs(gyro_x_integral) > (double)GYRO_INTEGRAL_RAD) {
 				break;
-			} else if(fabs(gyro_z_integral) > 7) {
+			} else if(fabs(gyro_z_integral) > (double)GYRO_INTEGRAL_RAD) {
 				break;
 			}
 		} else if (*orient_axis == ORIENTATION_AXIS_Z) {
-			if (fabs(gyro_x_integral) > 7) {
+			if (fabs(gyro_x_integral) > (double)GYRO_INTEGRAL_RAD) {
 				break;
-			} else if (fabs(gyro_y_integral) > 7) {
+			} else if (fabs(gyro_y_integral) > (double)GYRO_INTEGRAL_RAD) {
 				break;
 			}
 		}
