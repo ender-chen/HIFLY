@@ -120,3 +120,50 @@ PARAM_DEFINE_INT32(NAV_AH_LON, 1518423250);
  * @group Data Link Loss
  */
 PARAM_DEFINE_FLOAT(NAV_AH_ALT, 600.0f);
+
+/**
+ * Enable target print function
+ *
+ * When enabled, target message will be send to qgc by mavlink.
+ *
+ * @min 0
+ * @max 1
+ * @group Mission
+ */
+PARAM_DEFINE_INT32(TAR_DEBUG_EN, 0);
+
+/**
+ * Target Maximum interval time
+ *
+ * @min 0
+ * @max 60
+ * @group Mission
+ */
+PARAM_DEFINE_INT32(TAR_TIMEOUT, 30);
+
+/**
+ * Target Maximum velocity acceleration
+ *
+ * @min 0
+ * @max 10
+ * @group Mission
+ */
+PARAM_DEFINE_FLOAT(TAR_VEL_ACC_MAX, 9.8f);
+
+/**
+ * Target Maximum position acceleration
+ *
+ * @min 0
+ * @max 125
+ * @group Mission
+ */
+PARAM_DEFINE_FLOAT(TAR_POS_ACC_MAX, 100.0f);
+
+/**
+ * Target Maximum velocity
+ *
+ * @min 0
+ * @max 30
+ * @group Mission
+ */
+PARAM_DEFINE_FLOAT(TAR_VEL_MAX, 30.0f);

@@ -95,28 +95,28 @@ void FollowTarget::on_inactive()
 
 void FollowTarget::on_activation()
 {
-	if (_follow_target_sub < 0) {
-		_follow_target_sub = orb_subscribe(ORB_ID(follow_target));
-	}
 }
 
 void FollowTarget::on_active() {
 	struct map_projection_reference_s target_ref;
+	struct follow_target_s *target = nullptr;
 	math::Vector<3> target_position(0, 0, 0);
 	uint64_t current_time = hrt_absolute_time();
 	bool _radius_entered = false;
 	bool _radius_exited = false;
 	bool _radius_approached = false;
 	bool _yaw_valid = false;
-	bool updated = false;
+	bool target_updated = false;
 	float yaw = NAN;
 	float dt_ms = 0.0f;
 
 	updateParams();
 
-	orb_check(_follow_target_sub, &updated);
+	target = _navigator->get_valid_target();
 
-	if (updated) {
+	if (target != nullptr) {
+
+		target_updated = true;
 
 		_target_updates++;
 
@@ -124,7 +124,7 @@ void FollowTarget::on_active() {
 
 		_previous_target_motion = _current_target_motion;
 
-		orb_copy(ORB_ID(follow_target), _follow_target_sub, &_current_target_motion);
+		memcpy(&_current_target_motion, target, sizeof(struct follow_target_s));
 
 		if (_reference_position_init == false) {
 			if (_navigator->use_current_position_to_follow()) {
@@ -144,13 +144,6 @@ void FollowTarget::on_active() {
 			_target_reference_alt = _current_target_motion.alt;
 			_reference_position_init = true;
 			mavlink_log_info(_navigator->get_mavlink_fd(),"_reference_position_init");
-		}
-
-		uint64_t dt = _current_target_motion.timestamp - _previous_target_motion.timestamp;
-		uint32_t seq_interval = _current_target_motion.seq - _previous_target_motion.seq;
-
-		if (dt > 500000 || seq_interval >= 2) {
-			mavlink_log_info(_navigator->get_mavlink_fd(),"target timeout %llums and lost %d target", (dt / 1000), (seq_interval - 1));
 		}
 
 	} else if (((current_time - _previous_target_motion.timestamp) / 1000 / 1000) > TARGET_TIMEOUT_S && target_velocity_valid()) {
@@ -189,8 +182,8 @@ void FollowTarget::on_active() {
 	}
 
 	// update target velocity
-
-	if (target_velocity_valid() && updated) {
+	// TODO
+	if (target_velocity_valid() && target_updated) {
 
 		dt_ms = ((_current_target_motion.timestamp - _previous_target_motion.timestamp) / 1000);
 

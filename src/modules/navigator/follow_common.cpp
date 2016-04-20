@@ -49,8 +49,6 @@
 #include "navigator.h"
 #include "follow_common.h"
 
-#define WAYPOINT_TIMEOUT 1000000
-
 FollowCommon::FollowCommon(Navigator *navigator, const char *name) :
 	MissionBlock(navigator, name),
 	_follow_state(FOLLOW_STATE_NONE)
@@ -76,17 +74,11 @@ FollowCommon::on_activation() {
 void
 FollowCommon::on_active() {
 	if (!_navigator->get_vstatus()->condition_landed) {
-
-		struct follow_target_s* target = _navigator->get_follow_target();
-		if (is_valid_follow_item(target)) {
+		struct follow_target_s *target = nullptr;
+		target = _navigator->get_valid_target();
+		if (target != nullptr) {
 			advance_follow();
 			set_follow_item(target);
-		} else {
-			struct position_setpoint_triplet_s *pos_sp_triplet = _navigator->get_position_setpoint_triplet();
-			if (pos_sp_triplet->current.valid && pos_sp_triplet->current.velocity_valid) {
-				pos_sp_triplet->current.velocity_valid = false;
-				_navigator->set_position_setpoint_triplet_updated();
-			}
 		}
 	}
 }
@@ -111,9 +103,4 @@ FollowCommon::advance_follow()
 		default:
 		break;
 	}
-}
-
-bool
-FollowCommon::is_valid_follow_item(const struct follow_target_s *target) {
-	return !(target->timestamp == 0 || hrt_elapsed_time(&target->timestamp) > WAYPOINT_TIMEOUT);
 }

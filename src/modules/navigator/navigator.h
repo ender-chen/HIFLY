@@ -134,6 +134,7 @@ public:
 	void		set_can_loiter_at_sp(bool can_loiter) { _can_loiter_at_sp = can_loiter; }
 	void		set_position_setpoint_triplet_updated() { _pos_sp_triplet_updated = true; }
 	void		set_mission_result_updated() { _mission_result_updated = true; }
+	void		set_target_valid() { _target_valid = true; }
 
 	/**
 	 * Getters
@@ -149,7 +150,7 @@ public:
 	struct mission_result_s*	    get_mission_result() { return &_mission_result; }
 	struct geofence_result_s*		    get_geofence_result() { return &_geofence_result; }
 	struct vehicle_attitude_setpoint_s* get_att_sp() { return &_att_sp; }
-	struct follow_target_s* get_follow_target() { return &_target; }
+	struct follow_target_s* get_valid_target();
 	bool				    use_current_position_to_follow() { return _follow_ref_pos.cur_ref2target_pos; }
 
 	int		get_onboard_mission_sub() { return _onboard_mission_sub; }
@@ -220,7 +221,8 @@ private:
 	mission_result_s				_mission_result;
 	geofence_result_s				_geofence_result;
 	vehicle_attitude_setpoint_s			_att_sp;
-	follow_target_s					_target;
+	follow_target_s					_previous_target;
+	follow_target_s					_current_target;
 	follow_reference_position_s			_follow_ref_pos;
 
 	bool 		_mission_item_valid;		/**< flags if the current mission item is valid */
@@ -237,6 +239,7 @@ private:
 	bool		_pos_sp_triplet_updated;		/**< flags if position SP triplet needs to be published */
 	bool 		_pos_sp_triplet_published_invalid_once;	/**< flags if position SP triplet has been published once to UORB */
 	bool		_mission_result_updated;		/**< flags if mission result has seen an update */
+	bool		_target_valid;			/**< flags if target is valid*/
 
 	NavigatorMode	*_navigation_mode;		/**< abstract pointer to current navigation mode class */
 	Mission		_mission;			/**< class that handles the missions */
@@ -264,6 +267,11 @@ private:
 	control::BlockParamFloat _param_acceptance_radius;	/**< acceptance for takeoff */
 	control::BlockParamInt _param_datalinkloss_obc;	/**< if true: obc mode on data link loss enabled */
 	control::BlockParamInt _param_rcloss_obc;	/**< if true: obc mode on rc loss enabled */
+	control::BlockParamInt _param_target_debug;	/**< if true: print target message */
+	control::BlockParamInt _param_target_timeout;	/**< if true: follow target timeout */
+	control::BlockParamFloat _param_target_vel_acc_max;	/**< Target Maximum velocity acceleration */
+	control::BlockParamFloat _param_target_pos_acc_max;	/**< Target Maximum position acceleration */
+	control::BlockParamFloat _param_target_vel_max;	/**< Target Maximum velocity */
 	/**
 	 * Retrieve global position
 	 */
@@ -339,6 +347,11 @@ private:
 	 * Publish the mission result so commander and mavlink know what is going on
 	 */
 	void		publish_mission_result();
+
+	/**
+	 * target validation check
+	 */
+	int		target_validation_check();
 
 	/* this class has ptr data members, so it should not be copied,
 	 * consequently the copy constructors are private.

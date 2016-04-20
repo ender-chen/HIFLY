@@ -92,6 +92,12 @@ extern "C" __EXPORT int navigator_main(int argc, char *argv[]);
 
 #define GEOFENCE_CHECK_INTERVAL 200000
 
+#define TARGET_NONE_ERROR 0
+#define TARGET_POS_ERROR 1
+#define TARGET_ALT_ERROR 2
+#define TARGET_VEL_ERROR 3
+#define TARGET_WAIT_DATA 4
+
 namespace navigator
 {
 
@@ -130,7 +136,8 @@ Navigator::Navigator() :
 	_pos_sp_triplet{},
 	_mission_result{},
 	_att_sp{},
-	_target{},
+	_previous_target{},
+	_current_target{},
 	_follow_ref_pos{},
 	_mission_item_valid(false),
 	_mission_instance_count(0),
@@ -142,6 +149,7 @@ Navigator::Navigator() :
 	_pos_sp_triplet_updated(false),
 	_pos_sp_triplet_published_invalid_once(false),
 	_mission_result_updated(false),
+	_target_valid(false),
 	_navigation_mode(nullptr),
 	_mission(this, "MIS"),
 	_loiter(this, "LOI"),
@@ -161,7 +169,12 @@ Navigator::Navigator() :
 	_param_loiter_radius(this, "LOITER_RAD"),
 	_param_acceptance_radius(this, "ACC_RAD"),
 	_param_datalinkloss_obc(this, "DLL_OBC"),
-	_param_rcloss_obc(this, "RCL_OBC")
+	_param_rcloss_obc(this, "RCL_OBC"),
+	_param_target_debug(this, "TAR_DEBUG_EN", false),
+	_param_target_timeout(this, "TAR_TIMEOUT", false),
+	_param_target_vel_acc_max(this, "TAR_VEL_ACC_MAX", false),
+	_param_target_pos_acc_max(this, "TAR_POS_ACC_MAX", false),
+	_param_target_vel_max(this, "TAR_VEL_MAX", false)
 {
 	/* Create a list of our possible navigation types */
 	_navigation_mode_array[0] = &_mission;
@@ -271,12 +284,19 @@ Navigator::params_update()
 void
 Navigator::follow_target_update()
 {
-	orb_copy(ORB_ID(follow_target), _follow_target_sub, &_target);
+	orb_copy(ORB_ID(follow_target), _follow_target_sub, &_current_target);
 
-	static uint64_t print_time =  hrt_absolute_time();
-	if (hrt_elapsed_time(&print_time) > 10000000) {
-		print_time = hrt_absolute_time();
-		mavlink_log_info(_mavlink_fd, "target update lat:%.7f, lon:%.7f", _target.lat, _target.lon);
+	if (_param_target_debug.get() == 1 && _previous_target.timestamp != 0) {
+		uint64_t time_interval = (_current_target.timestamp - _previous_target.timestamp) / 1000.0f;
+		uint32_t seq_interval = _current_target.seq - _previous_target.seq;
+
+		mavlink_log_info(_mavlink_fd,"interval: time %llu ms, seq %d", time_interval, seq_interval);
+	}
+
+	int target_status = target_validation_check();
+
+	if (target_status == TARGET_NONE_ERROR) {
+		set_target_valid();
 	}
 }
 
@@ -347,7 +367,6 @@ Navigator::task_main()
 	home_position_update(true);
 	navigation_capabilities_update();
 	params_update();
-	follow_target_update();
 
 	hrt_abstime mavlink_open_time = 0;
 	const hrt_abstime mavlink_open_interval = 500000;
@@ -842,5 +861,130 @@ Navigator::set_mission_failure(const char* reason)
 		_mission_result.mission_failure = true;
 		set_mission_result_updated();
 		mavlink_log_critical(_mavlink_fd, "%s", reason);
+	}
+}
+
+#define VEL_N 0
+#define VEL_E 1
+#define VEL_D 2
+#define ALT 3
+#define LAT 4
+#define LON 5
+#define SUB_NUM 6
+
+#define WP_NUM 5
+static float wp_buf[SUB_NUM][WP_NUM + 1] = {0.0f,0.0f};
+
+static float waypoint_filter(int sel, float val)
+{
+        float sum = 0.0f;
+        wp_buf[sel][WP_NUM] = val;
+
+        for(int i = 0; i < WP_NUM; i++) {
+                wp_buf[sel][i] = wp_buf[sel][i+1];
+                sum += wp_buf[sel][i];
+        }
+
+        return sum / WP_NUM;
+}
+
+int
+Navigator::target_validation_check()
+{
+	static float last_hor_velocity = 0.0f;
+	static float last_ver_velocity = 0.0f;
+	static uint32_t valid_target_conut = 0;
+
+	if (valid_target_conut != 0) {
+
+		float dt_s = (_current_target.timestamp - _previous_target.timestamp) / 1000.0f / 1000.0f;
+		math::Vector<3> pre_vel(_previous_target.vel_n_m_s, _previous_target.vel_e_m_s, 0.0f);
+		math::Vector<3> cur_vel(_current_target.vel_n_m_s, _current_target.vel_e_m_s, 0.0f);
+		math::Vector<3> dif_vel = cur_vel - pre_vel;
+
+		// calculate horizontal acceleration via velocity
+		float vel_acc_hor = dif_vel.length() / dt_s;
+
+		if (vel_acc_hor > _param_target_vel_acc_max.get()) {
+			mavlink_log_critical(_mavlink_fd, "target vel hor acc: %.1f", (double)vel_acc_hor);
+			return TARGET_VEL_ERROR;
+		}
+
+		// calculate vertical acceleration via velocity
+		float dif_vel_z = _current_target.vel_d_m_s - _previous_target.vel_d_m_s;
+		float vel_acc_ver = fabsf(dif_vel_z) / dt_s;
+
+		if (vel_acc_ver > _param_target_vel_acc_max.get()) {
+			mavlink_log_critical(_mavlink_fd, "target vel ver acc: %.1f", (double)vel_acc_ver);
+			return TARGET_VEL_ERROR;
+		}
+
+		float dist_xy = -1.0f;
+		float dist_z = -1.0f;
+		// calculate distance the target had moved
+		get_distance_to_point_global_wgs84(_current_target.lat, _current_target.lon, _current_target.alt,
+				_previous_target.lat, _previous_target.lon, _previous_target.alt,
+				&dist_xy, &dist_z);
+
+		float pos_vel = dist_xy / dt_s;
+		if(pos_vel > _param_target_vel_max.get()) {
+			mavlink_log_critical(_mavlink_fd, "target pos vel: %.1f", (double)pos_vel);
+			return TARGET_POS_ERROR;
+		}
+
+		// need at least 2 data point for position velocity estimate
+		if (valid_target_conut > 2 ) {
+			// calculate target acceleration via position
+			float pos_acc_hor = fabsf(dist_xy / dt_s - last_hor_velocity) / dt_s;
+
+			// calculate horizontal acceleration via position
+			if (pos_acc_hor > _param_target_pos_acc_max.get()) {
+				mavlink_log_critical(_mavlink_fd, "target pos hor acc: %.1f", (double)pos_acc_hor);
+				return TARGET_POS_ERROR;
+			}
+
+			// calculate vertical acceleration via position
+			float pos_acc_ver = fabsf(dist_z / dt_s - last_ver_velocity) / dt_s;
+
+			if (pos_acc_ver > _param_target_vel_acc_max.get()) {
+				mavlink_log_critical(_mavlink_fd, "target pos ver acc: %.1f", (double)pos_acc_ver);
+				return TARGET_POS_ERROR;
+			}
+		}
+
+		last_hor_velocity = fabsf(dist_xy) / dt_s;
+		last_ver_velocity = fabsf(dist_z) / dt_s;
+
+		// reset target valid if target timeout for a long time
+		if (dt_s > _param_target_timeout.get()) {
+			valid_target_conut = 0;
+		}
+	}
+
+	_previous_target = _current_target;
+
+	// target filter
+	_current_target.vel_n_m_s = waypoint_filter(VEL_N, _current_target.vel_n_m_s);
+	_current_target.vel_e_m_s = waypoint_filter(VEL_E, _current_target.vel_e_m_s);
+	_current_target.vel_d_m_s = waypoint_filter(VEL_D, _current_target.vel_d_m_s);
+	_current_target.alt = waypoint_filter(ALT, _current_target.alt);
+
+	valid_target_conut ++;
+
+	// wait for target refresh;
+	if (valid_target_conut <= WP_NUM) {
+		return TARGET_WAIT_DATA;
+	}
+
+	return TARGET_NONE_ERROR;
+}
+
+struct follow_target_s* Navigator::get_valid_target()
+{
+	if(_target_valid == true) {
+		_target_valid = false;
+		return &_current_target;
+	} else {
+		return nullptr;
 	}
 }

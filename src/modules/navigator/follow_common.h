@@ -70,8 +70,6 @@ public:
 
 	virtual void set_follow_item(const struct follow_target_s *target);
 
-	virtual bool is_valid_follow_item(const struct follow_target_s *target);
-
 	virtual void advance_follow();
 
 	float _vehicle_ref_alt;
