@@ -2122,7 +2122,7 @@ MulticopterPositionControl::task_main()
 				math::Vector<3> vel_max;
 				if (_control_mode.flag_control_follow_enabled &&
 					(_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_TARGET ||
-					(_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER ||
+					_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_LOITER ||
 					_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CIRCLE ||
 					_pos_sp_triplet.current.type == position_setpoint_s::SETPOINT_TYPE_FOLLOW_CAMERA)) {
 					vel_max = _params.fol_v_max;
