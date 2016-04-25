@@ -36,7 +36,10 @@ px4_add_module(
 	STACK 1024
 	COMPILE_FLAGS
 		-Os
-		-D__BUILD_VER__=\\"${BUILD_VERSION}\\"
+		-D__BUILD_NAME__=\\"${BUILD_NAME}\\"
+		-D__BUILD_SN__=\\"${BUILD_SN}\\"
+		-D__BUILD_DATE__=\\"${BUILD_DATE}\\"
+		-D__BUILD_GIT_HASH__=\\"${BUILD_GIT_HASH}\\"
 	SRCS
 		ver.c
 	DEPENDS

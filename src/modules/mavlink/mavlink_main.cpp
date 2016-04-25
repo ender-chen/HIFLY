@@ -1122,6 +1122,10 @@ void Mavlink::send_autopilot_capabilites()
 
 	if (status_sub->update(&status)) {
 		mavlink_autopilot_version_t msg = {};
+		int custom_version_len = strlen(__BUILD_GIT_HASH__);
+		if (custom_version_len > (sizeof(msg.flight_custom_version) - 1)) {
+			custom_version_len = sizeof(msg.flight_custom_version) - 1;
+		}
 
 		msg.capabilities = MAV_PROTOCOL_CAPABILITY_MISSION_FLOAT;
 		msg.capabilities |= MAV_PROTOCOL_CAPABILITY_PARAM_FLOAT;
@@ -1131,11 +1135,12 @@ void Mavlink::send_autopilot_capabilites()
 		msg.capabilities |= MAV_PROTOCOL_CAPABILITY_SET_ATTITUDE_TARGET;
 		msg.capabilities |= MAV_PROTOCOL_CAPABILITY_SET_POSITION_TARGET_LOCAL_NED;
 		msg.capabilities |= MAV_PROTOCOL_CAPABILITY_SET_ACTUATOR_TARGET;
-		msg.flight_sw_version = 0;
-		msg.middleware_sw_version = 0;
+		msg.flight_sw_version = atol(__BUILD_SN__);
+		msg.middleware_sw_version = atol(__BUILD_DATE__);
 		msg.os_sw_version = 0;
 		msg.board_version = 0;
-		memcpy(&msg.flight_custom_version, &px4_git_version_binary, sizeof(msg.flight_custom_version));
+		//memcpy(&msg.flight_custom_version, &px4_git_version_binary, sizeof(msg.flight_custom_version));
+		memcpy(&msg.flight_custom_version, &__BUILD_GIT_HASH__, custom_version_len);
 		memcpy(&msg.middleware_custom_version, &px4_git_version_binary, sizeof(msg.middleware_custom_version));
 		memset(&msg.os_custom_version, 0, sizeof(msg.os_custom_version));
 #ifdef CONFIG_CDCACM_VENDORID

@@ -45,6 +45,10 @@ px4_add_module(
 		-Wno-packed
 		-Wno-tautological-constant-out-of-range-compare
 		-Os
+		-D__BUILD_NAME__=\\"${BUILD_NAME}\\"
+		-D__BUILD_SN__=\\"${BUILD_SN}\\"
+		-D__BUILD_DATE__=\\"${BUILD_DATE}\\"
+		-D__BUILD_GIT_HASH__=\\"${BUILD_GIT_HASH}\\"
 	SRCS
 		mavlink.c
 		mavlink_main.cpp

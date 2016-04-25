@@ -171,7 +171,7 @@ int ver_main(int argc, char *argv[])
 
 	} else {
 		//usage("Error, not enough parameters.");
-		printf("build version: %s\n", __BUILD_VER__);
+		printf("build version: %s_%s_%s_%s\n", __BUILD_NAME__, __BUILD_SN__, __BUILD_DATE__, __BUILD_GIT_HASH__);
 		ret = 0;
 	}
 
