@@ -147,6 +147,18 @@ dma_alloc_init(void)
 	}
 }
 
+static void
+smart_board_up(void)
+{
+	stm32_configgpio(GPIO_SMART_OFF);
+
+	stm32_gpiowrite(GPIO_SMART_OFF, 1);
+
+	up_udelay(1500000);
+
+	stm32_gpiowrite(GPIO_SMART_OFF, 0);
+}
+
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
@@ -195,6 +207,8 @@ stm32_boardinitialize(void)
 
 	/* configure LEDs */
 	up_ledinit();
+	/* start up smart board*/
+	smart_board_up();
 }
 
 /****************************************************************************
