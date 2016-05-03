@@ -202,8 +202,8 @@
 /*
  * UARTs.
  */
-#define GPIO_USART1_RX	0           /* Hawk:We don't have PXIO, so disable USART1 that is used by PXIO Debug  */ 
-#define GPIO_USART1_TX	0			/* USART1 is RX-only */
+#define GPIO_USART1_RX	GPIO_USART1_RX_2
+#define GPIO_USART1_TX	GPIO_USART1_TX_2
 
 /*
  * Hawk:Below four lines are for autopilot<->smartboard communication
