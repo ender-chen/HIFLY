@@ -110,7 +110,10 @@ BUILD_GIT_HASH := $(shell git log -1 --pretty=format:%H | cut -c1-6)
 BUILD_DATE := $(shell date '+%y%m%d')
 ifeq ($(TARGET_NAME), hifly)
 BUILD_NAME := HIFLY01A-F-S00A_CKT_L1EN
-TARGET_ALIAS := $(BUILD_NAME)_$(BUILD_SN)_$(BUILD_DATE)_$(BUILD_GIT_HASH)-Firmware.bin
+
+# for OTA
+BINARY_NAME := $(BUILD_NAME)_$(BUILD_SN)_$(BUILD_DATE)_$(BUILD_GIT_HASH)-Firmware.bin
+
 endif
 
 # Functions
@@ -154,7 +157,7 @@ px4fmu-v2_lpe:
 
 hifly:
 	$(call cmake-build,nuttx_hifly_default,$(BUILD_NAME),$(BUILD_SN),$(BUILD_DATE),$(BUILD_GIT_HASH))
-	cp $(PWD)/build_hifly/src/firmware/nuttx/nuttx-hifly-default.px4 $(PWD)/build_hifly/src/firmware/nuttx/$(TARGET_ALIAS)
+	cp $(PWD)/build_hifly/src/firmware/nuttx/firmware_nuttx.bin $(PWD)/build_hifly/src/firmware/nuttx/$(BINARY_NAME)
 
 posix_sitl_default:
 	$(call cmake-build,$@)
