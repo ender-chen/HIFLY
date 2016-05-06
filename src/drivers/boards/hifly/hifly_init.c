@@ -151,12 +151,15 @@ static void
 smart_board_up(void)
 {
 	stm32_configgpio(GPIO_SMART_OFF);
-
-	stm32_gpiowrite(GPIO_SMART_OFF, 1);
-
-	up_udelay(1500000);
-
-	stm32_gpiowrite(GPIO_SMART_OFF, 0);
+	stm32_configgpio(GPIO_SMART_OFF_STATUS);
+	/* To determine whether the smart board boot */
+	if(stm32_gpioread(GPIO_SMART_OFF_STATUS)) {
+		stm32_gpiowrite(GPIO_SMART_OFF, 1);
+		up_udelay(1500000);
+		stm32_gpiowrite(GPIO_SMART_OFF, 0);
+	} else {
+		stm32_gpiowrite(GPIO_SMART_OFF, 0);
+	}
 }
 
 /****************************************************************************
