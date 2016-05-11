@@ -86,11 +86,21 @@ PARAM_DEFINE_FLOAT(F_TAR_DIST, 5.0f);
 PARAM_DEFINE_FLOAT(F_TAR_YAW_VALID, 3.0f);
 
 /**
- * Follow yaw valid distance.
+ * Follow vel gain.
  *
  * relative distance
  *
  * @unit meters
  * @group Follow
  */
-PARAM_DEFINE_FLOAT(F_TAR_VEL_GAIN, 0.15f);
+PARAM_DEFINE_FLOAT(F_TAR_VEL_GAIN, 0.4f);
+
+/**
+ * Follow target pause
+ *
+ * relative distance
+ *
+ * @unit meters
+ * @group Follow
+ */
+PARAM_DEFINE_INT32(F_TAR_PAUSE, 1);

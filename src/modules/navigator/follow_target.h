@@ -62,8 +62,8 @@ public:
 
 private:
 
-	static constexpr int TARGET_TIMEOUT_S = 1;
-	static constexpr int TARGET_ACCEPTANCE_RADIUS_M = 7;
+	static constexpr int TARGET_TIMEOUT_MS = 1500;
+	static constexpr int TARGET_ACCEPTANCE_RADIUS_M = 5;
 	static constexpr int INTERPOLATION_PNTS = 20;
 	static constexpr float FF_K = .15f;
 
@@ -80,10 +80,10 @@ private:
 	control::BlockParamFloat _param_follow_dist;
 	control::BlockParamFloat _param_follow_yaw_valid;
 	control::BlockParamFloat _param_vel_gain;
+	control::BlockParamInt _param_pause;
 
 	FollowTargetState _follow_target_state;
 
-	int _follow_target_sub;
 	float _step_time_in_ms;
 
 	uint64_t _target_updates;
@@ -95,18 +95,19 @@ private:
 
 	uint64_t _last_update_time;
 
+	math::Vector<3> _track_vel;
 	math::Vector<3> _current_vel;
 	math::Vector<3> _step_vel;
 	math::Vector<3> _target_vel;
 	math::Vector<3> _target_distance;
+	math::Vector<3> _target_position_offset;
 
 	follow_target_s _current_target_motion;
 	follow_target_s _previous_target_motion;
 
 	void track_target_position();
 	void track_target_velocity();
-	bool target_velocity_valid();
-	bool target_position_valid();
+	bool target_valid();
 	void reset_target_validity();
 	void update_position_sp(follow_target_s &target, float yaw, bool velocity_valid, bool position_valid);
 	void update_target_motion();
