@@ -53,7 +53,7 @@
  * @max 150
  * @group Return To Land
  */
-PARAM_DEFINE_FLOAT(RTL_RETURN_ALT, 60);
+PARAM_DEFINE_FLOAT(RTL_RETURN_ALT, 20);
 
 
 /**
@@ -67,7 +67,7 @@ PARAM_DEFINE_FLOAT(RTL_RETURN_ALT, 60);
  * @max 100
  * @group Return To Land
  */
-PARAM_DEFINE_FLOAT(RTL_DESCEND_ALT, 30);
+PARAM_DEFINE_FLOAT(RTL_DESCEND_ALT, 10);
 
 /**
  * RTL delay
