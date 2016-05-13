@@ -110,6 +110,7 @@
 #include <uORB/topics/time_offset.h>
 #include <uORB/topics/mc_att_ctrl_status.h>
 #include <uORB/topics/ekf2_innovations.h>
+#include <uORB/topics/manual_control_setpoint.h>
 
 #include <systemlib/systemlib.h>
 #include <systemlib/param/param.h>
@@ -1078,7 +1079,8 @@ int sdlog2_thread_main(int argc, char *argv[])
 		struct att_pos_mocap_s att_pos_mocap;
 		struct vision_position_estimate_s vision_pos;
 		struct optical_flow_s flow;
-		struct rc_channels_s rc;
+		// struct rc_channels_s rc;
+		struct manual_control_setpoint_s sp_man;
 		struct differential_pressure_s diff_pres;
 		struct airspeed_s airspeed;
 		struct esc_status_s esc;
@@ -1177,7 +1179,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 		int att_pos_mocap_sub;
 		int vision_pos_sub;
 		int flow_sub;
-		int rc_sub;
+		int manual_control_sub;
 		int airspeed_sub;
 		int esc_sub;
 		int global_vel_sp_sub;
@@ -1215,7 +1217,7 @@ int sdlog2_thread_main(int argc, char *argv[])
 	subs.att_pos_mocap_sub = -1;
 	subs.vision_pos_sub = -1;
 	subs.flow_sub = -1;
-	subs.rc_sub = -1;
+	subs.manual_control_sub = -1;
 	subs.airspeed_sub = -1;
 	subs.esc_sub = -1;
 	subs.global_vel_sp_sub = -1;
@@ -1690,14 +1692,19 @@ int sdlog2_thread_main(int argc, char *argv[])
 		}
 
 		/* --- RC CHANNELS --- */
-		if (copy_if_updated(ORB_ID(rc_channels), &subs.rc_sub, &buf.rc)) {
+		if (copy_if_updated(ORB_ID(manual_control_setpoint), &subs.manual_control_sub, &buf.sp_man)) {
 			log_msg.msg_type = LOG_RC_MSG;
 			/* Copy only the first 12 channels of 18 */
-			memcpy(log_msg.body.log_RC.channel, buf.rc.channels, sizeof(log_msg.body.log_RC.channel));
-			log_msg.body.log_RC.rssi = buf.rc.rssi;
-			log_msg.body.log_RC.channel_count = buf.rc.channel_count;
-			log_msg.body.log_RC.signal_lost = buf.rc.signal_lost;
-			log_msg.body.log_RC.frame_drop = buf.rc.frame_drop_count;
+			// memcpy(log_msg.body.log_RC.channel, buf.rc.channels, sizeof(log_msg.body.log_RC.channel));
+			log_msg.body.log_RC.channel[0] = buf.sp_man.x * 1000;
+			log_msg.body.log_RC.channel[1] = buf.sp_man.y * 1000;
+			log_msg.body.log_RC.channel[2] = buf.sp_man.z * 1000;
+			log_msg.body.log_RC.channel[3] = buf.sp_man.r * 1000;
+
+			// log_msg.body.log_RC.rssi = buf.rc.rssi;
+			// log_msg.body.log_RC.channel_count = buf.rc.channel_count;
+			// log_msg.body.log_RC.signal_lost = buf.rc.signal_lost;
+			// log_msg.body.log_RC.frame_drop = buf.rc.frame_drop_count;
 			LOGBUFFER_WRITE_AND_COUNT(RC);
 		}
 
