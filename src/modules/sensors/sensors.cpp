@@ -254,6 +254,7 @@ private:
 	uint64_t _battery_discharged;			/**< battery discharged current in mA*ms */
 	hrt_abstime _battery_current_timestamp;		/**< timestamp of last battery current reading */
 	bool _rc_signal_lost;
+	uint32_t _manaul_control_count;
 	enum control_source_select
 	{
 		ONLY_RC,
@@ -551,7 +552,8 @@ Sensors::Sensors() :
 
 	_battery_discharged(0),
 	_battery_current_timestamp(0),
-	_rc_signal_lost(true)
+	_rc_signal_lost(true),
+	_manaul_control_count(0)
 {
 	/* initialize subscriptions */
 	for (unsigned i = 0; i < SENSOR_COUNT_MAX; i++) {
@@ -2032,6 +2034,7 @@ Sensors::rc_poll()
 			manual.kill_switch = get_rc_sw2pos_position(rc_channels_s::RC_CHANNELS_FUNCTION_KILLSWITCH,
 					     _parameters.rc_killswitch_th, _parameters.rc_killswitch_inv);
 			manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_RC;
+			manual.count = _manaul_control_count++;
 			/* publish manual_control_setpoint topic */
 			if (_manual_control_pub != nullptr) {
 				orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
@@ -2085,6 +2088,7 @@ Sensors::rc_poll()
 		manual.r = app_control.r;
 		manual.z = app_control.z;
 		manual.control_source = manual_control_setpoint_s::CONTROL_SOURCE_APP;
+		manual.count = _manaul_control_count++;
 		if (_manual_control_pub != nullptr) {
 			orb_publish(ORB_ID(manual_control_setpoint), _manual_control_pub, &manual);
 

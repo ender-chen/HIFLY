@@ -1700,11 +1700,10 @@ int sdlog2_thread_main(int argc, char *argv[])
 			log_msg.body.log_RC.channel[1] = buf.sp_man.y * 1000;
 			log_msg.body.log_RC.channel[2] = buf.sp_man.z * 1000;
 			log_msg.body.log_RC.channel[3] = buf.sp_man.r * 1000;
-
 			// log_msg.body.log_RC.rssi = buf.rc.rssi;
-			// log_msg.body.log_RC.channel_count = buf.rc.channel_count;
+			log_msg.body.log_RC.channel_count = buf.sp_man.control_source;
 			// log_msg.body.log_RC.signal_lost = buf.rc.signal_lost;
-			// log_msg.body.log_RC.frame_drop = buf.rc.frame_drop_count;
+			log_msg.body.log_RC.frame_drop = buf.sp_man.count;
 			LOGBUFFER_WRITE_AND_COUNT(RC);
 		}
 

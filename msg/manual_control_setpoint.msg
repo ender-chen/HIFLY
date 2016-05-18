@@ -4,6 +4,7 @@ uint8 SWITCH_POS_ON = 1			# switch activated (value = 1)
 uint8 SWITCH_POS_MIDDLE = 2		# middle position (value = 0)
 uint8 SWITCH_POS_OFF = 3		# switch not activated (value = -1)
 uint64 timestamp
+uint32 count
 
 uint8 CONTROL_SOURCE_NONE = 0
 uint8 CONTROL_SOURCE_RC = 1
