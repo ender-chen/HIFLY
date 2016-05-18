@@ -442,7 +442,7 @@ MissionBlock::set_takeoff_item(struct mission_item_s *item, float min_clearance,
 	item->yaw = NAN;
 	item->loiter_radius = _navigator->get_loiter_radius();
 	item->loiter_direction = 1;
-	item->time_inside = 0.0f;
+	item->time_inside = 2.0f;
 	item->pitch_min = min_pitch;
 	item->autocontinue = false;
 	item->origin = ORIGIN_ONBOARD;
