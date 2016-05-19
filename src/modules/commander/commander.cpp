@@ -1969,7 +1969,10 @@ int commander_thread_main(int argc, char *argv[])
 				status.condition_global_position_valid = true;
 			}
 		}
-
+		if (status.circuit_breaker_engaged_gpsfailure_check)
+		{
+			status.condition_global_position_valid = true;
+		}
 		/* update condition_local_position_valid and condition_local_altitude_valid */
 		/* hysteresis for EPH */
 		bool local_eph_good;
@@ -2211,6 +2214,10 @@ int commander_thread_main(int argc, char *argv[])
 
 		if (hrt_absolute_time() - gps_position.timestamp_time > POSITION_TIMEOUT) {
 			status.gps_status = vehicle_status_s::GPS_STATUS_BAD;
+		}
+		if (status.circuit_breaker_engaged_gpsfailure_check)
+		{
+			status.gps_status = vehicle_status_s::GPS_STATUS_PERFECT;
 		}
 
 		status.errors_count2 &= GPS_STATUS_BIT_MASK;
