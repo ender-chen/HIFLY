@@ -2659,12 +2659,12 @@ int commander_thread_main(int argc, char *argv[])
 #if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
 		/* reset main state after takeoff has been completed */
 		/* HiFly_code */
-		if (status.main_state_prev == vehicle_status_s::MAIN_STATE_AUTO_IDLE) {
-			if (status.main_state == vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF
-					&& mission_result.finished) {
-				main_state_transition(&status, vehicle_status_s::MAIN_STATE_POSCTL);
-			}
-		}
+		// if (status.main_state_prev == vehicle_status_s::MAIN_STATE_AUTO_IDLE) {
+		// 	if (status.main_state == vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF
+		// 			&& mission_result.finished) {
+		// 		main_state_transition(&status, vehicle_status_s::MAIN_STATE_POSCTL);
+		// 	}
+		// }
 #else
 		/* reset main state after takeoff or land has been completed */
 		/* only switch back to at least altitude controlled modes */
