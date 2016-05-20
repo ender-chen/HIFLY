@@ -285,3 +285,6 @@ ORB_DEFINE(follow_reference_position, struct follow_reference_position_s);
 
 #include "topics/follow_target.h"
 ORB_DEFINE(follow_target, struct follow_target_s);
+
+#include "topics/led_ctrl.h"
+ORB_DEFINE(led_ctrl, struct led_ctrl_s);

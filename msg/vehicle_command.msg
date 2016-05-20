@@ -57,6 +57,7 @@ uint32 VEHICLE_CMD_PAYLOAD_CONTROL_DEPLOY = 30002	# Control a pre-programmed pay
 uint32 VEHICLE_CMD_PREFLIGHT_UAVCAN = 243		# UAVCAN configuration. If param 1 == 1 actuator mapping and direction assignment should be started 
 uint32 VEHICLE_CMD_FORCE_DISARM = 40001			# FORCE DISARM.
 uint32 VEHICLE_CMD_FOLLOW_REFERENCE_POSITION = 40002	# Follow reference position
+uint32 VEHICLE_CMD_LED_CTRL = 40003	# LED control
 
 uint32 VEHICLE_CMD_RESULT_ACCEPTED = 0			# Command ACCEPTED and EXECUTED |
 uint32 VEHICLE_CMD_RESULT_TEMPORARILY_REJECTED = 1	# Command TEMPORARY REJECTED/DENIED |

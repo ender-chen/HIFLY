@@ -99,6 +99,7 @@
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/follow_reference_position.h>
 #include <uORB/topics/follow_target.h>
+#include <uORB/topics/led_ctrl.h>
 
 #include <drivers/drv_led.h>
 #include <drivers/drv_hrt.h>
@@ -224,6 +225,7 @@ static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
 static orb_advert_t _follow_ref_pos_pub = nullptr;
 static orb_advert_t _follow_me_pub = nullptr;
+static orb_advert_t _led_ctrl_pub = nullptr;
 
 static unsigned _last_mission_instance = 0;
 static manual_control_setpoint_s _last_sp_man;
@@ -1047,7 +1049,6 @@ bool handle_command(struct vehicle_status_s *status_local, const struct safety_s
 			cmd_result = vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		}
 		break;
-
 	default:
 		/* Warn about unsupported commands, this makes sense because only commands
 		 * to this component ID (or all) are passed by mavlink. */
@@ -4113,7 +4114,21 @@ void *commander_low_prio_loop(void *arg)
 			case vehicle_command_s::VEHICLE_CMD_START_RX_PAIR:
 				/* handled in the IO driver */
 				break;
+			case vehicle_command_s::VEHICLE_CMD_LED_CTRL: {
+					struct led_ctrl_s led_ctrl;
+					memset(&led_ctrl.led_status, false, sizeof(led_ctrl.led_status));
+					led_ctrl.event = led_ctrl_s::EVENT_LED_CTRL_INVALID;
+					led_ctrl.timestamp = hrt_absolute_time();
 
+					if (_led_ctrl_pub != nullptr) {
+						orb_publish(ORB_ID(led_ctrl),  _led_ctrl_pub, &led_ctrl);
+					} else {
+						_led_ctrl_pub = orb_advertise(ORB_ID(led_ctrl), &led_ctrl);
+					}
+
+					answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub, command_ack);
+				}
+				break;
 			default:
 				/* don't answer on unsupported commands, it will be done in main loop */
 				break;
