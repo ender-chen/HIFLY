@@ -1220,10 +1220,12 @@ int commander_thread_main(int argc, char *argv[])
 	/*pthread for slow low prio thread to check sensors stat*/
 	pthread_t commander_check_sensors_thread;
 
+#if 0
 	/* initialize */
 	if (led_init() != OK) {
 		mavlink_and_console_log_critical(mavlink_fd, "ERROR: LED INIT FAIL");
 	}
+#endif
 
 	if (buzzer_init() != OK) {
 		mavlink_and_console_log_critical(mavlink_fd, "ERROR: BUZZER INIT FAIL");
@@ -1484,8 +1486,9 @@ int commander_thread_main(int argc, char *argv[])
 	memset(&vtol_status, 0, sizeof(vtol_status));
 	vtol_status.vtol_in_rw_mode = true;		//default for vtol is rotary wing
 
-
+#if 0
 	control_status_leds(&status, &armed, true);
+#endif
 
 	/* now initialized */
 	commander_initialized = true;
@@ -2931,7 +2934,7 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		counter++;
-
+#if 0
 		int blink_state = blink_msg_state();
 
 		if (blink_state > 0) {
@@ -2945,7 +2948,7 @@ int commander_thread_main(int argc, char *argv[])
 			/* normal state */
 			control_status_leds(&status, &armed, status_changed);
 		}
-
+#endif
 		status_changed = false;
 
 		usleep(COMMANDER_MONITORING_INTERVAL);
@@ -2962,7 +2965,10 @@ int commander_thread_main(int argc, char *argv[])
 	rgbled_set_mode(RGBLED_MODE_OFF);
 
 	/* close fds */
+#if 0
 	led_deinit();
+#endif
+
 	buzzer_deinit();
 	px4_close(sp_man_sub);
 	px4_close(offboard_control_mode_sub);
@@ -3856,6 +3862,11 @@ void *commander_low_prio_loop(void *arg)
 	fds[0].fd = cmd_sub;
 	fds[0].events = POLLIN;
 
+	/* initialize */
+	if (led_init() != OK) {
+		mavlink_and_console_log_critical(mavlink_fd, "ERROR: LED INIT FAIL");
+	}
+
 	while (!thread_should_exit) {
 		/* wait for up to 1000ms for data */
 		int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 1000);
@@ -4108,8 +4119,11 @@ void *commander_low_prio_loop(void *arg)
 				break;
 			}
 		}
+
+		led_toggle(LED_GREEN);
 	}
 
+	led_deinit();
 	px4_close(cmd_sub);
 
 	return NULL;
