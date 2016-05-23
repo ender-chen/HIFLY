@@ -3868,6 +3868,13 @@ void *commander_low_prio_loop(void *arg)
 		mavlink_and_console_log_critical(mavlink_fd, "ERROR: LED INIT FAIL");
 	}
 
+	int led_ctrl_sub = orb_subscribe(ORB_ID(led_ctrl));
+	struct led_ctrl_s led_ctrl;
+	memset(&led_ctrl.led_status, false, sizeof(led_ctrl.led_status));
+	led_ctrl.event = led_ctrl_s::EVENT_LED_CTRL_INVALID;
+	led_ctrl.timestamp = 0;
+	bool updated = false;
+
 	while (!thread_should_exit) {
 		/* wait for up to 1000ms for data */
 		int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 1000);
@@ -4120,6 +4127,26 @@ void *commander_low_prio_loop(void *arg)
 					led_ctrl.event = led_ctrl_s::EVENT_LED_CTRL_INVALID;
 					led_ctrl.timestamp = hrt_absolute_time();
 
+					mavlink_log_info(mavlink_fd, "led ctrl param1: %.f param7: %.f", (double)cmd.param1, (double)cmd.param7);
+					if (fabsf(cmd.param7 - led_ctrl_s::EVENT_SMARTBOARD_MMI_LED_TEST) < FLT_EPSILON) {
+						led_ctrl.event = led_ctrl_s::EVENT_SMARTBOARD_MMI_LED_TEST;
+						led_ctrl.led_status[0] = true;
+					} else {
+					}
+
+					// if valid EVENT
+					if (fabsf(cmd.param7 - led_ctrl_s::EVENT_LED_CTRL_MAX) < FLT_EPSILON) {
+						if (fabsf(cmd.param1 - led_ctrl_s::COLOR_RED) < FLT_EPSILON) {
+							led_ctrl.color[0] = LED_RED;
+						} else if (fabsf(cmd.param1 - led_ctrl_s::COLOR_GREEN) < FLT_EPSILON) {
+							led_ctrl.color[0] = LED_GREEN;
+						} else if (fabsf(cmd.param1 - led_ctrl_s::COLOR_YELLOW) < FLT_EPSILON) {
+							led_ctrl.color[0] = LED_YELLOW;
+						} else {
+						}
+					}
+					// other EVENT
+
 					if (_led_ctrl_pub != nullptr) {
 						orb_publish(ORB_ID(led_ctrl),  _led_ctrl_pub, &led_ctrl);
 					} else {
@@ -4135,7 +4162,22 @@ void *commander_low_prio_loop(void *arg)
 			}
 		}
 
-		led_toggle(LED_GREEN);
+		orb_check(led_ctrl_sub, &updated);
+		if (updated) {
+			orb_copy(ORB_ID(led_ctrl), led_ctrl_sub, &led_ctrl);
+		}
+
+		if (hrt_elapsed_time(&led_ctrl.timestamp) < 5000000ULL) {
+
+			if (led_ctrl.event == led_ctrl_s::EVENT_SMARTBOARD_MMI_LED_TEST) {
+				if (led_ctrl.led_status[0]) {
+					led_toggle(led_ctrl.color[0]);
+				}
+			}
+			// other EVENT
+		} else {
+			led_toggle(LED_GREEN);
+		}
 	}
 
 	led_deinit();
