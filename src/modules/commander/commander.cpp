@@ -225,7 +225,6 @@ static struct offboard_control_mode_s offboard_control_mode;
 static struct home_position_s _home;
 static orb_advert_t _follow_ref_pos_pub = nullptr;
 static orb_advert_t _follow_me_pub = nullptr;
-static orb_advert_t _led_ctrl_pub = nullptr;
 
 static unsigned _last_mission_instance = 0;
 static manual_control_setpoint_s _last_sp_man;
@@ -1221,7 +1220,9 @@ int commander_thread_main(int argc, char *argv[])
 	/*pthread for slow low prio thread to check sensors stat*/
 	pthread_t commander_check_sensors_thread;
 
-#if 0
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
+
+#else
 	/* initialize */
 	if (led_init() != OK) {
 		mavlink_and_console_log_critical(mavlink_fd, "ERROR: LED INIT FAIL");
@@ -1487,7 +1488,9 @@ int commander_thread_main(int argc, char *argv[])
 	memset(&vtol_status, 0, sizeof(vtol_status));
 	vtol_status.vtol_in_rw_mode = true;		//default for vtol is rotary wing
 
-#if 0
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
+
+#else
 	control_status_leds(&status, &armed, true);
 #endif
 
@@ -2935,7 +2938,9 @@ int commander_thread_main(int argc, char *argv[])
 		}
 
 		counter++;
-#if 0
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
+
+#else
 		int blink_state = blink_msg_state();
 
 		if (blink_state > 0) {
@@ -2966,7 +2971,9 @@ int commander_thread_main(int argc, char *argv[])
 	rgbled_set_mode(RGBLED_MODE_OFF);
 
 	/* close fds */
-#if 0
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
+
+#else
 	led_deinit();
 #endif
 
@@ -3863,11 +3870,13 @@ void *commander_low_prio_loop(void *arg)
 	fds[0].fd = cmd_sub;
 	fds[0].events = POLLIN;
 
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
 	/* initialize */
 	if (led_init() != OK) {
 		mavlink_and_console_log_critical(mavlink_fd, "ERROR: LED INIT FAIL");
 	}
 
+	orb_advert_t _led_ctrl_pub = nullptr;
 	int led_ctrl_sub = orb_subscribe(ORB_ID(led_ctrl));
 	struct led_ctrl_s led_ctrl;
 	memset(&led_ctrl.led_status, false, sizeof(led_ctrl.led_status));
@@ -3875,6 +3884,7 @@ void *commander_low_prio_loop(void *arg)
 	led_ctrl.timestamp = 0;
 	bool updated = false;
 
+#endif
 	while (!thread_should_exit) {
 		/* wait for up to 1000ms for data */
 		int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 1000);
@@ -4121,6 +4131,7 @@ void *commander_low_prio_loop(void *arg)
 			case vehicle_command_s::VEHICLE_CMD_START_RX_PAIR:
 				/* handled in the IO driver */
 				break;
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
 			case vehicle_command_s::VEHICLE_CMD_LED_CTRL: {
 					struct led_ctrl_s led_ctrl;
 					memset(&led_ctrl.led_status, false, sizeof(led_ctrl.led_status));
@@ -4156,12 +4167,14 @@ void *commander_low_prio_loop(void *arg)
 					answer_command(cmd, vehicle_command_s::VEHICLE_CMD_RESULT_ACCEPTED, command_ack_pub, command_ack);
 				}
 				break;
+#endif
 			default:
 				/* don't answer on unsupported commands, it will be done in main loop */
 				break;
 			}
 		}
 
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
 		orb_check(led_ctrl_sub, &updated);
 		if (updated) {
 			orb_copy(ORB_ID(led_ctrl), led_ctrl_sub, &led_ctrl);
@@ -4178,9 +4191,12 @@ void *commander_low_prio_loop(void *arg)
 		} else {
 			led_toggle(LED_GREEN);
 		}
+#endif
 	}
 
+#if defined(__PX4_NUTTX) && defined(CONFIG_ARCH_BOARD_HIFLY)
 	led_deinit();
+#endif
 	px4_close(cmd_sub);
 
 	return NULL;
