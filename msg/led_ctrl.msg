@@ -10,7 +10,7 @@ uint32 EVENT_LED_CTRL_INVALID = 255
 
 
 uint64 timestamp
-bool[4] led_status	# true: enable; false: disable
+bool[4] led_status # true: enable; false: disable
 uint8[4] color
-uint8[4] freq		# Hz
-uint32  event
+uint8[4] freq # Hz
+uint32 event
