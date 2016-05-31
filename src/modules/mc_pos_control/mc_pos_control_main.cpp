@@ -1952,6 +1952,10 @@ MulticopterPositionControl::task_main()
 		hrt_abstime t = hrt_absolute_time();
 		float dt = t_prev != 0 ? (t - t_prev) * 0.000001f : 0.0f;
 		t_prev = t;
+		if (fabsf(dt-0.0f) < FLT_EPSILON) {
+			warnx("dt is zero");
+			continue;
+		}
 
 		// set dt for control blocks
 		setDt(dt);
@@ -2007,10 +2011,11 @@ MulticopterPositionControl::task_main()
 			_vel_err_d(2) = _vel_z_deriv.update(-_vel(2));
 		}
 
-		if (_control_mode.flag_control_altitude_enabled ||
+		if ((_control_mode.flag_control_altitude_enabled ||
 				_control_mode.flag_control_position_enabled ||
 				_control_mode.flag_control_climb_rate_enabled ||
-				_control_mode.flag_control_velocity_enabled) {
+				_control_mode.flag_control_velocity_enabled) &&
+				was_armed) {
 
 			_vel_ff.zero();
 
@@ -2352,6 +2357,7 @@ MulticopterPositionControl::task_main()
 								&& (float)fabs(_acc_z_lp) < 0.1f
 								&& _vel_z_lp > 0.5f * _params.land_speed) {
 							_in_landing = true;
+							warnx("in landing");
 						}
 
 						/* assume ground, cut thrust */
@@ -2360,6 +2366,7 @@ MulticopterPositionControl::task_main()
 							thr_max = 0.0f;
 							_in_landing = false;
 							_lnd_reached_ground = true;
+							warnx("in ground");
 						}
 
 						/* once we assumed to have reached the ground always cut the thrust.
