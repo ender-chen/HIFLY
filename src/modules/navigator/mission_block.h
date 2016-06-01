@@ -140,6 +140,7 @@ protected:
 	control::BlockParamFloat _param_yaw_err;
 	control::BlockParamInt _param_vtol_wv_land;
 	control::BlockParamInt _param_vtol_wv_loiter;
+	control::BlockParamFloat _param_takeoff_accr;
 };
 
 #endif
