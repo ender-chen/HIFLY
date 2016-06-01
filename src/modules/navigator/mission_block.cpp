@@ -77,7 +77,8 @@ MissionBlock::MissionBlock(Navigator *navigator, const char *name) :
 	_param_yaw_timeout(this, "MIS_YAW_TMT", false),
 	_param_yaw_err(this, "MIS_YAW_ERR", false),
 	_param_vtol_wv_land(this, "VT_WV_LND_EN", false),
-	_param_vtol_wv_loiter(this, "VT_WV_LTR_EN", false)
+	_param_vtol_wv_loiter(this, "VT_WV_LTR_EN", false),
+	_param_takeoff_accr(this, "MIS_TKF_ACCR", false)
 {
 }
 
@@ -150,7 +151,7 @@ MissionBlock::is_mission_item_reached()
 			}
 		} else if (_mission_item.nav_cmd == NAV_CMD_TAKEOFF) {
 			/* for takeoff mission items use the parameter for the takeoff acceptance radius */
-			if (dist >= 0.0f && dist <= _navigator->get_acceptance_radius()) {
+			if (dist >= 0.0f && dist <= _param_takeoff_accr.get()) {
 				_waypoint_position_reached = true;
 			}
 		} else if (!_navigator->get_vstatus()->is_rotary_wing &&
@@ -433,8 +434,8 @@ MissionBlock::set_takeoff_item(struct mission_item_s *item, float min_clearance,
 		item->altitude += min_clearance;
 
 		/* we must takeoff to a point further above ground than the acceptance radius */
-		if (_navigator->get_acceptance_radius() > min_clearance) {
-			item->altitude += _navigator->get_acceptance_radius();
+		if (_param_takeoff_accr.get() > min_clearance) {
+			item->altitude += _param_takeoff_accr.get();
 		}
 	}
 
