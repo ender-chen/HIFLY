@@ -14,7 +14,12 @@ fi
 
 if mpu6000 start
 then
+else
+  if bmi120 -R 2 start
+  then
+  fi
 fi
+
 
 if us100 start
 then
