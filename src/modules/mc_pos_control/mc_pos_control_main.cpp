@@ -2014,8 +2014,7 @@ MulticopterPositionControl::task_main()
 		if ((_control_mode.flag_control_altitude_enabled ||
 				_control_mode.flag_control_position_enabled ||
 				_control_mode.flag_control_climb_rate_enabled ||
-				_control_mode.flag_control_velocity_enabled) &&
-				was_armed) {
+				_control_mode.flag_control_velocity_enabled)) {
 
 			_vel_ff.zero();
 
