@@ -392,11 +392,19 @@ void Ekf2::task_main()
 		att.timestamp = hrt_absolute_time();
 
 		_ekf->copy_quaternion(att.q);
+
 		matrix::Quaternion<float> q(att.q[0], att.q[1], att.q[2], att.q[3]);
 		matrix::Euler<float> euler(q);
 		att.roll = euler(0);
 		att.pitch = euler(1);
 		att.yaw = euler(2);
+		math::Quaternion q_math(att.q[0], att.q[1], att.q[2], att.q[3]);
+		//generate R
+		math::Matrix<3, 3> R = q_math.to_dcm();
+
+		/* copy rotation matrix */
+		memcpy(&att.R[0], R.data, sizeof(att.R));
+		att.R_valid = true;
 
 		// generate vehicle local position data
 		struct vehicle_local_position_s lpos = {};
