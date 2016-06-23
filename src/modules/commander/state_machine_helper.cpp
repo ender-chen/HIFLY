@@ -401,7 +401,8 @@ main_state_transition(struct vehicle_status_s *status, main_state_t new_main_sta
 
 	case vehicle_status_s::MAIN_STATE_AUTO_TAKEOFF:
 		if (status->condition_global_position_valid && status->condition_home_position_valid
-			&& status->main_state == vehicle_status_s::MAIN_STATE_AUTO_IDLE) {
+			&& status->main_state == vehicle_status_s::MAIN_STATE_AUTO_IDLE
+			&& status->arming_state == vehicle_status_s::ARMING_STATE_ARMED) {
 			ret = TRANSITION_CHANGED;
 		}
 		break;
