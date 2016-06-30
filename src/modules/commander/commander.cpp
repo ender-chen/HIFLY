@@ -2027,10 +2027,17 @@ int commander_thread_main(int argc, char *argv[])
 
 			if (disarm_when_landed > 0) {
 				if (land_detector.landed) {
+
+					if (!armed.armed) {
+						_inair_last_time = 0;
+						check_for_disarming = false;
+					}
+
 					if (!check_for_disarming && _inair_last_time > 0) {
 						_inair_last_time = land_detector.timestamp;
 						check_for_disarming = true;
 					}
+
 
 					if (_inair_last_time > 0 && ((hrt_absolute_time() - _inair_last_time) > (hrt_abstime)disarm_when_landed * 1000 * 1000)) {
 						mavlink_log_critical(mavlink_fd, "AUTO DISARMING AFTER LANDING");
